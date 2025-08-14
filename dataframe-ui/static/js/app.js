@@ -21,13 +21,15 @@ $(document).ready(function() {
     }
 
     function setupEventHandlers() {
-        // Upload area click handler
-        $('#upload-area').on('click', function() {
-            $('#file-input').click();
+        // Upload area click handler - fix for nested elements
+        $(document).on('click', '#upload-area', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $('#file-input').trigger('click');
         });
 
         // File input change handler
-        $('#file-input').on('change', function() {
+        $('#file-input').on('change', function(e) {
             const file = this.files[0];
             if (file) {
                 updateUploadArea(file.name);
@@ -37,29 +39,48 @@ $(document).ready(function() {
         // Drag and drop handlers
         $('#upload-area').on('dragover', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).addClass('dragover');
         });
 
         $('#upload-area').on('dragleave', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).removeClass('dragover');
         });
 
         $('#upload-area').on('drop', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             $(this).removeClass('dragover');
 
             const files = e.originalEvent.dataTransfer.files;
             if (files.length > 0) {
-                $('#file-input')[0].files = files;
+                const fileInput = $('#file-input')[0];
+                fileInput.files = files;
+
+                // Trigger change event manually
+                const changeEvent = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(changeEvent);
+
                 updateUploadArea(files[0].name);
             }
         });
 
-        // Upload form submit handler
+        // Upload form submit handler - improved
         $('#upload-form').on('submit', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             uploadDataFrame();
+        });
+
+        // Upload button direct click handler as backup
+        $('#upload-btn').on('click', function(e) {
+            e.preventDefault();
+            const form = $('#upload-form')[0];
+            if (form.checkValidity()) {
+                uploadDataFrame();
+            }
         });
 
         // Clear cache button handler
