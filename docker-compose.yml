@@ -1,0 +1,81 @@
+version: '3.8'
+services:
+  spark:
+    image: bitnami/spark:3.5
+    restart: always
+    hostname: localhost
+    network_mode: "host"
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_MASTER_HOST=0.0.0.0
+      - SPARK_MASTER_WEBUI_PORT=8081  # Set Web UI to port 8081
+    volumes:
+      - spark-data:/opt/bitnami/spark/data
+      - ./spark-apps:/opt/bitnami/spark/apps  # Mount for your Spark applications
+  
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: spark-worker
+    restart: always
+    network_mode: "host"
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://localhost:7077
+    depends_on:
+      - spark
+  
+  redis:
+    image: redis:7-alpine
+    restart: always
+    network_mode: "host"
+    volumes:
+      - redis-data:/data
+    command: redis-server --save 60 1 --loglevel warning --port 6379
+  
+  dataframe-ui:
+    build: ./dataframe-ui
+    container_name: dataframe-ui
+    restart: always
+    network_mode: "host"
+    environment:
+      - FLASK_ENV=production
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    volumes:
+      - ./dataframe-ui:/app
+
+  ntfy:
+    image: binwiederhier/ntfy
+    container_name: ntfy
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ntfy-data:/var/lib/ntfy
+      - ./ntfy/server.yml:/etc/ntfy/server.yml
+    command: serve
+  
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-ntfy
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - ntfy
+
+volumes:
+  spark-data:
+    driver: local
+  redis-data:
+    driver: local
+  ntfy-data:
+    driver: local

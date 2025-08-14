@@ -1,0 +1,57 @@
+# ntfy server configuration
+
+# Base URL for the ntfy server
+base-url: "https://localhost"
+
+# Listen address (on host network)
+listen-http: ":8080"
+
+# Cache settings
+cache-file: "/var/lib/ntfy/cache.db"
+cache-duration: "12h"
+cache-startup-queries: "pragma journal_mode = WAL; pragma synchronous = normal; pragma temp_store = memory; pragma busy_timeout = 15000; vacuum;"
+
+# Authentication settings (optional - set to true if you want auth)
+auth-default-access: "read-write"
+
+# Message limits
+message-size-limit: "4096"
+message-delay-limit: "3d"
+
+# Rate limiting
+visitor-request-limit-burst: 60
+visitor-request-limit-replenish: "5s"
+visitor-email-limit-burst: 16
+visitor-email-limit-replenish: "1h"
+visitor-subscription-limit: 30
+visitor-attachment-total-size-limit: "100M"
+visitor-attachment-daily-bandwidth-limit: "500M"
+
+# Behind proxy settings (since we're using nginx)
+behind-proxy: true
+
+# CORS settings (if needed for web clients)
+enable-cors: true
+
+# Logging
+log-level: "INFO"
+log-format: "text"
+
+# Web app settings
+web-root: "/"
+enable-signup: false
+enable-login: false
+enable-reservations: false
+
+# Keepalive settings
+keepalive-interval: "45s"
+manager-interval: "1m"
+
+# File attachments (optional)
+attachment-cache-dir: "/var/lib/ntfy/attachments"
+attachment-total-size-limit: "5G"
+attachment-file-size-limit: "15M"
+attachment-expiry-duration: "3h"
+
+# Metrics (optional)
+enable-metrics: false
