@@ -5,14 +5,8 @@
 
 $(document).ready(function() {
     // Initialize the application
+    let dataframesTable = null;
     init();
-
-    // Initialize DataTable
-    let dataframesTable = $('#dataframes-table').DataTable({
-        "order": [[ 4, "desc" ]], // Sort by created date descending
-        "pageLength": 10,
-        "responsive": true
-    });
 
     function init() {
         loadDataFrames();
@@ -120,13 +114,27 @@ $(document).ready(function() {
     }
 
     function updateDataFramesTable(dataframes) {
-        // Clear existing data
-        dataframesTable.clear();
+        // Check if DataTable exists and preserve current page
+        let currentPage = 0;
+        if (dataframesTable) {
+            currentPage = dataframesTable.page();
+            dataframesTable.destroy();
+        }
 
+        // Clear existing table body
+        $('#dataframes-tbody').empty();
+
+        // Populate table with new data
         dataframes.forEach(function(df) {
             const createdDate = new Date(df.timestamp).toLocaleString();
             const dimensions = `${df.rows.toLocaleString()} × ${df.cols}`;
             const size = `${df.size_mb} MB`;
+
+            // Add warning badge for large datasets
+            let sizeDisplay = size;
+            if (df.rows > 10000) {
+                sizeDisplay += ' <span class="badge bg-warning text-dark ms-1">Large</span>';
+            }
 
             const actions = `
                 <div class="btn-group btn-group-sm" role="group">
@@ -139,19 +147,43 @@ $(document).ready(function() {
                 </div>
             `;
 
-            dataframesTable.row.add([
-                df.name,
-                df.description || '<em class="text-muted">No description</em>',
-                dimensions,
-                size,
-                createdDate,
-                actions
-            ]);
+            const row = `
+                <tr>
+                    <td>${df.name}</td>
+                    <td>${df.description || '<em class="text-muted">No description</em>'}</td>
+                    <td>${dimensions}</td>
+                    <td>${sizeDisplay}</td>
+                    <td>${createdDate}</td>
+                    <td>${actions}</td>
+                </tr>
+            `;
+
+            $('#dataframes-tbody').append(row);
         });
 
-        dataframesTable.draw();
+        // Reinitialize DataTable and restore page
+        dataframesTable = $('#dataframes-table').DataTable({
+            "order": [[ 4, "desc" ]], // Sort by created date descending
+            "pageLength": 10,
+            "responsive": true,
+            "stateSave": true, // Save table state including current page
+            "drawCallback": function() {
+                // Reattach event handlers after table redraw
+                attachTableEventHandlers();
+            }
+        });
 
-        // Attach event handlers to new buttons
+        // Restore the current page if table existed before
+        if (currentPage > 0) {
+            dataframesTable.page(currentPage).draw('page');
+        }
+
+        // Attach event handlers to buttons
+        attachTableEventHandlers();
+    }
+
+    function attachTableEventHandlers() {
+        // Remove existing handlers to prevent duplicates
         $('.view-btn').off('click').on('click', function() {
             const name = $(this).data('name');
             viewDataFrame(name);
@@ -212,10 +244,11 @@ $(document).ready(function() {
         $('#dataframe-data-body').empty();
         $('#dataframe-modal').modal('show');
 
-        $.get(`/api/dataframes/${name}`)
+        // First try to load with preview only for large datasets
+        $.get(`/api/dataframes/${name}?preview=true`)
             .done(function(response) {
                 if (response.success) {
-                    displayDataFrameInModal(response);
+                    displayDataFrameInModal(response, name);
                 } else {
                     showNotification('Error', response.error, 'error');
                     $('#dataframe-modal').modal('hide');
@@ -228,16 +261,30 @@ $(document).ready(function() {
             });
     }
 
-    function displayDataFrameInModal(response) {
+    function displayDataFrameInModal(response, name) {
         const metadata = response.metadata;
-        const data = response.preview; // Use preview for performance
+        const data = response.preview;
         const columns = response.columns;
+        const isLarge = response.is_large_dataset || response.total_rows > 1000;
 
         // Update modal title
         $('#dataframe-modal-label').text(`DataFrame: ${metadata.name}`);
 
-        // Display metadata
+        // Display metadata with warnings for large datasets
+        let warningHtml = '';
+        if (isLarge) {
+            warningHtml = `
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Large Dataset:</strong> This DataFrame has ${metadata.rows.toLocaleString()} rows. 
+                    Showing preview only (first 20 rows) to prevent browser performance issues.
+                    ${response.message ? '<br>' + response.message : ''}
+                </div>
+            `;
+        }
+
         const metadataHtml = `
+            ${warningHtml}
             <div class="row">
                 <div class="col-md-6">
                     <h6>Metadata</h6>
@@ -250,14 +297,14 @@ $(document).ready(function() {
                     </ul>
                 </div>
                 <div class="col-md-6">
-                    <h6>Columns</h6>
-                    <div class="d-flex flex-wrap gap-1">
+                    <h6>Columns (${columns.length})</h6>
+                    <div class="d-flex flex-wrap gap-1" style="max-height: 120px; overflow-y: auto;">
                         ${columns.map(col => `<span class="badge bg-secondary metadata-badge">${col}</span>`).join('')}
                     </div>
                 </div>
             </div>
             <hr>
-            <h6>Data Preview (First 10 rows)</h6>
+            <h6>Data Preview ${isLarge ? '(First 20 rows)' : ''}</h6>
         `;
 
         $('#dataframe-info').html(metadataHtml);
@@ -266,14 +313,17 @@ $(document).ready(function() {
         const headerHtml = '<tr>' + columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
         $('#dataframe-data-head').html(headerHtml);
 
-        // Create table body
+        // Create table body with better handling for large values
         const bodyHtml = data.map(row => {
             const cells = columns.map(col => {
                 let value = row[col];
                 if (value === null || value === undefined) {
                     value = '<em class="text-muted">null</em>';
-                } else if (typeof value === 'string' && value.length > 50) {
-                    value = value.substring(0, 50) + '...';
+                } else if (typeof value === 'string' && value.length > 100) {
+                    value = '<span title="' + value.replace(/"/g, '&quot;') + '">' +
+                            value.substring(0, 100) + '...</span>';
+                } else if (typeof value === 'number' && Math.abs(value) > 1000000) {
+                    value = value.toExponential(2);
                 }
                 return `<td>${value}</td>`;
             }).join('');

@@ -56,6 +56,11 @@ def list_dataframes():
 def get_dataframe(name):
     """Get a specific DataFrame with its data"""
     try:
+        # Get query parameters for pagination
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 100))
+        preview_only = request.args.get('preview', 'false').lower() == 'true'
+
         # Check if exists
         df_key = f"df:{name}"
         meta_key = f"meta:{name}"
@@ -63,25 +68,63 @@ def get_dataframe(name):
         if not redis_client.exists(df_key):
             return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
 
-        # Load CSV data
-        csv_string = redis_client.get(df_key)
-        df = pd.read_csv(io.StringIO(csv_string))
-
-        # Load metadata
+        # Load metadata first (lightweight)
         meta_json = redis_client.get(meta_key)
         metadata = json.loads(meta_json)
 
-        # Convert DataFrame to JSON for frontend
-        df_json = df.to_dict('records')
-        columns = df.columns.tolist()
+        # For large dataframes, only load preview or paginated data
+        csv_string = redis_client.get(df_key)
+        df = pd.read_csv(io.StringIO(csv_string))
 
-        return jsonify({
-            'success': True,
-            'metadata': metadata,
-            'data': df_json,
-            'columns': columns,
-            'preview': df.head(10).to_dict('records')  # First 10 rows for preview
-        })
+        columns = df.columns.tolist()
+        total_rows = len(df)
+
+        if preview_only:
+            # Only return preview for large datasets
+            preview_data = df.head(20).to_dict('records')
+            return jsonify({
+                'success': True,
+                'metadata': metadata,
+                'columns': columns,
+                'preview': preview_data,
+                'total_rows': total_rows,
+                'is_preview_only': True
+            })
+
+        # For smaller datasets (< 1000 rows) or when specifically requested, return paginated data
+        if total_rows <= 1000 or not preview_only:
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+
+            paginated_df = df.iloc[start_idx:end_idx]
+            df_json = paginated_df.to_dict('records')
+
+            return jsonify({
+                'success': True,
+                'metadata': metadata,
+                'data': df_json,
+                'columns': columns,
+                'preview': df.head(10).to_dict('records'),
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_rows': total_rows,
+                    'total_pages': (total_rows + page_size - 1) // page_size
+                }
+            })
+        else:
+            # For very large datasets, return only metadata and preview
+            preview_data = df.head(20).to_dict('records')
+            return jsonify({
+                'success': True,
+                'metadata': metadata,
+                'columns': columns,
+                'preview': preview_data,
+                'total_rows': total_rows,
+                'is_large_dataset': True,
+                'message': 'Dataset is too large to display fully. Showing preview only.'
+            })
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
