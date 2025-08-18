@@ -157,6 +157,15 @@ $(document).ready(function() {
             .replace(/'/g, '&#039;');
     }
 
+    // Initialize Bootstrap tooltips on any elements with data-bs-toggle="tooltip"
+    function initTooltips(context) {
+        const root = context || document;
+        const tooltipTriggerList = [].slice.call(root.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (el) {
+            bootstrap.Tooltip.getOrCreateInstance(el, { container: 'body', placement: 'top', trigger: 'hover focus' });
+        });
+    }
+
     function updateUploadArea(filename) {
         const $area = $('#upload-area');
         const $input = $area.find('#file-input');
@@ -242,10 +251,21 @@ $(document).ready(function() {
                 </div>
             `;
 
+            // Name cell: truncate visually, show full name on hover via tooltip
+            const needsTooltip = (df.name || '').length > 28;
+            const nameSafe = escapeHtml(df.name);
+            const tooltipAttrs = needsTooltip ? ' data-bs-toggle="tooltip" data-bs-placement="top"' : '';
+            const titleAttr = needsTooltip ? ` title="${nameSafe}"` : '';
+            const nameCell = `<span class="df-name-truncate"${tooltipAttrs}${titleAttr}>${nameSafe}</span>`;
+
+            const descriptionCell = df.description
+                ? escapeHtml(df.description)
+                : '<em class="text-muted">No description</em>';
+
             const row = `
                 <tr>
-                    <td>${df.name}</td>
-                    <td>${df.description || '<em class="text-muted">No description</em>'}</td>
+                    <td>${nameCell}</td>
+                    <td>${descriptionCell}</td>
                     <td>${dimensions}</td>
                     <td>${sizeDisplay}</td>
                     <td>${createdDate}</td>
@@ -262,9 +282,15 @@ $(document).ready(function() {
             "pageLength": 10,
             "responsive": true,
             "stateSave": true, // Save table state including current page
+            "autoWidth": false, // don't auto-expand columns based on content
+            "columnDefs": [
+                { targets: 0, width: '340px' } // limit name column width
+            ],
             "drawCallback": function() {
                 // Reattach event handlers after table redraw
                 attachTableEventHandlers();
+                // Initialize tooltips for truncated names
+                initTooltips(document.getElementById('dataframes-table'));
             }
         });
 
@@ -273,8 +299,9 @@ $(document).ready(function() {
             dataframesTable.page(currentPage).draw('page');
         }
 
-        // Attach event handlers to buttons
+        // Attach event handlers to buttons and init tooltips for first draw
         attachTableEventHandlers();
+        initTooltips(document.getElementById('dataframes-table'));
     }
 
     function attachTableEventHandlers() {

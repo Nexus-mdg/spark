@@ -56,6 +56,22 @@
         .metadata-badge {
             font-size: 0.75rem;
         }
+        /* Truncate long DataFrame names with ellipsis and show tooltip on hover */
+        .df-name-truncate {
+            display: inline-block;
+            max-width: 28ch; /* roughly 28 characters */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: bottom;
+            cursor: help; /* indicate hover for details */
+        }
+        /* Prevent long unbroken strings from forcing horizontal scroll in cells */
+        #dataframes-table td {
+            word-break: break-word;
+        }
+        /* Use fixed layout so width constraints apply consistently */
+        #dataframes-table { table-layout: fixed; }
     </style>
 </head>
 <body>
@@ -243,6 +259,6 @@
     <script src="{{ url_for('static', filename='vendor/js/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/jquery.dataTables-1.13.6.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/dataTables.bootstrap5-1.13.6.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app.js', v=3) }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js', v=4) }}"></script>
 </body>
 </html>
