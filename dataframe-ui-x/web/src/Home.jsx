@@ -241,11 +241,11 @@ export default function Home() {
             </button>
           </div>
           <div className="p-5 overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm table-fixed">
               <thead className="text-left text-gray-600 border-b">
                 <tr>
-                  <th className="py-2 pr-4">Name</th>
-                  <th className="py-2 pr-4">Description</th>
+                  <th className="py-2 pr-4 w-[28ch]">Name</th>
+                  <th className="py-2 pr-4 w-[40ch]">Description</th>
                   <th className="py-2 pr-4">Dimensions</th>
                   <th className="py-2 pr-4">Size</th>
                   <th className="py-2 pr-4">Created</th>
@@ -257,10 +257,28 @@ export default function Home() {
                 {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500" colSpan={6}>No cached DataFrames</td></tr>)}
                 {rows.map((r) => (
                   <tr key={r.name}>
-                    <td className="py-2 pr-4 font-medium">
-                      <button className="text-indigo-600 hover:underline" onClick={() => navigate(`/analysis/${encodeURIComponent(r.name)}`)} title="Open analysis">{r.name}</button>
+                    <td className="py-2 pr-4 font-medium align-top">
+                      <div className="max-w-[28ch]">
+                        <button
+                          className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 hover:underline"
+                          onClick={() => navigate(`/analysis/${encodeURIComponent(r.name)}`)}
+                          title={r.name}
+                          aria-label="Open analysis"
+                        >
+                          {r.name}
+                        </button>
+                      </div>
                     </td>
-                    <td className="py-2 pr-4 text-gray-700">{r.description || '-'}</td>
+                    <td className="py-2 pr-4 text-gray-700">
+                      <div className="max-w-[40ch]">
+                        <span
+                          className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
+                          title={r.description ? r.description : ''}
+                        >
+                          {r.description || '-'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="py-2 pr-4">{r.rows} x {r.cols}</td>
                     <td className="py-2 pr-4">{r.size_mb} MB</td>
                     <td className="py-2 pr-4">{new Date(r.timestamp).toLocaleString()}</td>
