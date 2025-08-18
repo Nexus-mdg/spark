@@ -275,4 +275,5 @@ def clear_cache():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    PORT = int(os.getenv('PORT', '4999'))
+    app.run(host='0.0.0.0', port=PORT, debug=True)

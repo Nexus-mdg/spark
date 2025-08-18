@@ -46,19 +46,20 @@ services:
       - FLASK_ENV=production
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
+      - PORT=4999
     depends_on:
       - redis
     volumes:
       - ./dataframe-ui:/app
 
-  dataframe-ui-tailwind:
+  dataframe-ui-x:
     build: ./dataframe-ui-tailwind
-    container_name: dataframe-ui-tailwind
+    container_name: dataframe-ui-x
     restart: always
     network_mode: "host"
     environment:
       - PORT=5001
-      - API_BASE_URL=http://localhost:5000
+      - API_BASE_URL=http://localhost:4999
     depends_on:
       - dataframe-ui
 

@@ -33,11 +33,12 @@ pip install -r requirements.txt
 Run Flask backend:
 ```bash
 cd dataframe-ui
+export PORT=4999
 python3 app.py
 ```
 
 Open the UI:
-- http://127.0.0.1:5000/
+- http://127.0.0.1:4999/
 
 ## Docker / Compose (optional)
 A basic Dockerfile is provided under `dataframe-ui/`. If you have a compose stack for Redis + Web, wire it up accordingly. Example snippet:
@@ -48,7 +49,9 @@ services:
     ports: ["6379:6379"]
   ui:
     build: ./dataframe-ui
-    ports: ["5000:5000"]
+    environment:
+      - PORT=4999
+    ports: ["4999:4999"]
     depends_on: [redis]
 ```
 
@@ -69,7 +72,7 @@ At minimum, ensure the pipeline stages cover:
 
 ## Configuration
 - Redis host/port are currently hardcoded in `dataframe-ui/app.py` as `localhost:6379`.
-- Adjust or parameterize via env vars if needed for CI/CD environments.
+- The Flask app port is configurable via `PORT` env var (default 4999).
 
 ## Static assets
 All third-party assets are local under `dataframe-ui/static/vendor/`:
@@ -80,4 +83,3 @@ All third-party assets are local under `dataframe-ui/static/vendor/`:
 
 ## License
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See [LICENSE](LICENSE).
-

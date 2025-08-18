@@ -17,8 +17,8 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-# Expose port 5000
-EXPOSE 5000
+# Expose port 4999
+EXPOSE 4999
 
 # Run the application
 CMD ["python", "app.py"]

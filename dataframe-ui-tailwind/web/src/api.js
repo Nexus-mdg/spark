@@ -2,7 +2,7 @@ const getBaseUrl = () => {
   if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) {
     return window.APP_CONFIG.API_BASE_URL;
   }
-  return 'http://localhost:5000';
+  return 'http://localhost:4999';
 };
 
 const BASE = () => getBaseUrl();
@@ -53,4 +53,3 @@ export const uploadDataframe = async ({ file, name, description }) => {
   }
   return res.json();
 };
-
