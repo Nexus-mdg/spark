@@ -5,7 +5,14 @@ import {
   listDataframes,
   pipelinePreview,
   pipelineRun,
-  getDataframe
+  getDataframe,
+  pipelinesList,
+  pipelineSave,
+  pipelineGet,
+  pipelineDelete,
+  pipelineRunByName,
+  buildPipelineExportUrl,
+  pipelineImportYaml
 } from './api.js'
 
 function Section({ title, children }) {
@@ -319,6 +326,12 @@ export default function ChainedOperations() {
   const [autoPreview, setAutoPreview] = useState(true)
   const [preview, setPreview] = useState({ loading: false, error: '', steps: [], final: null })
   const [result, setResult] = useState(null)
+  const [pipelines, setPipelines] = useState([])
+  const [pipelinesLoading, setPipelinesLoading] = useState(false)
+  const [plName, setPlName] = useState('')
+  const [plDesc, setPlDesc] = useState('')
+  const [plOverwrite, setPlOverwrite] = useState(false)
+  const [importText, setImportText] = useState('')
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -332,7 +345,16 @@ export default function ChainedOperations() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { refresh() }, [])
+  const refreshPipelines = async () => {
+    setPipelinesLoading(true)
+    try {
+      const res = await pipelinesList()
+      if (res.success) setPipelines((res.pipelines || []).sort((a,b) => a.name.localeCompare(b.name)))
+    } catch (e) { /* ignore */ }
+    finally { setPipelinesLoading(false) }
+  }
+
+  useEffect(() => { refresh(); refreshPipelines() }, [])
 
   const triggerPreview = async () => {
     setPreview(p => ({ ...p, loading: true, error: '' }))
@@ -362,8 +384,55 @@ export default function ChainedOperations() {
     } catch (e) { toast.show(e.message || 'Run failed') }
   }
 
+  const onSavePipeline = async () => {
+    if (!plName.trim()) return toast.show('Provide a pipeline name')
+    if (steps.length === 0) return toast.show('Nothing to save')
+    try {
+      const res = await pipelineSave({ name: plName.trim(), description: plDesc, start: null, steps }, { overwrite: plOverwrite })
+      if (!res.success) throw new Error(res.error || 'Save failed')
+      toast.show(`Saved pipeline ${res.pipeline?.name || plName}`)
+      await refreshPipelines()
+    } catch (e) { toast.show(e.message || 'Save failed') }
+  }
+
+  const onLoadPipeline = async (name) => {
+    if (!name) return
+    try {
+      const res = await pipelineGet(name)
+      if (!res.success) throw new Error(res.error || 'Load failed')
+      const obj = res.pipeline
+      setSteps(obj.steps || [])
+      setPlName(obj.name || '')
+      setPlDesc(obj.description || '')
+      setResult(null)
+      toast.show(`Loaded ${obj.name}`)
+    } catch (e) { toast.show(e.message || 'Load failed') }
+  }
+
+  const onDeletePipeline = async (name) => {
+    try { await pipelineDelete(name); toast.show('Deleted'); await refreshPipelines() } catch (e) { toast.show(e.message || 'Delete failed') }
+  }
+
+  const onRunByName = async (name) => {
+    try { const res = await pipelineRunByName(name, { materialize: true }); if (!res.success) throw new Error(res.error || 'Run failed'); toast.show(`Created ${res.created?.name || 'result'}`); await refresh() } catch (e) { toast.show(e.message || 'Run failed') }
+  }
+
+  const onImportYaml = async () => {
+    if (!importText.trim()) return toast.show('Paste YAML first')
+    try {
+      const res = await pipelineImportYaml({ yaml: importText, overwrite: plOverwrite })
+      if (!res.success) throw new Error(res.error || 'Import failed')
+      toast.show(`Imported ${res.pipeline?.name}`)
+      setImportText('')
+      await refreshPipelines()
+    } catch (e) {
+      toast.show(e.message || 'Import failed')
+    }
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
+      {/* ...existing header... */}
       <header className="bg-slate-900 text-white">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -375,6 +444,81 @@ export default function ChainedOperations() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Save/Load controls */}
+        <Section title="Save / Load pipeline">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+            <label className="block md:col-span-2">
+              <span className="block text-sm">Pipeline name</span>
+              <input className="mt-1 border rounded w-full p-2" value={plName} onChange={e => setPlName(e.target.value)} placeholder="my-pipeline" />
+            </label>
+            <label className="block md:col-span-3">
+              <span className="block text-sm">Description</span>
+              <input className="mt-1 border rounded w-full p-2" value={plDesc} onChange={e => setPlDesc(e.target.value)} placeholder="optional" />
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} />
+              <span className="text-sm">Overwrite</span>
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={onSavePipeline}>Save pipeline</button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Load</span>
+              <select className="border rounded p-2" onChange={e => onLoadPipeline(e.target.value)} value="">
+                <option value="">Select…</option>
+                {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
+              </select>
+              <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+            </div>
+          </div>
+        </Section>
+
+        {/* Pipeline library */}
+        <Section title="Pipelines library">
+          {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
+          {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
+          {pipelines.length > 0 && (
+            <div className="overflow-auto border rounded">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100 text-left">
+                  <tr>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Steps</th>
+                    <th className="px-3 py-2">Description</th>
+                    <th className="px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pipelines.map(p => (
+                    <tr key={p.name} className="border-t">
+                      <td className="px-3 py-2 font-medium">{p.name}</td>
+                      <td className="px-3 py-2">{p.steps}</td>
+                      <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+                      <td className="px-3 py-2 flex flex-wrap gap-2">
+                        <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                        <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
+                        <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                        <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="mt-4">
+            <div className="text-sm mb-1">Import from YML</div>
+            <textarea className="w-full border rounded p-2 font-mono text-xs h-32" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
+            <div className="mt-2 flex items-center gap-2">
+              <button className="px-3 py-1.5 rounded border" onClick={onImportYaml}>Import</button>
+              <label className="text-xs text-slate-600 flex items-center gap-2">
+                <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} /> Overwrite existing
+              </label>
+            </div>
+          </div>
+        </Section>
+
+        {/* ...existing Build pipeline and Previews sections remain unchanged... */}
         <Section title="Build pipeline">
           <div className="flex items-center gap-3">
             <span className="text-sm">Auto preview</span>
@@ -468,4 +612,3 @@ function AddStep({ dfOptions, onAdd }) {
     </div>
   )
 }
-

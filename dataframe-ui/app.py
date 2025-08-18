@@ -21,6 +21,12 @@ import requests
 import mimetypes
 from urllib.parse import urlparse, unquote
 
+# YAML support for pipeline import/export
+try:
+    import yaml  # type: ignore
+except Exception:
+    yaml = None
+
 app = Flask(__name__)
 CORS(app)
 
@@ -1278,14 +1284,24 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
                         vals = parsed if isinstance(parsed, list) else [val]
                     except Exception:
                         vals = [x.strip() for x in v.split(',') if x.strip()]
-                if not isinstance(vals, list): vals = [vals]
-                m = ~s.isin(vals); val = vals
-            elif opx == 'contains': m = s.astype('string').str.contains(str(val), na=False)
-            elif opx == 'startswith': m = s.astype('string').str.startswith(str(val), na=False)
-            elif opx == 'endswith': m = s.astype('string').str.endswith(str(val), na=False)
-            elif opx == 'isnull': m = s.isna(); val = None
-            elif opx == 'notnull': m = s.notna(); val = None
-            else: raise ValueError(f'filter: unsupported op {opx}')
+                if not isinstance(vals, list):
+                    vals = [vals]
+                m = ~s.isin(vals)
+                val = vals
+            elif opx == 'contains':
+                m = s.astype('string').str.contains(str(val), na=False)
+            elif opx == 'startswith':
+                m = s.astype('string').str.startswith(str(val), na=False)
+            elif opx == 'endswith':
+                m = s.astype('string').str.endswith(str(val), na=False)
+            elif opx == 'isnull':
+                m = s.isna()
+                val = None
+            elif opx == 'notnull':
+                m = s.notna()
+                val = None
+            else:
+                raise ValueError(f'filter: unsupported op {opx}')
             vstr = '' if val is None else (','.join(map(str, val)) if isinstance(val, list) else str(val))
             desc_parts.append(f"{col} {opx}{(' '+vstr) if vstr else ''}")
             mask = m if mask is None else (mask & m if combine == 'and' else mask | m)
@@ -1334,7 +1350,6 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         missing = [old for old in mapping.keys() if old not in df_curr.columns]
         if missing:
             raise ValueError(f'rename: columns to rename not found: {", ".join(missing)}')
-        # Check duplicates after rename
         new_cols = list(df_curr.columns)
         for old, new in mapping.items():
             if not isinstance(new, str) or not new:
@@ -1359,7 +1374,8 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
             aggfunc = params.get('aggfunc') or 'first'
             if not names_from or not values_from:
                 raise ValueError('pivot wider: names_from and values_from are required')
-            if isinstance(values_from, str): values_from = [values_from]
+            if isinstance(values_from, str):
+                values_from = [values_from]
             pivoted = pd.pivot_table(df, index=index or None, columns=names_from, values=values_from, aggfunc=aggfunc)
             if isinstance(pivoted.columns, pd.MultiIndex):
                 pivoted.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in pivoted.columns.to_flat_index()]
@@ -1386,7 +1402,6 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if not other_name:
             raise ValueError('compare: params.name (other) is required')
         df_other = _load_df_from_cache(other_name)
-        # If schemas differ, it's a mismatch
         schema_match = list(df_curr.columns) == list(df_other.columns) and list(map(str, df_curr.dtypes)) == list(map(str, df_other.dtypes))
         if not schema_match:
             identical = False
@@ -1399,12 +1414,9 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if action == 'identical':
             if identical:
                 return df_curr, 'compare: identical -> pass-through'
-            # Not identical: return sentinel small frame
             note = pd.DataFrame({'__note__': ['not identical']})
             return note, 'compare: not identical'
-        # mismatch action: build a diff frame of mismatches if any, else empty
         if not schema_match:
-            # Can't diff row-wise; return empty with message
             return pd.DataFrame({'__note__': ['schema mismatch']}), 'compare: schema mismatch'
         cols = list(df_curr.columns)
         merged = df_curr.merge(df_other, how='outer', on=cols, indicator=True)
@@ -1423,21 +1435,17 @@ def pipeline_preview():
         start = p.get('start')
         steps = p.get('steps') or []
         max_rows = int(p.get('preview_rows') or 20)
-        # Establish starting df (optional)
         current: pd.DataFrame | None = None
         msgs: list[dict] = []
-        # If explicit start: either string or list -> if list use the first
         if isinstance(start, list) and len(start) > 0:
             current = _load_df_from_cache(start[0])
             msgs.append({'op': 'load', 'desc': f'load {start[0]}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
             msgs.append({'op': 'load', 'desc': f'load {start}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
-        # Evaluate steps
         for i, step in enumerate(steps):
             current, desc = _apply_op(current, step)
             msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
-        # Final summary
         final = None
         if current is not None:
             final = {'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows)), 'rows': int(len(current))}
@@ -1454,7 +1462,6 @@ def pipeline_run():
         steps = p.get('steps') or []
         materialize = bool(p.get('materialize') or True)
         out_name = p.get('name') or None
-        # Evaluate using same engine as preview
         current: pd.DataFrame | None = None
         if isinstance(start, list) and len(start) > 0:
             current = _load_df_from_cache(start[0])

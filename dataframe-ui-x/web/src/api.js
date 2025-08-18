@@ -157,3 +157,53 @@ export const pipelineRun = async ({ start, steps, materialize = true, name }) =>
   if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
   return res.json()
 }
+
+// Pipelines registry API
+export const pipelinesList = async () => {
+  const res = await fetch(`${BASE()}/api/pipelines`)
+  if (!res.ok) throw new Error(`Pipelines list failed: ${res.status}`)
+  return res.json()
+}
+
+export const pipelineGet = async (name) => {
+  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error(`Pipeline get failed: ${res.status}`)
+  return res.json()
+}
+
+export const pipelineSave = async ({ name, description, start = null, steps, tags }, { overwrite = false } = {}) => {
+  const payload = { name, description, start, steps, tags, overwrite }
+  const res = await fetch(`${BASE()}/api/pipelines`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  })
+  if (!res.ok) {
+    const text = await res.text(); throw new Error(`Pipeline save failed: ${res.status} ${text}`)
+  }
+  return res.json()
+}
+
+export const pipelineDelete = async (name) => {
+  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Pipeline delete failed: ${res.status}`)
+  return res.json()
+}
+
+export const pipelineRunByName = async (name, { materialize = true, outName } = {}) => {
+  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}/run`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ materialize, name: outName })
+  })
+  if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
+  return res.json()
+}
+
+export const buildPipelineExportUrl = (name) => `${BASE()}/api/pipelines/${encodeURIComponent(name)}/export.yml`
+
+export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
+  const res = await fetch(`${BASE()}/api/pipelines/import`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ yaml, overwrite })
+  })
+  if (!res.ok) {
+    const text = await res.text(); throw new Error(`Pipeline import failed: ${res.status} ${text}`)
+  }
+  return res.json()
+}
