@@ -53,7 +53,9 @@ function DataframePreview({ name, columnsFilter }) {
           useCols.forEach(c => { obj[c] = r[c] })
           return obj
         })
-        setState({ loading: false, error: '', columns: useCols, rows: projRows, total })
+        // Only show first 10 rows in Operations preview
+        const limitedRows = projRows.slice(0, 10)
+        setState({ loading: false, error: '', columns: useCols, rows: limitedRows, total })
       })
       .catch(e => { if (alive) setState({ loading: false, error: e.message || 'Failed to load preview', columns: [], rows: [], total: null }) })
     return () => { alive = false }
