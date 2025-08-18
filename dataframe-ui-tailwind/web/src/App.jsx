@@ -136,7 +136,7 @@ export default function App() {
     }
   }
 
-  const confirm = ({ title, message, action }) => {
+  const openConfirmDialog = ({ title, message, action }) => {
     setConfirmTitle(title)
     setConfirmMessage(message)
     confirmActionRef.current = action
@@ -155,7 +155,7 @@ export default function App() {
   }
 
   const onClearCache = () => {
-    confirm({
+    openConfirmDialog({
       title: 'Clear all cached DataFrames',
       message: 'This will permanently delete all cached DataFrames. Do you want to continue?',
       action: async () => {
@@ -172,7 +172,7 @@ export default function App() {
   }
 
   const onDelete = (n) => {
-    confirm({
+    openConfirmDialog({
       title: `Delete DataFrame “${n}”`,
       message: 'This action cannot be undone. Do you want to delete this DataFrame?',
       action: async () => {
