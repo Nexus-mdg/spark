@@ -25,11 +25,14 @@ app = Flask(__name__)
 CORS(app)
 
 # Redis connection
-redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+redis_client = redis.Redis(host=os.getenv('REDIS_HOST', 'localhost'), port=int(os.getenv('REDIS_PORT', '6379')), decode_responses=True)
 
 # Ensure upload directory exists
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Feature flags / env toggles
+ENABLE_WEB_UI = str(os.getenv('ENABLE_WEB_UI', 'true')).lower() in ('1', 'true', 'yes', 'on')
 
 # --- Helpers ---
 
@@ -44,7 +47,16 @@ def df_to_records_json_safe(df: pd.DataFrame):
 @app.route('/')
 def index():
     """Serve the main web interface"""
+    if not ENABLE_WEB_UI:
+        return jsonify({'success': False, 'error': 'Web UI is disabled', 'hint': 'Set ENABLE_WEB_UI=true to enable'}), 404
     return render_template('index.html')
+
+# When UI is disabled, prevent serving static assets too
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    if not ENABLE_WEB_UI:
+        return jsonify({'success': False, 'error': 'Web UI is disabled'}), 404
+    return send_from_directory('static', filename)
 
 @app.route('/api/dataframes', methods=['GET'])
 def list_dataframes():
@@ -836,6 +848,44 @@ def op_select():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# --- New: Column rename operation ---
+@app.route('/api/ops/rename', methods=['POST'])
+def op_rename():
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        rename_map = p.get('map') or p.get('rename') or p.get('columns') or {}
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not isinstance(rename_map, dict) or not rename_map:
+            return jsonify({'success': False, 'error': 'map (object of old->new names) is required'}), 400
+        df = _load_df_from_cache(name)
+        # Validate keys
+        missing = [old for old in rename_map.keys() if old not in df.columns]
+        if missing:
+            return jsonify({'success': False, 'error': f'Columns to rename not found: {", ".join(missing)}'}), 400
+        # Check for conflicts after rename
+        new_cols = list(df.columns)
+        for old, new in rename_map.items():
+            if not isinstance(new, str) or not new:
+                return jsonify({'success': False, 'error': f'Invalid new name for column {old}'}), 400
+            # Simulate rename
+            idx = new_cols.index(old)
+            new_cols[idx] = new
+        if len(set(new_cols)) != len(new_cols):
+            return jsonify({'success': False, 'error': 'Rename would cause duplicate column names'}), 400
+        renamed = df.rename(columns=rename_map)
+        base = f"{name}__rename_{'-'.join([f'{k}->{v}' for k,v in rename_map.items()])}"
+        # Avoid very long names
+        if len(base) > 180:
+            base = f"{name}__rename"
+        out_name = _unique_name(base)
+        meta = _save_df_to_cache(out_name, renamed, description=f"Rename columns: {rename_map}", source='ops:rename')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # --- New: URL download + GET operation bridge helpers ---
 
 def _infer_ext_from_url_or_ct(url: str, content_type: str | None) -> str:
@@ -1098,6 +1148,40 @@ def get_select_via_url():
         payload = {'name': name, 'columns': columns}
         with app.test_request_context('/api/ops/select', method='POST', json=payload):
             return op_select()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# GET mirror for rename
+@app.route('/api/ops/rename/get', methods=['GET'])
+def get_rename_via_url():
+    try:
+        url = request.args.get('url')
+        name = request.args.get('name')
+        if url:
+            meta = _download_and_cache(url, name=name)
+            name = meta['name']
+        if not name:
+            return jsonify({'success': False, 'error': 'Provide url or name'}), 400
+        # Parse mapping: prefer JSON in ?map=; alternatively from/to lists (?from=a,b&to=x,y)
+        mapping = {}
+        mparam = request.args.get('map') or request.args.get('rename') or request.args.get('columns')
+        if mparam:
+            try:
+                parsed = json.loads(mparam)
+                if isinstance(parsed, dict):
+                    mapping = parsed
+            except Exception:
+                return jsonify({'success': False, 'error': 'map must be a JSON object like {"old":"new"}'}), 400
+        if not mapping:
+            olds = _parse_list_arg(request.args, 'from') or _parse_list_arg(request.args, 'old')
+            news = _parse_list_arg(request.args, 'to') or _parse_list_arg(request.args, 'new')
+            if not olds or not news or len(olds) != len(news):
+                return jsonify({'success': False, 'error': 'Provide map JSON or parallel from/to lists'}), 400
+            mapping = {o: n for o, n in zip(olds, news)}
+        payload = {'name': name, 'map': mapping}
+        with app.test_request_context('/api/ops/rename', method='POST', json=payload):
+            return op_rename()
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -125,3 +125,14 @@ export const opsSelect = async ({ name, columns }) => {
   if (!res.ok) throw new Error(`Select failed: ${res.status}`);
   return res.json();
 };
+
+// New: Rename columns
+export const opsRename = async ({ name, map }) => {
+  const res = await fetch(`${BASE()}/api/ops/rename`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, map })
+  });
+  if (!res.ok) throw new Error(`Rename failed: ${res.status}`);
+  return res.json();
+};

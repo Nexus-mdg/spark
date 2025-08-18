@@ -9,7 +9,8 @@ import {
   opsGroupBy,
   buildDownloadCsvUrl,
   getDataframe,
-  opsSelect
+  opsSelect,
+  opsRename
 } from './api.js'
 
 function Section({ title, children }) {
@@ -242,6 +243,24 @@ export default function Operations() {
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Select failed') }
+  }
+
+  // Rename columns
+  const [rnName, setRnName] = useState('')
+  const [rnMap, setRnMap] = useState('')
+  const onRename = async () => {
+    if (!rnName) return toast.show('Pick a dataframe')
+    if (!rnMap.trim()) return toast.show('Provide a mapping JSON')
+    try {
+      const map = JSON.parse(rnMap)
+      if (!map || typeof map !== 'object' || Array.isArray(map)) return toast.show('Mapping must be a JSON object')
+      const res = await opsRename({ name: rnName, map })
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) {
+      if (e instanceof SyntaxError) return toast.show('Invalid JSON mapping')
+      toast.show(e.message || 'Rename failed')
+    }
   }
 
   return (
@@ -500,6 +519,27 @@ export default function Operations() {
             {selName && (<DataframePreview name={selName} columnsFilter={selCols} />)}
             <div>
               <button onClick={onSelectCols} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create selection</button>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Rename columns">
+          <div className="space-y-3">
+            <label className="block max-w-sm">
+              <span className="block text-sm">DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2" value={rnName} onChange={e => setRnName(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            {/* Preview of source */}
+            {rnName && (<DataframePreview name={rnName} />)}
+            <label className="block">
+              <span className="block text-sm">Mapping JSON (old->new)</span>
+              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-24" placeholder='{"old_col":"new_col", "age":"age_years"}' value={rnMap} onChange={e => setRnMap(e.target.value)} />
+            </label>
+            <div>
+              <button onClick={onRename} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Rename</button>
             </div>
           </div>
         </Section>

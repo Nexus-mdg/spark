@@ -52,6 +52,8 @@ services:
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
       - PORT=4999
+      # Toggle built-in Flask web UI (templates/static). Set to "false" to disable the pages and serve API only.
+      - ENABLE_WEB_UI=false
       # Spark client configuration for compare endpoint
       - SPARK_MASTER_URL=spark://127.0.0.1:7077
       # Optional: set to a reachable host IP if workers cannot connect back to driver
