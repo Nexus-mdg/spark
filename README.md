@@ -55,6 +55,21 @@ services:
     depends_on: [redis]
 ```
 
+## Makefile targets (run from repo root)
+Common helpers are provided via the root Makefile:
+- make up       # start redis, spark, spark-worker, dataframe-ui, dataframe-ui-x
+- make build    # build dataframe-ui and dataframe-ui-x images
+- make build-ui # build dataframe-ui image only
+- make build-ui-x # build dataframe-ui-x image only
+- make wait     # wait for API readiness
+- make test     # run curl tests defined in dataframe-ui/test.sh
+- make logs     # tail dataframe-ui logs
+- make logs-x   # tail dataframe-ui-x logs
+- make restart  # restart dataframe-ui
+- make restart-x # restart dataframe-ui-x
+- make down     # stop all services
+- Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
+
 ## Jenkins pipeline
 A Kotlin-based Jenkins pipeline script is provided at `jenkins.kt`.
 - In your Jenkins instance, create a new Pipeline job.

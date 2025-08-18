@@ -17,6 +17,9 @@ import os
 import numpy as np
 import sys
 import tempfile
+import requests
+import mimetypes
+from urllib.parse import urlparse, unquote
 
 app = Flask(__name__)
 CORS(app)
@@ -766,7 +769,7 @@ def op_filter():
             mask = m if mask is None else (mask & m if combine == 'and' else mask | m)
         filtered = df[mask] if mask is not None else df.copy()
         out_name = _unique_name(f"{name}__filter")
-        # Build detailed description
+        # Build detailed description including columns
         detail = (' ' + combine + ' ').join(desc_parts) if desc_parts else 'no conditions'
         meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {detail}", source='ops:filter')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
@@ -829,6 +832,272 @@ def op_select():
         out_name = _unique_name(base)
         meta = _save_df_to_cache(out_name, projected, description=f"Select columns={','.join(cols)}", source='ops:select')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# --- New: URL download + GET operation bridge helpers ---
+
+def _infer_ext_from_url_or_ct(url: str, content_type: str | None) -> str:
+    """Infer a file extension (with leading dot) from URL or content-type."""
+    # Try URL path
+    try:
+        path = urlparse(url).path
+        if path:
+            fname = unquote(os.path.basename(path))
+            _, ext = os.path.splitext(fname)
+            if ext:
+                return ext.lower()
+    except Exception:
+        pass
+    # Try content-type
+    if content_type:
+        guessed = mimetypes.guess_extension(content_type.split(';')[0].strip())
+        if guessed:
+            return guessed.lower()
+    # Fallback to csv
+    return '.csv'
+
+
+def _read_df_from_bytes(data: bytes, ext: str) -> pd.DataFrame:
+    ext = (ext or '').lower()
+    bio = io.BytesIO(data)
+    if ext == '.csv':
+        return pd.read_csv(bio)
+    if ext in ['.xlsx', '.xls']:
+        return pd.read_excel(bio)
+    if ext == '.json':
+        return pd.read_json(bio)
+    # Try csv as a final fallback
+    return pd.read_csv(io.BytesIO(data))
+
+
+def _download_and_cache(url: str, name: str | None = None, description: str = '', force_unique: bool = True) -> dict:
+    """Download a file from URL, read as DataFrame, and cache it. Returns metadata.
+    If name is provided, a unique variant is used unless force_unique is False.
+    """
+    if not url:
+        raise ValueError('url is required')
+    # Safety limits
+    TIMEOUT = float(os.getenv('DOWNLOAD_TIMEOUT_SECONDS', '30'))
+    MAX_MB = int(os.getenv('MAX_DOWNLOAD_MB', '100'))
+    r = requests.get(url, timeout=TIMEOUT, allow_redirects=True)
+    if r.status_code != 200:
+        raise ValueError(f'Download failed with status {r.status_code}')
+    cl = r.headers.get('Content-Length')
+    if cl:
+        try:
+            sz = int(cl)
+            if sz > MAX_MB * 1024 * 1024:
+                raise ValueError(f'File too large (>{MAX_MB} MB)')
+        except Exception:
+            pass
+    content = r.content
+    if len(content) > MAX_MB * 1024 * 1024:
+        raise ValueError(f'File too large (>{MAX_MB} MB)')
+    ext = _infer_ext_from_url_or_ct(url, r.headers.get('Content-Type'))
+    # Default name from URL path
+    if not name:
+        try:
+            path = urlparse(url).path
+            base = os.path.splitext(os.path.basename(path))[0] or 'dataset'
+            name = base
+        except Exception:
+            name = 'dataset'
+    # Ensure unique if requested
+    final_name = _unique_name(name) if force_unique else name
+    df = _read_df_from_bytes(content, ext)
+    meta = _save_df_to_cache(final_name, df, description=description or f'downloaded from {url}', source='download:get')
+    # Include original filename hint
+    meta['original_url'] = url
+    meta['original_ext'] = ext
+    return meta
+
+
+def _parse_list_arg(args, key: str) -> list:
+    """Parse a list-like query param: supports repeated ?key=a&key=b and comma-separated."""
+    vals = args.getlist(key)
+    flat: list[str] = []
+    for v in vals:
+        if v is None:
+            continue
+        if isinstance(v, str) and ',' in v:
+            flat.extend([x for x in (s.strip() for s in v.split(',')) if x])
+        else:
+            flat.append(v)
+    # Also check plural form e.g., columns vs column
+    if not flat and key.endswith('s'):
+        alt = key[:-1]
+        vals = args.getlist(alt)
+        for v in vals:
+            if v is None:
+                continue
+            if isinstance(v, str) and ',' in v:
+                flat.extend([x for x in (s.strip() for s in v.split(',')) if x])
+            else:
+                flat.append(v)
+    return flat
+
+
+# --- New: GET mirrors for operations ---
+
+@app.route('/api/ops/compare/get', methods=['GET'])
+def get_compare_via_urls():
+    try:
+        url1 = request.args.get('url1') or request.args.get('u1')
+        url2 = request.args.get('url2') or request.args.get('u2')
+        name1 = request.args.get('name1')
+        name2 = request.args.get('name2')
+        # If URLs provided, download and cache
+        if url1:
+            m1 = _download_and_cache(url1, name=name1)
+            name1 = m1['name']
+        if url2:
+            m2 = _download_and_cache(url2, name=name2)
+            name2 = m2['name']
+        if not name1 or not name2:
+            return jsonify({'success': False, 'error': 'Provide url1/url2 or name1/name2'}), 400
+        # Delegate to POST logic
+        with app.test_request_context('/api/ops/compare', method='POST', json={'name1': name1, 'name2': name2}):
+            return op_compare()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/merge/get', methods=['GET'])
+def get_merge_via_urls():
+    try:
+        urls = _parse_list_arg(request.args, 'urls') or request.args.getlist('url')
+        names = _parse_list_arg(request.args, 'names') or request.args.getlist('name')
+        keys = _parse_list_arg(request.args, 'keys')
+        how = (request.args.get('how') or 'inner').lower()
+        used_names: list[str] = []
+        # Download and cache for provided URLs
+        for i, url in enumerate(urls or []):
+            nm = names[i] if i < len(names) else None
+            meta = _download_and_cache(url, name=nm)
+            used_names.append(meta['name'])
+        # Append any names that refer to existing cached frames
+        if not urls and names:
+            used_names = names
+        elif names and len(names) > len(used_names):
+            # If both urls and names present, and extra names are provided after urls
+            used_names.extend(names[len(used_names):])
+        if len(used_names) < 2:
+            return jsonify({'success': False, 'error': 'At least two inputs required via urls or names'}), 400
+        if not keys:
+            return jsonify({'success': False, 'error': 'keys are required (comma-separated)'}), 400
+        payload = {'names': used_names, 'keys': keys, 'how': how}
+        with app.test_request_context('/api/ops/merge', method='POST', json=payload):
+            return op_merge()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/pivot/get', methods=['GET'])
+def get_pivot_via_url():
+    try:
+        url = request.args.get('url')
+        name = request.args.get('name')
+        mode = (request.args.get('mode') or 'wider').lower()
+        if url:
+            meta = _download_and_cache(url, name=name)
+            name = meta['name']
+        if not name:
+            return jsonify({'success': False, 'error': 'Provide url or name'}), 400
+        payload = {'name': name, 'mode': mode}
+        if mode == 'wider':
+            index = _parse_list_arg(request.args, 'index')
+            names_from = request.args.get('names_from')
+            values_from = _parse_list_arg(request.args, 'values_from') or [request.args.get('values_from')] if request.args.get('values_from') else []
+            aggfunc = request.args.get('aggfunc') or 'first'
+            if not names_from or not values_from:
+                return jsonify({'success': False, 'error': 'names_from and values_from required for wider'}), 400
+            payload.update({'index': index, 'names_from': names_from, 'values_from': values_from, 'aggfunc': aggfunc})
+        elif mode == 'longer':
+            id_vars = _parse_list_arg(request.args, 'id_vars')
+            value_vars = _parse_list_arg(request.args, 'value_vars')
+            var_name = request.args.get('var_name') or 'variable'
+            value_name = request.args.get('value_name') or 'value'
+            if not value_vars:
+                return jsonify({'success': False, 'error': 'value_vars required for longer'}), 400
+            payload.update({'id_vars': id_vars, 'value_vars': value_vars, 'var_name': var_name, 'value_name': value_name})
+        else:
+            return jsonify({'success': False, 'error': 'mode must be wider or longer'}), 400
+        with app.test_request_context('/api/ops/pivot', method='POST', json=payload):
+            return op_pivot()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/filter/get', methods=['GET'])
+def get_filter_via_url():
+    try:
+        url = request.args.get('url')
+        name = request.args.get('name')
+        combine = (request.args.get('combine') or 'and').lower()
+        filters_param = request.args.get('filters')
+        if url:
+            meta = _download_and_cache(url, name=name)
+            name = meta['name']
+        if not name:
+            return jsonify({'success': False, 'error': 'Provide url or name'}), 400
+        filters = []
+        if filters_param:
+            try:
+                filters = json.loads(filters_param)
+            except Exception:
+                return jsonify({'success': False, 'error': 'filters must be JSON array'}), 400
+        payload = {'name': name, 'filters': filters, 'combine': combine}
+        with app.test_request_context('/api/ops/filter', method='POST', json=payload):
+            return op_filter()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/groupby/get', methods=['GET'])
+def get_groupby_via_url():
+    try:
+        url = request.args.get('url')
+        name = request.args.get('name')
+        if url:
+            meta = _download_and_cache(url, name=name)
+            name = meta['name']
+        if not name:
+            return jsonify({'success': False, 'error': 'Provide url or name'}), 400
+        by = _parse_list_arg(request.args, 'by')
+        if not by:
+            return jsonify({'success': False, 'error': 'by is required (comma-separated)'}), 400
+        aggs_param = request.args.get('aggs')
+        aggs = {}
+        if aggs_param:
+            try:
+                aggs = json.loads(aggs_param)
+            except Exception:
+                return jsonify({'success': False, 'error': 'aggs must be JSON object'}), 400
+        payload = {'name': name, 'by': by, 'aggs': aggs}
+        with app.test_request_context('/api/ops/groupby', method='POST', json=payload):
+            return op_groupby()
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/select/get', methods=['GET'])
+def get_select_via_url():
+    try:
+        url = request.args.get('url')
+        name = request.args.get('name')
+        if url:
+            meta = _download_and_cache(url, name=name)
+            name = meta['name']
+        if not name:
+            return jsonify({'success': False, 'error': 'Provide url or name'}), 400
+        columns = _parse_list_arg(request.args, 'columns')
+        if not columns:
+            return jsonify({'success': False, 'error': 'columns are required (comma-separated)'}), 400
+        payload = {'name': name, 'columns': columns}
+        with app.test_request_context('/api/ops/select', method='POST', json=payload):
+            return op_select()
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
