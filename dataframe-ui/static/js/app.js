@@ -20,6 +20,48 @@ $(document).ready(function() {
         }, 30000);
     }
 
+    // Show a Bootstrap confirm modal - returns Promise<boolean>
+    function showConfirm({
+        title = 'Confirm Action',
+        message = 'Are you sure?',
+        confirmText = 'Confirm',
+        confirmBtnClass = 'btn-danger'
+    } = {}) {
+        return new Promise((resolve) => {
+            const $modal = $('#confirm-modal');
+            const $title = $('#confirm-modal-label');
+            const $body = $('#confirm-modal-body');
+            const $confirmBtn = $('#confirm-modal-confirm-btn');
+
+            // Set content
+            $title.text(title);
+            $body.html(message);
+            $confirmBtn.text(confirmText);
+
+            // Reset and apply variant class
+            $confirmBtn.removeClass('btn-primary btn-secondary btn-success btn-warning btn-danger btn-outline-primary btn-outline-secondary btn-outline-success btn-outline-warning btn-outline-danger');
+            $confirmBtn.addClass(confirmBtnClass);
+
+            let confirmed = false;
+
+            // Ensure old handlers are removed then bind one-time
+            $confirmBtn.off('click').one('click', function() {
+                confirmed = true;
+                const modal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+                modal.hide();
+            });
+
+            // When hidden, resolve and cleanup
+            $modal.off('hidden.bs.modal').one('hidden.bs.modal', function() {
+                resolve(confirmed);
+            });
+
+            // Show modal
+            const modal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+            modal.show();
+        });
+    }
+
     function setupEventHandlers() {
         // Upload area click handler - fix for nested elements
         $(document).on('click', '#upload-area', function(e) {
@@ -91,9 +133,15 @@ $(document).ready(function() {
             }
         });
 
-        // Clear cache button handler
-        $('#clear-cache-btn').on('click', function() {
-            if (confirm('Are you sure you want to clear all cached DataFrames? This action cannot be undone.')) {
+        // Clear cache button handler (use modal confirm)
+        $('#clear-cache-btn').on('click', async function() {
+            const ok = await showConfirm({
+                title: 'Clear All Cache',
+                message: '<div class="text-danger"><i class="fas fa-triangle-exclamation me-2"></i>This will delete ALL cached DataFrames. This action cannot be undone.</div>',
+                confirmText: 'Clear Cache',
+                confirmBtnClass: 'btn-danger'
+            });
+            if (ok) {
                 clearCache();
             }
         });
@@ -236,9 +284,15 @@ $(document).ready(function() {
             viewDataFrame(name);
         });
 
-        $('.delete-btn').off('click').on('click', function() {
+        $('.delete-btn').off('click').on('click', async function() {
             const name = $(this).data('name');
-            if (confirm(`Are you sure you want to delete DataFrame "${name}"?`)) {
+            const ok = await showConfirm({
+                title: 'Delete DataFrame',
+                message: `Are you sure you want to delete DataFrame <strong>${escapeHtml(name)}</strong>?`,
+                confirmText: 'Delete',
+                confirmBtnClass: 'btn-danger'
+            });
+            if (ok) {
                 deleteDataFrame(name);
             }
         });
@@ -289,7 +343,9 @@ $(document).ready(function() {
         $('#dataframe-info').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
         $('#dataframe-data-head').empty();
         $('#dataframe-data-body').empty();
-        $('#dataframe-modal').modal('show');
+        const dfModalEl = document.getElementById('dataframe-modal');
+        const dfModal = bootstrap.Modal.getOrCreateInstance(dfModalEl);
+        dfModal.show();
 
         // First try to load with preview only for large datasets
         $.get(`/api/dataframes/${encodeURIComponent(name)}?preview=true`)
@@ -298,13 +354,13 @@ $(document).ready(function() {
                     displayDataFrameInModal(response, name);
                 } else {
                     showNotification('Error', response.error, 'error');
-                    $('#dataframe-modal').modal('hide');
+                    dfModal.hide();
                 }
             })
             .fail(function(xhr) {
                 const error = xhr.responseJSON ? xhr.responseJSON.error : 'Failed to load DataFrame';
                 showNotification('Error', error, 'error');
-                $('#dataframe-modal').modal('hide');
+                dfModal.hide();
             });
     }
 
