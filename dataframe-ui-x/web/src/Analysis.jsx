@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getProfile } from './api.js'
+import { getProfile, getDataframe } from './api.js'
 import { Bar } from 'react-chartjs-2'
 import {
   Chart as ChartJS,
@@ -18,6 +18,12 @@ export default function Analysis() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [profile, setProfile] = useState(null)
+  // New: dataframe preview state
+  const [dfLoading, setDfLoading] = useState(false)
+  const [dfError, setDfError] = useState('')
+  const [dfMeta, setDfMeta] = useState(null)
+  const [dfColumns, setDfColumns] = useState([])
+  const [dfPreview, setDfPreview] = useState([])
 
   useEffect(() => {
     let mounted = true
@@ -32,6 +38,30 @@ export default function Analysis() {
       .catch((e) => setError(e.message || 'Failed'))
       .finally(() => mounted && setLoading(false))
     return () => { mounted = false }
+  }, [name])
+
+  // New: load dataframe preview
+  useEffect(() => {
+    let active = true
+    setDfLoading(true)
+    setDfError('')
+    setDfMeta(null)
+    setDfColumns([])
+    setDfPreview([])
+    getDataframe(name, { preview: true })
+      .then((res) => {
+        if (!active) return
+        if (res.success) {
+          setDfMeta(res.metadata)
+          setDfColumns(res.columns || [])
+          setDfPreview(res.preview || [])
+        } else {
+          setDfError(res.error || 'Failed to load DataFrame preview')
+        }
+      })
+      .catch((e) => setDfError(e.message || 'Failed to load DataFrame'))
+      .finally(() => { if (active) setDfLoading(false) })
+    return () => { active = false }
   }, [name])
 
   const numericCharts = useMemo(() => {
@@ -71,6 +101,44 @@ export default function Analysis() {
                 {profile.metadata?.description && (<span><span className="font-medium">Description:</span> {profile.metadata.description}</span>)}
               </div>
             </section>
+
+            {/* New: DataFrame preview section */}
+            <section className="bg-white rounded-lg shadow p-5">
+              <h2 className="text-base font-semibold mb-3">DataFrame preview</h2>
+              {dfLoading && (<div className="text-sm text-gray-600">Loading preview…</div>)}
+              {dfError && (<div className="text-sm text-red-600">{dfError}</div>)}
+              {dfMeta && (
+                <div className="text-sm text-gray-700 mb-3">
+                  <div className="flex flex-wrap gap-3">
+                    <span><span className="font-medium">Rows:</span> {dfMeta.rows}</span>
+                    <span><span className="font-medium">Cols:</span> {dfMeta.cols}</span>
+                    <span><span className="font-medium">Size:</span> {dfMeta.size_mb} MB</span>
+                    <span><span className="font-medium">Created:</span> {new Date(dfMeta.timestamp).toLocaleString()}</span>
+                  </div>
+                  {dfMeta.description && (<div className="text-gray-600 mt-1">{dfMeta.description}</div>)}
+                </div>
+              )}
+              <div className="overflow-auto border rounded">
+                <table className="min-w-full text-xs">
+                  <thead className="sticky top-0 bg-white border-b">
+                    <tr>
+                      {dfColumns.map((c) => (<th key={c} className="px-2 py-1 text-left">{c}</th>))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {dfPreview.map((row, idx) => (
+                      <tr key={idx}>
+                        {dfColumns.map((c) => (<td key={c} className="px-2 py-1 whitespace-nowrap text-gray-700">{String(row?.[c] ?? '')}</td>))}
+                      </tr>
+                    ))}
+                    {(!dfLoading && dfPreview.length === 0) && (
+                      <tr><td className="px-2 py-2 text-gray-500" colSpan={Math.max(1, dfColumns.length)}>No preview rows</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             <section className="bg-white rounded-lg shadow p-5">
               <h2 className="text-base font-semibold mb-3">Columns</h2>
               <div className="overflow-auto">

@@ -171,7 +171,7 @@ export default function Home() {
     <div className="bg-gray-50 min-h-screen text-gray-900">
       <header className="bg-slate-900 text-white">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Spark test visualizer (Tailwind + React)</h1>
+          <h1 className="text-lg font-semibold">Spark test visualizer</h1>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
             <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
