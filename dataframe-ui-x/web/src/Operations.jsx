@@ -1,0 +1,369 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  listDataframes,
+  opsCompare,
+  opsMerge,
+  opsPivot,
+  opsFilter,
+  opsGroupBy,
+  buildDownloadCsvUrl
+} from './api.js'
+
+function Section({ title, children }) {
+  return (
+    <section className="bg-white rounded-lg shadow p-5">
+      <h2 className="text-base font-semibold mb-4">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function useToast() {
+  const [msg, setMsg] = useState('')
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (!msg) return
+    setVisible(true)
+    const t = setTimeout(() => setVisible(false), 2500)
+    return () => clearTimeout(t)
+  }, [msg])
+  return { show: (m) => setMsg(m), visible, msg }
+}
+
+export default function Operations() {
+  const [dfs, setDfs] = useState([])
+  const [loading, setLoading] = useState(false)
+  const toast = useToast()
+  const navigate = useNavigate()
+
+  const refresh = async () => {
+    setLoading(true)
+    try {
+      const res = await listDataframes()
+      if (res.success) setDfs((res.dataframes || []).sort((a, b) => a.name.localeCompare(b.name)))
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { refresh() }, [])
+
+  const dfOptions = dfs.map(d => ({ value: d.name, label: d.name, columns: d.columns || [] }))
+  const findDf = (name) => dfs.find(d => d.name === name)
+
+  // Compare state
+  const [cmp1, setCmp1] = useState('')
+  const [cmp2, setCmp2] = useState('')
+  const [cmpRes, setCmpRes] = useState(null)
+
+  const onCompare = async () => {
+    if (!cmp1 || !cmp2) return toast.show('Pick two dataframes')
+    try {
+      const res = await opsCompare({ name1: cmp1, name2: cmp2 })
+      setCmpRes(res)
+      toast.show(res.identical ? 'DataFrames are identical' : `Compared: ${res.result_type}`)
+      if (res.created && res.created.length) await refresh()
+    } catch (e) { toast.show(e.message || 'Compare failed') }
+  }
+
+  // Merge state
+  const [mergeNames, setMergeNames] = useState([])
+  const [mergeKeys, setMergeKeys] = useState('')
+  const [mergeHow, setMergeHow] = useState('inner')
+  const onMerge = async () => {
+    const names = mergeNames
+    const keys = mergeKeys.split(',').map(s => s.trim()).filter(Boolean)
+    if (names.length < 2 || keys.length < 1) return toast.show('Pick 2+ dataframes and at least 1 key')
+    try {
+      const res = await opsMerge({ names, keys, how: mergeHow })
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) { toast.show(e.message || 'Merge failed') }
+  }
+
+  // Pivot state
+  const [pvMode, setPvMode] = useState('wider')
+  const [pvName, setPvName] = useState('')
+  const [pvIndex, setPvIndex] = useState('')
+  const [pvNamesFrom, setPvNamesFrom] = useState('')
+  const [pvValuesFrom, setPvValuesFrom] = useState('')
+  const [pvAgg, setPvAgg] = useState('first')
+  const [plIdVars, setPlIdVars] = useState('')
+  const [plValueVars, setPlValueVars] = useState('')
+  const [plVarName, setPlVarName] = useState('variable')
+  const [plValueName, setPlValueName] = useState('value')
+  const onPivot = async () => {
+    if (!pvName) return toast.show('Pick a dataframe')
+    try {
+      if (pvMode === 'wider') {
+        const payload = {
+          mode: 'wider',
+          name: pvName,
+          index: pvIndex.split(',').map(s => s.trim()).filter(Boolean),
+          names_from: pvNamesFrom,
+          values_from: pvValuesFrom.split(',').map(s => s.trim()).filter(Boolean),
+          aggfunc: pvAgg
+        }
+        const res = await opsPivot(payload)
+        toast.show(`Created ${res.name}`)
+      } else {
+        const payload = {
+          mode: 'longer',
+          name: pvName,
+          id_vars: plIdVars.split(',').map(s => s.trim()).filter(Boolean),
+          value_vars: plValueVars.split(',').map(s => s.trim()).filter(Boolean),
+          var_name: plVarName,
+          value_name: plValueName
+        }
+        const res = await opsPivot(payload)
+        toast.show(`Created ${res.name}`)
+      }
+      await refresh()
+    } catch (e) { toast.show(e.message || 'Pivot failed') }
+  }
+
+  // Filter
+  const [ftName, setFtName] = useState('')
+  const [filters, setFilters] = useState([{ col: '', op: 'eq', value: '' }])
+  const [ftCombine, setFtCombine] = useState('and')
+  const addFilter = () => setFilters([...filters, { col: '', op: 'eq', value: '' }])
+  const removeFilter = (idx) => setFilters(filters.filter((_, i) => i !== idx))
+  const updateFilter = (idx, patch) => setFilters(filters.map((f, i) => i === idx ? { ...f, ...patch } : f))
+  const onFilter = async () => {
+    if (!ftName) return toast.show('Pick a dataframe')
+    try {
+      const res = await opsFilter({ name: ftName, filters, combine: ftCombine })
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) { toast.show(e.message || 'Filter failed') }
+  }
+
+  // Group by
+  const [gbName, setGbName] = useState('')
+  const [gbBy, setGbBy] = useState('')
+  const [gbAggs, setGbAggs] = useState('')
+  const onGroupBy = async () => {
+    if (!gbName) return toast.show('Pick a dataframe')
+    let aggsObj = undefined
+    if (gbAggs.trim()) {
+      try { aggsObj = JSON.parse(gbAggs) } catch { return toast.show('Aggs must be JSON') }
+    }
+    try {
+      const res = await opsGroupBy({ name: gbName, by: gbBy.split(',').map(s => s.trim()).filter(Boolean), aggs: aggsObj })
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) { toast.show(e.message || 'GroupBy failed') }
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen text-gray-900">
+      <header className="bg-slate-900 text-white">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button className="text-white/90 hover:text-white" onClick={() => navigate('/')}>← Home</button>
+            <h1 className="text-lg font-semibold">Operations</h1>
+          </div>
+          <div className="text-sm text-slate-300">{loading ? 'Loading…' : `${dfs.length} dataframes`}</div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        <Section title="Compare two DataFrames">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <label className="block">
+              <span className="block text-sm">Left</span>
+              <select className="mt-1 border rounded w-full p-2" value={cmp1} onChange={e => setCmp1(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-sm">Right</span>
+              <select className="mt-1 border rounded w-full p-2" value={cmp2} onChange={e => setCmp2(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <button onClick={onCompare} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Compare</button>
+          </div>
+          {cmpRes && (
+            <div className="mt-3 text-sm">
+              <div>Result: <span className="font-medium">{cmpRes.identical ? 'identical' : cmpRes.result_type}</span></div>
+              {!!(cmpRes.left_unique > 0) && (<div>Left unique rows: {cmpRes.left_unique}</div>)}
+              {!!(cmpRes.right_unique > 0) && (<div>Right unique rows: {cmpRes.right_unique}</div>)}
+              {(cmpRes.created || []).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(cmpRes.created || []).map(n => (
+                    <a key={n} href={buildDownloadCsvUrl(n)} className="text-indigo-600 underline">{n}.csv</a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </Section>
+
+        <Section title="Merge multiple DataFrames">
+          <div className="space-y-3">
+            <div>
+              <div className="text-sm mb-1">Pick 2+ dataframes</div>
+              <div className="flex flex-wrap gap-2">
+                {dfOptions.map(o => (
+                  <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${mergeNames.includes(o.value) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
+                    <input type="checkbox" className="mr-1" checked={mergeNames.includes(o.value)} onChange={e => setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <label className="block">
+                <span className="block text-sm">Join keys (comma)</span>
+                <input className="mt-1 border rounded w-full p-2" value={mergeKeys} onChange={e => setMergeKeys(e.target.value)} placeholder="id" />
+              </label>
+              <label className="block">
+                <span className="block text-sm">Join type</span>
+                <select className="mt-1 border rounded w-full p-2" value={mergeHow} onChange={e => setMergeHow(e.target.value)}>
+                  <option>inner</option>
+                  <option>left</option>
+                  <option>right</option>
+                  <option>outer</option>
+                </select>
+              </label>
+              <button onClick={onMerge} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Merge</button>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Pivot">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+            <label className="block md:col-span-2">
+              <span className="block text-sm">DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2" value={pvName} onChange={e => setPvName(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-sm">Mode</span>
+              <select className="mt-1 border rounded w-full p-2" value={pvMode} onChange={e => setPvMode(e.target.value)}>
+                <option value="wider">wider</option>
+                <option value="longer">longer</option>
+              </select>
+            </label>
+            {pvMode === 'wider' ? (
+              <>
+                <label className="block">
+                  <span className="block text-sm">Index cols (comma)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={pvIndex} onChange={e => setPvIndex(e.target.value)} placeholder="id" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">names_from</span>
+                  <input className="mt-1 border rounded w-full p-2" value={pvNamesFrom} onChange={e => setPvNamesFrom(e.target.value)} placeholder="category" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">values_from (comma)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={pvValuesFrom} onChange={e => setPvValuesFrom(e.target.value)} placeholder="value" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">aggfunc</span>
+                  <input className="mt-1 border rounded w-full p-2" value={pvAgg} onChange={e => setPvAgg(e.target.value)} placeholder="first" />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="block text-sm">id_vars (comma)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={plIdVars} onChange={e => setPlIdVars(e.target.value)} placeholder="id" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">value_vars (comma)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={plValueVars} onChange={e => setPlValueVars(e.target.value)} placeholder="col1,col2" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">var_name</span>
+                  <input className="mt-1 border rounded w-full p-2" value={plVarName} onChange={e => setPlVarName(e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">value_name</span>
+                  <input className="mt-1 border rounded w-full p-2" value={plValueName} onChange={e => setPlValueName(e.target.value)} />
+                </label>
+              </>
+            )}
+            <div className="md:col-span-6">
+              <button onClick={onPivot} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Pivot</button>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Filter">
+          <div className="space-y-3">
+            <label className="block">
+              <span className="block text-sm">DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2 max-w-sm" value={ftName} onChange={e => setFtName(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <div className="flex items-center gap-3">
+              <span className="text-sm">Combine</span>
+              <select className="border rounded p-2" value={ftCombine} onChange={e => setFtCombine(e.target.value)}>
+                <option>and</option>
+                <option>or</option>
+              </select>
+            </div>
+            {filters.map((f, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm">Column</span>
+                  <input className="mt-1 border rounded w-full p-2" value={f.col} onChange={e => updateFilter(idx, { col: e.target.value })} placeholder="column name" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">Op</span>
+                  <select className="mt-1 border rounded w-full p-2" value={f.op} onChange={e => updateFilter(idx, { op: e.target.value })}>
+                    <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
+                    <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option>
+                    <option>isnull</option><option>notnull</option>
+                  </select>
+                </label>
+                <label className="block md:col-span-3">
+                  <span className="block text-sm">Value</span>
+                  <input className="mt-1 border rounded w-full p-2" value={f.value} onChange={e => updateFilter(idx, { value: e.target.value })} placeholder="value or [v1,v2] for in" />
+                </label>
+                <button className="px-3 py-2 border rounded" onClick={() => removeFilter(idx)}>Remove</button>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <button className="px-3 py-2 border rounded" onClick={addFilter}>Add filter</button>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" onClick={onFilter}>Run Filter</button>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Group by">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <label className="block">
+              <span className="block text-sm">DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2" value={gbName} onChange={e => setGbName(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-sm">Group by (comma)</span>
+              <input className="mt-1 border rounded w-full p-2" value={gbBy} onChange={e => setGbBy(e.target.value)} placeholder="col1,col2" />
+            </label>
+            <label className="block md:col-span-2">
+              <span className="block text-sm">Aggs JSON (optional)</span>
+              <input className="mt-1 border rounded w-full p-2" value={gbAggs} onChange={e => setGbAggs(e.target.value)} placeholder='{"col":"sum","col2":["mean","max"]}' />
+            </label>
+            <button onClick={onGroupBy} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run GroupBy</button>
+          </div>
+        </Section>
+      </main>
+
+      <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
+        <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
+      </div>
+    </div>
+  )
+}
+

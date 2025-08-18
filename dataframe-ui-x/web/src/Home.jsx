@@ -172,7 +172,10 @@ export default function Home() {
       <header className="bg-slate-900 text-white">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold">Spark test visualizer (Tailwind + React)</h1>
-          <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
+            <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
+          </div>
         </div>
       </header>
 
@@ -184,7 +187,7 @@ export default function Home() {
                 <div className="text-3xl font-bold">{stats.dataframe_count}</div>
                 <div className="text-white/80">DataFrames Cached</div>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white/90" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h2a2 2 0 012 2v1H2V5zM2 9h6v2H2V9zm0 4h6v1a2 2 0 01-2 2H4a2 2 0 01-2-2v-1zM10 5a2 2 0 012-2h2a2 2 0 012 2v1h-6V5zm0 4h6v2h-6V9zm0 4h6v1a2 2 0 01-2 2h-2a2 2 0 01-2-2v-1z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white/90" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 002-2h2a2 2 0 012 2v1H2V5zM2 9h6v2H2V9zm0 4h6v1a2 2 0 01-2 2H4a2 2 0 01-2-2v-1zM10 5a2 2 0 012-2h2a2 2 0 012 2v1h-6V5zm0 4h6v2h-6V9zm0 4h6v1a2 2 0 01-2 2h-2a2 2 0 01-2-2v-1z"/></svg>
             </div>
           </div>
           <div className="rounded-lg bg-gradient-to-r from-teal-500 to-emerald-600 text-white p-4">
@@ -250,7 +253,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {loadingList && (<tr><td className="py-3 text-gray-500" colSpan={6}>Loading���</td></tr>)}
+                {loadingList && (<tr><td className="py-3 text-gray-500" colSpan={6}>Loading…</td></tr>)}
                 {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500" colSpan={6}>No cached DataFrames</td></tr>)}
                 {rows.map((r) => (
                   <tr key={r.name}>

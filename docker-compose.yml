@@ -47,6 +47,13 @@ services:
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
       - PORT=4999
+      # Spark client configuration for compare endpoint
+      - SPARK_MASTER_URL=spark://localhost:7077
+      # Optional: set to a reachable host IP if workers cannot connect back to driver
+      - SPARK_DRIVER_HOST=127.0.0.1
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+      - SPARK_EXECUTOR_MEMORY=4g
+      - SPARK_DRIVER_MEMORY=4g
     depends_on:
       - redis
     volumes:

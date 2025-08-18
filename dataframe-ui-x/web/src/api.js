@@ -64,3 +64,54 @@ export const getProfile = async (name) => {
   if (!res.ok) throw new Error(`Failed profile: ${res.status}`);
   return res.json();
 };
+
+// --- New: Ops endpoints ---
+export const opsCompare = async ({ name1, name2 }) => {
+  const res = await fetch(`${BASE()}/api/ops/compare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name1, name2 })
+  });
+  if (!res.ok) throw new Error(`Compare failed: ${res.status}`);
+  return res.json();
+};
+
+export const opsMerge = async ({ names, keys, how }) => {
+  const res = await fetch(`${BASE()}/api/ops/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ names, keys, how })
+  });
+  if (!res.ok) throw new Error(`Merge failed: ${res.status}`);
+  return res.json();
+};
+
+export const opsPivot = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/pivot`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Pivot failed: ${res.status}`);
+  return res.json();
+};
+
+export const opsFilter = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/filter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Filter failed: ${res.status}`);
+  return res.json();
+};
+
+export const opsGroupBy = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/groupby`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`GroupBy failed: ${res.status}`);
+  return res.json();
+};

@@ -400,6 +400,351 @@ def profile_dataframe(name):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# --- New: DataFrame operations (compare, merge, pivot, filter, groupby) ---
+
+def _load_df_from_cache(name: str) -> pd.DataFrame:
+    df_key = f"df:{name}"
+    if not redis_client.exists(df_key):
+        raise ValueError(f'DataFrame "{name}" not found')
+    csv_string = redis_client.get(df_key)
+    return pd.read_csv(io.StringIO(csv_string))
+
+
+def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source: str = '') -> dict:
+    csv_string = df.to_csv(index=False)
+    df_key = f"df:{name}"
+    meta_key = f"meta:{name}"
+    redis_client.set(df_key, csv_string)
+    size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
+    metadata = {
+        'name': name,
+        'rows': int(len(df)),
+        'cols': int(len(df.columns)),
+        'columns': df.columns.tolist(),
+        'description': description,
+        'timestamp': datetime.now().isoformat(),
+        'size_mb': round(size_mb, 2),
+        'format': 'csv',
+        'source': source or 'operation'
+    }
+    redis_client.set(meta_key, json.dumps(metadata))
+    redis_client.sadd("dataframe_index", name)
+    return metadata
+
+
+def _unique_name(base: str) -> str:
+    name = base
+    i = 2
+    while redis_client.exists(f"df:{name}"):
+        name = f"{base}__v{i}"
+        i += 1
+    return name
+
+
+@app.route('/api/ops/compare', methods=['POST'])
+def op_compare():
+    try:
+        payload = request.get_json(force=True)
+        n1 = payload.get('name1'); n2 = payload.get('name2')
+        if not n1 or not n2:
+            return jsonify({'success': False, 'error': 'name1 and name2 are required'}), 400
+        df1 = _load_df_from_cache(n1)
+        df2 = _load_df_from_cache(n2)
+
+        # Try Spark-based comparator for robust order-independent compare and auto-caching diffs
+        try:
+            import socket
+            from pyspark.sql import SparkSession
+            master_url = os.getenv('SPARK_MASTER_URL', 'spark://localhost:7077')
+            builder = (SparkSession.builder
+                       .appName('UI-Compare')
+                       .master(master_url)
+                       .config('spark.sql.adaptive.enabled', 'true')
+                       .config('spark.executor.memory', os.getenv('SPARK_EXECUTOR_MEMORY', '4g'))
+                       .config('spark.driver.memory', os.getenv('SPARK_DRIVER_MEMORY', '4g'))
+                       .config('spark.network.timeout', os.getenv('SPARK_NETWORK_TIMEOUT', '120s')))
+            driver_host = os.getenv('SPARK_DRIVER_HOST')
+            if driver_host:
+                builder = builder.config('spark.driver.host', driver_host)
+            driver_bind = os.getenv('SPARK_DRIVER_BIND_ADDRESS')
+            if driver_bind:
+                builder = builder.config('spark.driver.bindAddress', driver_bind)
+            spark = builder.getOrCreate()
+
+            sdf1 = spark.createDataFrame(df1)
+            sdf2 = spark.createDataFrame(df2)
+
+            # Schema comparison
+            if sdf1.schema != sdf2.schema:
+                try:
+                    spark.stop()
+                except Exception:
+                    pass
+                return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch'})
+
+            # Row count comparison
+            count1, count2 = sdf1.count(), sdf2.count()
+            if count1 != count2:
+                try:
+                    spark.stop()
+                except Exception:
+                    pass
+                return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch'})
+
+            # Order-independent data comparison using exceptAll
+            diff1 = sdf1.exceptAll(sdf2)
+            diff2 = sdf2.exceptAll(sdf1)
+            c1 = diff1.count()
+            c2 = diff2.count()
+            if c1 == 0 and c2 == 0:
+                try:
+                    spark.stop()
+                except Exception:
+                    pass
+                return jsonify({'success': True, 'identical': True, 'result_type': 'identical'})
+
+            created = []
+            THRESH = int(os.getenv('COMPARE_CACHE_THRESHOLD', '100000'))
+            if 0 < c1 <= THRESH:
+                pdf1 = diff1.toPandas()
+                name_u1 = _unique_name(f"{n1}_unique_rows")
+                _save_df_to_cache(name_u1, pdf1, description=f'Rows unique to {n1} vs {n2}', source='ops:compare')
+                created.append(name_u1)
+            if 0 < c2 <= THRESH:
+                pdf2 = diff2.toPandas()
+                name_u2 = _unique_name(f"{n2}_unique_rows")
+                _save_df_to_cache(name_u2, pdf2, description=f'Rows unique to {n2} vs {n1}', source='ops:compare')
+                created.append(name_u2)
+
+            try:
+                spark.stop()
+            except Exception:
+                pass
+            return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': int(c1), 'right_unique': int(c2), 'created': created, 'note': f'Spark comparator used; master={master_url}'})
+        except Exception:
+            # Fallback to pandas method
+            pass
+
+        # Schema comparison
+        schema_match = list(df1.columns) == list(df2.columns) and list(map(str, df1.dtypes)) == list(map(str, df2.dtypes))
+        if not schema_match:
+            return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch'})
+
+        # Row count check
+        if len(df1) != len(df2):
+            return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch'})
+
+        # Data comparison (order independent): use indicator merge on all columns
+        cols = list(df1.columns)
+        merged_l = df1.merge(df2, how='outer', on=cols, indicator=True)
+        left_only = merged_l[merged_l['_merge'] == 'left_only'][cols]
+        right_only = merged_l[merged_l['_merge'] == 'right_only'][cols]
+        c1 = int(len(left_only)); c2 = int(len(right_only))
+        created = []
+        if c1 == 0 and c2 == 0:
+            return jsonify({'success': True, 'identical': True, 'result_type': 'identical', 'created': created})
+
+        # Cache differing rows (cap to 100k)
+        THRESH = 100_000
+        if 0 < c1 <= THRESH:
+            name_u1 = _unique_name(f"{n1}_unique_rows")
+            _save_df_to_cache(name_u1, left_only, description=f'Rows unique to {n1} vs {n2}', source='ops:compare')
+            created.append(name_u1)
+        if 0 < c2 <= THRESH:
+            name_u2 = _unique_name(f"{n2}_unique_rows")
+            _save_df_to_cache(name_u2, right_only, description=f'Rows unique to {n2} vs {n1}', source='ops:compare')
+            created.append(name_u2)
+
+        return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': c1, 'right_unique': c2, 'created': created, 'note': 'pandas fallback used'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/merge', methods=['POST'])
+def op_merge():
+    try:
+        p = request.get_json(force=True)
+        names = p.get('names') or []
+        keys = p.get('keys') or []
+        how = (p.get('how') or 'inner').lower()
+        if how not in ['inner', 'left', 'right', 'outer']:
+            return jsonify({'success': False, 'error': 'how must be one of inner,left,right,outer'}), 400
+        if len(names) < 2:
+            return jsonify({'success': False, 'error': 'At least 2 dataframe names required'}), 400
+        if len(keys) < 1:
+            return jsonify({'success': False, 'error': 'At least 1 key is required'}), 400
+        df = _load_df_from_cache(names[0])
+        for nm in names[1:]:
+            d2 = _load_df_from_cache(nm)
+            df = df.merge(d2, on=keys, how=how)
+        base = f"{'_'.join(names)}__merge_{how}_by_{'-'.join(keys)}"
+        out_name = _unique_name(base)
+        meta = _save_df_to_cache(out_name, df, description=f"Merge {names} on {keys} ({how})", source='ops:merge')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/pivot', methods=['POST'])
+def op_pivot():
+    try:
+        p = request.get_json(force=True)
+        mode = (p.get('mode') or 'wider').lower()
+        name = p.get('name')
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        df = _load_df_from_cache(name)
+        if mode == 'wider':
+            index = p.get('index') or []
+            names_from = p.get('names_from')
+            values_from = p.get('values_from')
+            aggfunc = p.get('aggfunc') or 'first'
+            if not names_from or not values_from:
+                return jsonify({'success': False, 'error': 'names_from and values_from are required for wider'}), 400
+            if isinstance(values_from, str):
+                values_from = [values_from]
+            pivoted = pd.pivot_table(df, index=index or None, columns=names_from, values=values_from, aggfunc=aggfunc)
+            # Flatten MultiIndex columns if any
+            if isinstance(pivoted.columns, pd.MultiIndex):
+                pivoted.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in pivoted.columns.to_flat_index()]
+            pivoted = pivoted.reset_index()
+            base = f"{name}__pivot_wider_{names_from}_vals_{'-'.join(values_from)}"
+            out_name = _unique_name(base)
+            meta = _save_df_to_cache(out_name, pivoted, description=f"Pivot wider from {names_from} values {values_from}", source='ops:pivot')
+            return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+        elif mode == 'longer':
+            id_vars = p.get('id_vars') or []
+            value_vars = p.get('value_vars') or []
+            var_name = p.get('var_name') or 'variable'
+            value_name = p.get('value_name') or 'value'
+            if not value_vars:
+                return jsonify({'success': False, 'error': 'value_vars is required for longer'}), 400
+            melted = pd.melt(df, id_vars=id_vars or None, value_vars=value_vars, var_name=var_name, value_name=value_name)
+            base = f"{name}__pivot_longer_{'-'.join(value_vars)}"
+            out_name = _unique_name(base)
+            meta = _save_df_to_cache(out_name, melted, description=f"Pivot longer value_vars={value_vars}", source='ops:pivot')
+            return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+        else:
+            return jsonify({'success': False, 'error': 'mode must be wider or longer'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/filter', methods=['POST'])
+def op_filter():
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        df = _load_df_from_cache(name)
+        conditions = p.get('filters') or []
+        combine = (p.get('combine') or 'and').lower()
+        if combine not in ['and', 'or']:
+            return jsonify({'success': False, 'error': 'combine must be and/or'}), 400
+        mask = None
+        for cond in conditions:
+            col = cond.get('col'); op = (cond.get('op') or 'eq').lower(); val = cond.get('value')
+            if col not in df.columns:
+                return jsonify({'success': False, 'error': f'Column {col} not found'}), 400
+            s = df[col]
+            m = None
+            if op == 'eq':
+                m = s == val
+            elif op == 'ne':
+                m = s != val
+            elif op == 'lt':
+                m = s < val
+            elif op == 'lte':
+                m = s <= val
+            elif op == 'gt':
+                m = s > val
+            elif op == 'gte':
+                m = s >= val
+            elif op == 'in':
+                vals = val
+                if isinstance(val, str):
+                    v = val.strip()
+                    try:
+                        # allow JSON array like [1,2] or ["a","b"]
+                        parsed = json.loads(v)
+                        if isinstance(parsed, list):
+                            vals = parsed
+                        else:
+                            vals = [val]
+                    except Exception:
+                        # fallback to comma-separated string
+                        vals = [x.strip() for x in v.split(',') if x.strip()]
+                if not isinstance(vals, list):
+                    vals = [vals]
+                m = s.isin(vals)
+            elif op == 'nin':
+                vals = val
+                if isinstance(val, str):
+                    v = val.strip()
+                    try:
+                        parsed = json.loads(v)
+                        if isinstance(parsed, list):
+                            vals = parsed
+                        else:
+                            vals = [val]
+                    except Exception:
+                        vals = [x.strip() for x in v.split(',') if x.strip()]
+                if not isinstance(vals, list):
+                    vals = [vals]
+                m = ~s.isin(vals)
+            elif op == 'contains':
+                m = s.astype('string').str.contains(str(val), na=False)
+            elif op == 'startswith':
+                m = s.astype('string').str.startswith(str(val), na=False)
+            elif op == 'endswith':
+                m = s.astype('string').str.endswith(str(val), na=False)
+            elif op == 'isnull':
+                m = s.isna()
+            elif op == 'notnull':
+                m = s.notna()
+            else:
+                return jsonify({'success': False, 'error': f'Unsupported op {op}'}), 400
+            mask = m if mask is None else (mask & m if combine == 'and' else mask | m)
+        filtered = df[mask] if mask is not None else df.copy()
+        out_name = _unique_name(f"{name}__filter")
+        meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {len(conditions)} conditions ({combine})", source='ops:filter')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ops/groupby', methods=['POST'])
+def op_groupby():
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        by = p.get('by') or []
+        aggs = p.get('aggs') or {}
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not by:
+            return jsonify({'success': False, 'error': 'by is required'}), 400
+        df = _load_df_from_cache(name)
+        # Validate columns
+        for c in by:
+            if c not in df.columns:
+                return jsonify({'success': False, 'error': f'Group-by column {c} not found'}), 400
+        if aggs:
+            grouped = df.groupby(by).agg(aggs).reset_index()
+        else:
+            grouped = df.groupby(by).size().reset_index(name='count')
+        # Flatten columns if needed to avoid MultiIndex in CSV
+        if isinstance(grouped.columns, pd.MultiIndex):
+            grouped.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in grouped.columns.to_flat_index()]
+        base = f"{name}__groupby_{'-'.join(by)}"
+        out_name = _unique_name(base)
+        meta = _save_df_to_cache(out_name, grouped, description=f"Group-by {by} aggs={aggs or 'count'}", source='ops:groupby')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', '4999'))
     app.run(host='0.0.0.0', port=PORT, debug=True)
