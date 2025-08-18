@@ -1186,6 +1186,295 @@ def get_rename_via_url():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# --- New: Pipeline execution (preview and run) ---
+
+def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, str]:
+    """Apply a single pipeline step to the current DataFrame.
+    Returns (new_df, description).
+    Supported ops: load, merge, filter, groupby, select, rename, pivot, compare.
+    """
+    op = (step.get('op') or step.get('type') or '').lower()
+    params = step.get('params') or {}
+
+    # load: set current dataframe from cache by name
+    if op == 'load':
+        name = params.get('name') or step.get('name')
+        if not name:
+            raise ValueError('load: name is required')
+        df = _load_df_from_cache(name)
+        return df, f"load {name}"
+
+    # merge: merge current with others (params.with), or merge list of names (params.names)
+    if op == 'merge':
+        how = (params.get('how') or 'inner').lower()
+        keys = params.get('keys') or []
+        if not keys:
+            raise ValueError('merge: keys are required')
+        names: list[str] = params.get('names') or []
+        with_names: list[str] = params.get('with') or params.get('others') or []
+        if names:
+            if len(names) < 2:
+                raise ValueError('merge: names must include at least two dataframes')
+            df = _load_df_from_cache(names[0])
+            for nm in names[1:]:
+                d2 = _load_df_from_cache(nm)
+                df = df.merge(d2, on=keys, how=how)
+            return df, f"merge names={names} how={how} keys={keys}"
+        else:
+            if df_curr is None:
+                raise ValueError('merge: no current dataframe; provide params.names or a prior load')
+            df = df_curr.copy()
+            for nm in with_names:
+                d2 = _load_df_from_cache(nm)
+                df = df.merge(d2, on=keys, how=how)
+            return df, f"merge current with={with_names} how={how} keys={keys}"
+
+    # filter
+    if op == 'filter':
+        if df_curr is None:
+            raise ValueError('filter: no current dataframe; add a load step first')
+        p = {
+            'name': '__curr__',
+            'filters': params.get('filters') or [],
+            'combine': (params.get('combine') or 'and').lower()
+        }
+        # Inline application mirroring op_filter
+        df = df_curr.copy()
+        conditions = p['filters']
+        combine = p['combine']
+        if combine not in ['and', 'or']:
+            raise ValueError('filter: combine must be and/or')
+        mask = None
+        desc_parts: list[str] = []
+        for cond in conditions:
+            col = cond.get('col'); opx = (cond.get('op') or 'eq').lower(); val = cond.get('value')
+            if col not in df.columns:
+                raise ValueError(f'filter: column {col} not found')
+            s = df[col]
+            m = None
+            if opx == 'eq': m = s == val
+            elif opx == 'ne': m = s != val
+            elif opx == 'lt': m = s < val
+            elif opx == 'lte': m = s <= val
+            elif opx == 'gt': m = s > val
+            elif opx == 'gte': m = s >= val
+            elif opx == 'in':
+                vals = val
+                if isinstance(val, str):
+                    v = val.strip()
+                    try:
+                        parsed = json.loads(v)
+                        vals = parsed if isinstance(parsed, list) else [val]
+                    except Exception:
+                        vals = [x.strip() for x in v.split(',') if x.strip()]
+                if not isinstance(vals, list): vals = [vals]
+                m = s.isin(vals); val = vals
+            elif opx == 'nin':
+                vals = val
+                if isinstance(val, str):
+                    v = val.strip()
+                    try:
+                        parsed = json.loads(v)
+                        vals = parsed if isinstance(parsed, list) else [val]
+                    except Exception:
+                        vals = [x.strip() for x in v.split(',') if x.strip()]
+                if not isinstance(vals, list): vals = [vals]
+                m = ~s.isin(vals); val = vals
+            elif opx == 'contains': m = s.astype('string').str.contains(str(val), na=False)
+            elif opx == 'startswith': m = s.astype('string').str.startswith(str(val), na=False)
+            elif opx == 'endswith': m = s.astype('string').str.endswith(str(val), na=False)
+            elif opx == 'isnull': m = s.isna(); val = None
+            elif opx == 'notnull': m = s.notna(); val = None
+            else: raise ValueError(f'filter: unsupported op {opx}')
+            vstr = '' if val is None else (','.join(map(str, val)) if isinstance(val, list) else str(val))
+            desc_parts.append(f"{col} {opx}{(' '+vstr) if vstr else ''}")
+            mask = m if mask is None else (mask & m if combine == 'and' else mask | m)
+        filtered = df[mask] if mask is not None else df
+        return filtered, f"filter {(' '+combine+' ').join(desc_parts) if desc_parts else 'no conditions'}"
+
+    # groupby
+    if op == 'groupby':
+        if df_curr is None:
+            raise ValueError('groupby: no current dataframe; add a load step first')
+        by = params.get('by') or []
+        aggs = params.get('aggs') or {}
+        if not by:
+            raise ValueError('groupby: by is required')
+        for c in by:
+            if c not in df_curr.columns:
+                raise ValueError(f'groupby: column {c} not found')
+        if aggs:
+            grouped = df_curr.groupby(by).agg(aggs).reset_index()
+        else:
+            grouped = df_curr.groupby(by).size().reset_index(name='count')
+        if isinstance(grouped.columns, pd.MultiIndex):
+            grouped.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in grouped.columns.to_flat_index()]
+        return grouped, f"groupby by={by} aggs={aggs or 'count'}"
+
+    # select
+    if op == 'select':
+        if df_curr is None:
+            raise ValueError('select: no current dataframe; add a load step first')
+        cols = params.get('columns') or []
+        if not cols:
+            raise ValueError('select: columns are required')
+        missing = [c for c in cols if c not in df_curr.columns]
+        if missing:
+            raise ValueError(f'select: columns not found: {", ".join(missing)}')
+        projected = df_curr[cols].copy()
+        return projected, f"select columns={cols}"
+
+    # rename
+    if op == 'rename':
+        if df_curr is None:
+            raise ValueError('rename: no current dataframe; add a load step first')
+        mapping = params.get('map') or params.get('rename') or params.get('columns') or {}
+        if not isinstance(mapping, dict) or not mapping:
+            raise ValueError('rename: map is required')
+        missing = [old for old in mapping.keys() if old not in df_curr.columns]
+        if missing:
+            raise ValueError(f'rename: columns to rename not found: {", ".join(missing)}')
+        # Check duplicates after rename
+        new_cols = list(df_curr.columns)
+        for old, new in mapping.items():
+            if not isinstance(new, str) or not new:
+                raise ValueError(f'rename: invalid new name for {old}')
+            idx = new_cols.index(old)
+            new_cols[idx] = new
+        if len(set(new_cols)) != len(new_cols):
+            raise ValueError('rename: would cause duplicate columns')
+        renamed = df_curr.rename(columns=mapping)
+        return renamed, f"rename {mapping}"
+
+    # pivot
+    if op == 'pivot':
+        if df_curr is None and not params.get('name'):
+            raise ValueError('pivot: provide params.name or add a load step first')
+        mode = (params.get('mode') or 'wider').lower()
+        df = df_curr if df_curr is not None else _load_df_from_cache(params.get('name'))
+        if mode == 'wider':
+            index = params.get('index') or []
+            names_from = params.get('names_from')
+            values_from = params.get('values_from')
+            aggfunc = params.get('aggfunc') or 'first'
+            if not names_from or not values_from:
+                raise ValueError('pivot wider: names_from and values_from are required')
+            if isinstance(values_from, str): values_from = [values_from]
+            pivoted = pd.pivot_table(df, index=index or None, columns=names_from, values=values_from, aggfunc=aggfunc)
+            if isinstance(pivoted.columns, pd.MultiIndex):
+                pivoted.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in pivoted.columns.to_flat_index()]
+            pivoted = pivoted.reset_index()
+            return pivoted, f"pivot wider names_from={names_from} values_from={values_from}"
+        elif mode == 'longer':
+            id_vars = params.get('id_vars') or []
+            value_vars = params.get('value_vars') or []
+            var_name = params.get('var_name') or 'variable'
+            value_name = params.get('value_name') or 'value'
+            if not value_vars:
+                raise ValueError('pivot longer: value_vars required')
+            melted = pd.melt(df, id_vars=id_vars or None, value_vars=value_vars, var_name=var_name, value_name=value_name)
+            return melted, f"pivot longer value_vars={value_vars}"
+        else:
+            raise ValueError('pivot: mode must be wider or longer')
+
+    # compare
+    if op == 'compare':
+        if df_curr is None:
+            raise ValueError('compare: no current dataframe; add a load step first')
+        other_name = params.get('name') or params.get('other')
+        action = (params.get('on') or params.get('action') or 'mismatch').lower()
+        if not other_name:
+            raise ValueError('compare: params.name (other) is required')
+        df_other = _load_df_from_cache(other_name)
+        # If schemas differ, it's a mismatch
+        schema_match = list(df_curr.columns) == list(df_other.columns) and list(map(str, df_curr.dtypes)) == list(map(str, df_other.dtypes))
+        if not schema_match:
+            identical = False
+        else:
+            cols = list(df_curr.columns)
+            merged_l = df_curr.merge(df_other, how='outer', on=cols, indicator=True)
+            left_only = merged_l[merged_l['_merge'] == 'left_only'][cols]
+            right_only = merged_l[merged_l['_merge'] == 'right_only'][cols]
+            identical = len(left_only) == 0 and len(right_only) == 0
+        if action == 'identical':
+            if identical:
+                return df_curr, 'compare: identical -> pass-through'
+            # Not identical: return sentinel small frame
+            note = pd.DataFrame({'__note__': ['not identical']})
+            return note, 'compare: not identical'
+        # mismatch action: build a diff frame of mismatches if any, else empty
+        if not schema_match:
+            # Can't diff row-wise; return empty with message
+            return pd.DataFrame({'__note__': ['schema mismatch']}), 'compare: schema mismatch'
+        cols = list(df_curr.columns)
+        merged = df_curr.merge(df_other, how='outer', on=cols, indicator=True)
+        mism_left = merged[merged['_merge'] == 'left_only'][cols].copy(); mism_left['__side__'] = 'left_only'
+        mism_right = merged[merged['_merge'] == 'right_only'][cols].copy(); mism_right['__side__'] = 'right_only'
+        out = pd.concat([mism_left, mism_right], ignore_index=True)
+        return out, 'compare: mismatch rows'
+
+    raise ValueError(f"Unsupported op: {op}")
+
+
+@app.route('/api/pipeline/preview', methods=['POST'])
+def pipeline_preview():
+    try:
+        p = request.get_json(force=True)
+        start = p.get('start')
+        steps = p.get('steps') or []
+        max_rows = int(p.get('preview_rows') or 20)
+        # Establish starting df (optional)
+        current: pd.DataFrame | None = None
+        msgs: list[dict] = []
+        # If explicit start: either string or list -> if list use the first
+        if isinstance(start, list) and len(start) > 0:
+            current = _load_df_from_cache(start[0])
+            msgs.append({'op': 'load', 'desc': f'load {start[0]}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+        elif isinstance(start, str) and start:
+            current = _load_df_from_cache(start)
+            msgs.append({'op': 'load', 'desc': f'load {start}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+        # Evaluate steps
+        for i, step in enumerate(steps):
+            current, desc = _apply_op(current, step)
+            msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+        # Final summary
+        final = None
+        if current is not None:
+            final = {'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows)), 'rows': int(len(current))}
+        return jsonify({'success': True, 'steps': msgs, 'final': final})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/pipeline/run', methods=['POST'])
+def pipeline_run():
+    try:
+        p = request.get_json(force=True)
+        start = p.get('start')
+        steps = p.get('steps') or []
+        materialize = bool(p.get('materialize') or True)
+        out_name = p.get('name') or None
+        # Evaluate using same engine as preview
+        current: pd.DataFrame | None = None
+        if isinstance(start, list) and len(start) > 0:
+            current = _load_df_from_cache(start[0])
+        elif isinstance(start, str) and start:
+            current = _load_df_from_cache(start)
+        for step in steps:
+            current, _ = _apply_op(current, step)
+        if current is None:
+            return jsonify({'success': False, 'error': 'Nothing to run: no start and no steps'}), 400
+        created = None
+        if materialize:
+            base = out_name or 'pipeline_result'
+            name = _unique_name(base)
+            meta = _save_df_to_cache(name, current, description='pipeline result', source='ops:pipeline')
+            created = {'name': name, 'metadata': meta}
+        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', '4999'))
     app.run(host='0.0.0.0', port=PORT, debug=True)

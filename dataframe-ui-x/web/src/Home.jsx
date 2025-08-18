@@ -174,6 +174,7 @@ export default function Home() {
           <h1 className="text-lg font-semibold">Spark test visualizer</h1>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
+            <button onClick={() => navigate('/chained-operations')} className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700">Chained Ops</button>
             <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
           </div>
         </div>

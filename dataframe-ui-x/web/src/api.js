@@ -135,4 +135,25 @@ export const opsRename = async ({ name, map }) => {
   });
   if (!res.ok) throw new Error(`Rename failed: ${res.status}`);
   return res.json();
-};
+}
+
+// Pipeline endpoints
+export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
+  const res = await fetch(`${BASE()}/api/pipeline/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start, steps, preview_rows })
+  })
+  if (!res.ok) throw new Error(`Pipeline preview failed: ${res.status}`)
+  return res.json()
+}
+
+export const pipelineRun = async ({ start, steps, materialize = true, name }) => {
+  const res = await fetch(`${BASE()}/api/pipeline/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start, steps, materialize, name })
+  })
+  if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
+  return res.json()
+}
