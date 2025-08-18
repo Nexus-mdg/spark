@@ -115,3 +115,13 @@ export const opsGroupBy = async (payload) => {
   if (!res.ok) throw new Error(`GroupBy failed: ${res.status}`);
   return res.json();
 };
+
+export const opsSelect = async ({ name, columns }) => {
+  const res = await fetch(`${BASE()}/api/ops/select`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, columns })
+  });
+  if (!res.ok) throw new Error(`Select failed: ${res.status}`);
+  return res.json();
+};

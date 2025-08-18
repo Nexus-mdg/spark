@@ -7,7 +7,9 @@ import {
   opsPivot,
   opsFilter,
   opsGroupBy,
-  buildDownloadCsvUrl
+  buildDownloadCsvUrl,
+  getDataframe,
+  opsSelect
 } from './api.js'
 
 function Section({ title, children }) {
@@ -29,6 +31,73 @@ function useToast() {
     return () => clearTimeout(t)
   }, [msg])
   return { show: (m) => setMsg(m), visible, msg }
+}
+
+function DataframePreview({ name, columnsFilter }) {
+  const [state, setState] = useState({ loading: false, error: '', columns: [], rows: [], total: null })
+  useEffect(() => {
+    let alive = true
+    if (!name) { setState({ loading: false, error: '', columns: [], rows: [], total: null }); return }
+    setState(s => ({ ...s, loading: true, error: '' }))
+    getDataframe(name, { preview: true })
+      .then(res => {
+        if (!alive) return
+        const cols = (res.columns || [])
+        const rows = (res.preview || [])
+        const total = res.total_rows || (res.pagination ? res.pagination.total_rows : null) || null
+        // Filter columns if requested
+        const useCols = Array.isArray(columnsFilter) && columnsFilter.length > 0 ? cols.filter(c => columnsFilter.includes(c)) : cols
+        const projRows = rows.map(r => {
+          if (!Array.isArray(columnsFilter) || columnsFilter.length === 0) return r
+          const obj = {}
+          useCols.forEach(c => { obj[c] = r[c] })
+          return obj
+        })
+        setState({ loading: false, error: '', columns: useCols, rows: projRows, total })
+      })
+      .catch(e => { if (alive) setState({ loading: false, error: e.message || 'Failed to load preview', columns: [], rows: [], total: null }) })
+    return () => { alive = false }
+  }, [name, JSON.stringify(columnsFilter)])
+
+  if (!name) return null
+  return (
+    <div className="mt-3 border rounded bg-slate-50">
+      <div className="px-3 py-2 text-xs text-slate-600 flex items-center gap-2">
+        <span className="font-medium">Preview:</span>
+        <span className="">{name}</span>
+        {state.total != null && (<span className="ml-auto">showing {state.rows.length} of {state.total}</span>)}
+      </div>
+      {state.loading ? (
+        <div className="px-3 py-3 text-sm text-slate-600 flex items-center gap-2"><img src="/loader.svg" className="w-5 h-5" alt=""/> Loading…</div>
+      ) : state.error ? (
+        <div className="px-3 py-3 text-sm text-red-600">{state.error}</div>
+      ) : (
+        <div className="overflow-auto">
+          <table className="min-w-full text-xs">
+            <thead className="bg-slate-100">
+              <tr>
+                {state.columns.map(c => (<th key={c} className="text-left px-3 py-2 whitespace-nowrap border-b">{c}</th>))}
+              </tr>
+            </thead>
+            <tbody>
+              {state.rows.map((r, i) => (
+                <tr key={i} className={i % 2 ? 'bg-white' : ''}>
+                  {state.columns.map(c => (
+                    <td key={c} className="px-3 py-1 align-top border-b max-w-[300px] truncate" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
+                      {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {state.rows.length === 0 && (
+                <tr><td className="px-3 py-2 text-slate-500" colSpan={state.columns.length || 1}>No rows</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Operations() {
@@ -157,6 +226,22 @@ export default function Operations() {
     } catch (e) { toast.show(e.message || 'GroupBy failed') }
   }
 
+  // Select (column projection)
+  const [selName, setSelName] = useState('')
+  const [selCols, setSelCols] = useState([])
+  const selectedDfMeta = dfOptions.find(o => o.value === selName)
+  useEffect(() => { setSelCols([]) }, [selName])
+  const toggleSelCol = (col) => setSelCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])
+  const onSelectCols = async () => {
+    if (!selName) return toast.show('Pick a dataframe')
+    if (selCols.length === 0) return toast.show('Pick at least one column')
+    try {
+      const res = await opsSelect({ name: selName, columns: selCols })
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) { toast.show(e.message || 'Select failed') }
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
       <header className="bg-slate-900 text-white">
@@ -195,6 +280,11 @@ export default function Operations() {
               <span>Running comparison…</span>
             </div>
           )}
+          {/* Previews below choices */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <DataframePreview name={cmp1} />
+            <DataframePreview name={cmp2} />
+          </div>
           {cmpRes && !cmpLoading && (
             <div className="mt-3 text-sm">
               <div>Result: <span className="font-medium">{cmpRes.identical ? 'identical' : cmpRes.result_type}</span></div>
@@ -224,6 +314,12 @@ export default function Operations() {
                 ))}
               </div>
             </div>
+            {/* Previews for selected */}
+            {mergeNames.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {mergeNames.map(n => (<DataframePreview key={n} name={n} />))}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <label className="block">
                 <span className="block text-sm">Join keys (comma)</span>
@@ -302,6 +398,8 @@ export default function Operations() {
               <button onClick={onPivot} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Pivot</button>
             </div>
           </div>
+          {/* Preview below df choice */}
+          {pvName && (<DataframePreview name={pvName} />)}
         </Section>
 
         <Section title="Filter">
@@ -313,6 +411,8 @@ export default function Operations() {
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
+            {/* Preview below df choice */}
+            {ftName && (<DataframePreview name={ftName} />)}
             <div className="flex items-center gap-3">
               <span className="text-sm">Combine</span>
               <select className="border rounded p-2" value={ftCombine} onChange={e => setFtCombine(e.target.value)}>
@@ -366,6 +466,39 @@ export default function Operations() {
               <input className="mt-1 border rounded w-full p-2" value={gbAggs} onChange={e => setGbAggs(e.target.value)} placeholder='{"col":"sum","col2":["mean","max"]}' />
             </label>
             <button onClick={onGroupBy} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run GroupBy</button>
+          </div>
+          {/* Preview below df choice */}
+          {gbName && (<DataframePreview name={gbName} />)}
+        </Section>
+
+        <Section title="Select columns">
+          <div className="space-y-3">
+            <label className="block max-w-sm">
+              <span className="block text-sm">DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2" value={selName} onChange={e => setSelName(e.target.value)}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            {/* Columns chooser */}
+            {selName && (
+              <div>
+                <div className="text-sm mb-1">Pick columns</div>
+                <div className="flex flex-wrap gap-2">
+                  {(selectedDfMeta?.columns || []).map(c => (
+                    <label key={c} className={`px-2 py-1 rounded border cursor-pointer ${selCols.includes(c) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
+                      <input type="checkbox" className="mr-1" checked={selCols.includes(c)} onChange={() => toggleSelCol(c)} />
+                      {c}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Preview filtered to selected columns */}
+            {selName && (<DataframePreview name={selName} columnsFilter={selCols} />)}
+            <div>
+              <button onClick={onSelectCols} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create selection</button>
+            </div>
           </div>
         </Section>
       </main>

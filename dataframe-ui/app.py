@@ -808,6 +808,31 @@ def op_groupby():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ops/select', methods=['POST'])
+def op_select():
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        cols = p.get('columns') or []
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not isinstance(cols, list) or len(cols) == 0:
+            return jsonify({'success': False, 'error': 'columns (non-empty list) is required'}), 400
+        df = _load_df_from_cache(name)
+        # Validate columns
+        missing = [c for c in cols if c not in df.columns]
+        if missing:
+            return jsonify({'success': False, 'error': f'Columns not found: {", ".join(missing)}'}), 400
+        # Project
+        projected = df[cols].copy()
+        base = f"{name}__select_{'-'.join(cols)}"
+        out_name = _unique_name(base)
+        meta = _save_df_to_cache(out_name, projected, description=f"Select columns={','.join(cols)}", source='ops:select')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', '4999'))
     app.run(host='0.0.0.0', port=PORT, debug=True)
