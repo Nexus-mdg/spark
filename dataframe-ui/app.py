@@ -16,6 +16,7 @@ from datetime import datetime
 import os
 import numpy as np
 import sys
+import tempfile
 
 app = Flask(__name__)
 CORS(app)
@@ -476,16 +477,50 @@ def op_compare():
                 builder = builder.config('spark.driver.bindAddress', driver_bind)
             spark = builder.getOrCreate()
 
-            sdf1 = spark.createDataFrame(df1)
-            sdf2 = spark.createDataFrame(df2)
+            # Build Spark DataFrames from in-memory rows with explicit schema to avoid pandas->Spark path
+            from pyspark.sql.types import (StructType, StructField, StringType, IntegerType, LongType,
+                                           DoubleType, BooleanType, TimestampType, DateType)
 
-            # Schema comparison
-            if sdf1.schema != sdf2.schema:
+            def _spark_type_from_pd(dtype: str):
+                dt = str(dtype)
+                if dt.startswith('int64') or dt == 'Int64':
+                    return LongType()
+                if dt.startswith('int'):
+                    return IntegerType()
+                if dt.startswith('float'):
+                    return DoubleType()
+                if dt.startswith('bool') or dt == 'boolean':
+                    return BooleanType()
+                if 'datetime64' in dt or dt == 'datetime64[ns]':
+                    return TimestampType()
+                if 'date' == dt:
+                    return DateType()
+                # Fallback for object/string and others
+                return StringType()
+
+            def _schema_from_pandas(df: pd.DataFrame) -> StructType:
+                fields = []
+                for c in df.columns:
+                    fields.append(StructField(c, _spark_type_from_pd(df[c].dtype), True))
+                return StructType(fields)
+
+            def _rows_from_pandas(df: pd.DataFrame):
+                # Convert NaN/NaT to None for Spark
+                for row in df.itertuples(index=False, name=None):
+                    yield tuple(None if (isinstance(v, float) and pd.isna(v)) or (v is pd.NaT) else v for v in row)
+
+            schema1 = _schema_from_pandas(df1)
+            schema2 = _schema_from_pandas(df2)
+            # If schemas differ at this stage, we can return early
+            if [f.dataType.simpleString() for f in schema1] != [f.dataType.simpleString() for f in schema2] or list(df1.columns) != list(df2.columns):
                 try:
                     spark.stop()
                 except Exception:
                     pass
                 return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch'})
+
+            sdf1 = spark.createDataFrame(_rows_from_pandas(df1), schema=schema1)
+            sdf2 = spark.createDataFrame(_rows_from_pandas(df2), schema=schema2)
 
             # Row count comparison
             count1, count2 = sdf1.count(), sdf2.count()
