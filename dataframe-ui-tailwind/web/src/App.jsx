@@ -30,11 +30,29 @@ function Modal({ open, title, onClose, children }) {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-3 border-b flex items-center justify-between">
           <h3 className="text-base font-semibold">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100">
+          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
           </button>
         </div>
         <div className="overflow-auto px-5 py-4">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmDialog({ open, title = 'Confirm action', message = 'Are you sure?', confirmText = 'Confirm', cancelText = 'Cancel', confirming = false, onConfirm, onCancel }) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onCancel}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b">
+          <h4 className="text-base font-semibold">{title}</h4>
+        </div>
+        <div className="px-5 py-4 text-sm text-gray-700">{message}</div>
+        <div className="px-5 py-3 border-t flex items-center justify-end gap-2">
+          <button onClick={onCancel} className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50">{cancelText}</button>
+          <button disabled={confirming} onClick={onConfirm} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">{confirming ? 'Working…' : confirmText}</button>
+        </div>
       </div>
     </div>
   )
@@ -56,6 +74,13 @@ export default function App() {
   const [viewerColumns, setViewerColumns] = useState([])
   const [viewerPreview, setViewerPreview] = useState([])
 
+  // confirmation dialog state
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTitle, setConfirmTitle] = useState('Confirm action')
+  const [confirmMessage, setConfirmMessage] = useState('Are you sure?')
+  const [confirming, setConfirming] = useState(false)
+  const confirmActionRef = useRef(null)
+
   const toast = useToast()
 
   const refreshStats = async () => {
@@ -73,7 +98,7 @@ export default function App() {
         setRows((res.dataframes || []).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')))
       }
     } finally {
-      setLoadingList(false)
+        setLoadingList(false)
     }
   }
 
@@ -111,28 +136,56 @@ export default function App() {
     }
   }
 
-  const onClearCache = async () => {
-    if (!confirm('Clear all cached DataFrames?')) return
+  const confirm = ({ title, message, action }) => {
+    setConfirmTitle(title)
+    setConfirmMessage(message)
+    confirmActionRef.current = action
+    setConfirmOpen(true)
+  }
+
+  const onConfirmProceed = async () => {
+    if (!confirmActionRef.current) return
+    setConfirming(true)
     try {
-      await clearCache()
-      toast.show('Cache cleared')
-      await refreshStats()
-      await refreshList()
-    } catch (err) {
-      toast.show(err.message || 'Failed to clear cache')
+      await confirmActionRef.current()
+      setConfirmOpen(false)
+    } finally {
+      setConfirming(false)
     }
   }
 
-  const onDelete = async (n) => {
-    if (!confirm(`Delete DataFrame ${n}?`)) return
-    try {
-      await deleteDataframe(n)
-      toast.show('Deleted')
-      await refreshStats()
-      await refreshList()
-    } catch (err) {
-      toast.show(err.message || 'Delete failed')
-    }
+  const onClearCache = () => {
+    confirm({
+      title: 'Clear all cached DataFrames',
+      message: 'This will permanently delete all cached DataFrames. Do you want to continue?',
+      action: async () => {
+        try {
+          await clearCache()
+          toast.show('Cache cleared')
+          await refreshStats()
+          await refreshList()
+        } catch (err) {
+          toast.show(err.message || 'Failed to clear cache')
+        }
+      }
+    })
+  }
+
+  const onDelete = (n) => {
+    confirm({
+      title: `Delete DataFrame “${n}”`,
+      message: 'This action cannot be undone. Do you want to delete this DataFrame?',
+      action: async () => {
+        try {
+          await deleteDataframe(n)
+          toast.show('Deleted')
+          await refreshStats()
+          await refreshList()
+        } catch (err) {
+          toast.show(err.message || 'Delete failed')
+        }
+      }
+    })
   }
 
   const openViewer = async (n) => {
@@ -320,6 +373,16 @@ export default function App() {
         </div>
       </Modal>
 
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirming={confirming}
+        onConfirm={onConfirmProceed}
+        onCancel={() => !confirming && setConfirmOpen(false)}
+      />
+
       {/* Toast */}
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
@@ -327,4 +390,3 @@ export default function App() {
     </div>
   )
 }
-
