@@ -14,6 +14,7 @@ import io
 import base64
 from datetime import datetime
 import os
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -24,6 +25,16 @@ redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 # Ensure upload directory exists
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# --- Helpers ---
+
+def df_to_records_json_safe(df: pd.DataFrame):
+    """Convert a DataFrame to JSON-serializable records with nulls instead of NaN/NaT/Inf.
+    Uses pandas to_json to coerce numpy types into Python-native types, then loads back.
+    """
+    # Replace NaN/NaT with None and +/-inf with None
+    safe_df = df.replace([np.inf, -np.inf], None).where(pd.notnull(df), None)
+    return json.loads(safe_df.to_json(orient='records'))
 
 @app.route('/')
 def index():
@@ -80,8 +91,8 @@ def get_dataframe(name):
         total_rows = len(df)
 
         if preview_only:
-            # Only return preview for large datasets
-            preview_data = df.head(20).to_dict('records')
+            # Only return preview (JSON-safe) for large datasets or when preview requested
+            preview_data = df_to_records_json_safe(df.head(20))
             return jsonify({
                 'success': True,
                 'metadata': metadata,
@@ -97,14 +108,14 @@ def get_dataframe(name):
             end_idx = start_idx + page_size
 
             paginated_df = df.iloc[start_idx:end_idx]
-            df_json = paginated_df.to_dict('records')
+            df_json = df_to_records_json_safe(paginated_df)
 
             return jsonify({
                 'success': True,
                 'metadata': metadata,
                 'data': df_json,
                 'columns': columns,
-                'preview': df.head(10).to_dict('records'),
+                'preview': df_to_records_json_safe(df.head(10)),
                 'pagination': {
                     'page': page,
                     'page_size': page_size,
@@ -114,7 +125,7 @@ def get_dataframe(name):
             })
         else:
             # For very large datasets, return only metadata and preview
-            preview_data = df.head(20).to_dict('records')
+            preview_data = df_to_records_json_safe(df.head(20))
             return jsonify({
                 'success': True,
                 'metadata': metadata,

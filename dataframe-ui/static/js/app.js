@@ -99,6 +99,16 @@ $(document).ready(function() {
         });
     }
 
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        return String(unsafe)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function updateUploadArea(filename) {
         const $area = $('#upload-area');
         const $input = $area.find('#file-input');
@@ -282,7 +292,7 @@ $(document).ready(function() {
         $('#dataframe-modal').modal('show');
 
         // First try to load with preview only for large datasets
-        $.get(`/api/dataframes/${name}?preview=true`)
+        $.get(`/api/dataframes/${encodeURIComponent(name)}?preview=true`)
             .done(function(response) {
                 if (response.success) {
                     displayDataFrameInModal(response, name);
@@ -336,7 +346,7 @@ $(document).ready(function() {
                 <div class="col-md-6">
                     <h6>Columns (${columns.length})</h6>
                     <div class="d-flex flex-wrap gap-1" style="max-height: 120px; overflow-y: auto;">
-                        ${columns.map(col => `<span class="badge bg-secondary metadata-badge">${col}</span>`).join('')}
+                        ${columns.map(col => `<span class="badge bg-secondary metadata-badge">${escapeHtml(col)}</span>`).join('')}
                     </div>
                 </div>
             </div>
@@ -347,22 +357,34 @@ $(document).ready(function() {
         $('#dataframe-info').html(metadataHtml);
 
         // Create table headers
-        const headerHtml = '<tr>' + columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
+        const headerHtml = '<tr>' + columns.map(col => `<th>${escapeHtml(col)}</th>`).join('') + '</tr>';
         $('#dataframe-data-head').html(headerHtml);
 
-        // Create table body with better handling for large values
+        // Create table body with better handling for large values and objects
         const bodyHtml = data.map(row => {
             const cells = columns.map(col => {
                 let value = row[col];
                 if (value === null || value === undefined) {
-                    value = '<em class="text-muted">null</em>';
-                } else if (typeof value === 'string' && value.length > 100) {
-                    value = '<span title="' + value.replace(/"/g, '&quot;') + '">' +
-                            value.substring(0, 100) + '...</span>';
-                } else if (typeof value === 'number' && Math.abs(value) > 1000000) {
-                    value = value.toExponential(2);
+                    return `<td><em class="text-muted">null</em></td>`;
                 }
-                return `<td>${value}</td>`;
+                if (typeof value === 'object') {
+                    try {
+                        const json = JSON.stringify(value);
+                        const short = json.length > 120 ? json.substring(0, 120) + '...' : json;
+                        return `<td><span title="${escapeHtml(json)}">${escapeHtml(short)}</span></td>`;
+                    } catch (e) {
+                        return `<td><em class="text-muted">[object]</em></td>`;
+                    }
+                }
+                if (typeof value === 'string') {
+                    const title = value.length > 100 ? ` title="${escapeHtml(value)}"` : '';
+                    const short = value.length > 100 ? value.substring(0, 100) + '...' : value;
+                    return `<td${title}>${escapeHtml(short)}</td>`;
+                }
+                if (typeof value === 'number' && Math.abs(value) > 1000000) {
+                    return `<td>${escapeHtml(value.toExponential(2))}</td>`;
+                }
+                return `<td>${escapeHtml(value)}</td>`;
             }).join('');
             return `<tr>${cells}</tr>`;
         }).join('');
