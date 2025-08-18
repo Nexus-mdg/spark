@@ -1,6 +1,6 @@
 /**
- * Redis DataFrame Manager - Frontend JavaScript
- * =============================================
+ * Spark test visualizer - Frontend JavaScript
+ * ===========================================
  */
 
 $(document).ready(function() {
@@ -450,7 +450,7 @@ $(document).ready(function() {
 
     function deleteDataFrame(name) {
         $.ajax({
-            url: `/api/dataframes/${name}`,
+            url: `/api/dataframes/${encodeURIComponent(name)}`,
             type: 'DELETE',
             success: function(response) {
                 if (response.success) {
