@@ -274,6 +274,132 @@ def clear_cache():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# --- New: direct download/share endpoints ---
+@app.route('/api/dataframes/<name>/download.csv', methods=['GET'])
+def download_dataframe_csv(name):
+    """Return the full DataFrame as CSV (attachment)."""
+    try:
+        df_key = f"df:{name}"
+        if not redis_client.exists(df_key):
+            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+        csv_string = redis_client.get(df_key)
+        from flask import Response
+        resp = Response(csv_string, mimetype='text/csv; charset=utf-8')
+        resp.headers['Content-Disposition'] = f'attachment; filename="{name}.csv"'
+        # For CORS downloads in browsers
+        resp.headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return resp
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dataframes/<name>/download.json', methods=['GET'])
+def download_dataframe_json(name):
+    """Return the full DataFrame as JSON records array."""
+    try:
+        df_key = f"df:{name}"
+        if not redis_client.exists(df_key):
+            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+        csv_string = redis_client.get(df_key)
+        df = pd.read_csv(io.StringIO(csv_string))
+        records = df_to_records_json_safe(df)
+        from flask import Response
+        return Response(json.dumps(records), mimetype='application/json')
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/dataframes/<name>/profile', methods=['GET'])
+def profile_dataframe(name):
+    """Return basic profile/summary and chart-friendly distributions for a DataFrame."""
+    try:
+        df_key = f"df:{name}"
+        meta_key = f"meta:{name}"
+        if not redis_client.exists(df_key):
+            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+        meta_json = redis_client.get(meta_key)
+        metadata = json.loads(meta_json)
+        csv_string = redis_client.get(df_key)
+        df = pd.read_csv(io.StringIO(csv_string))
+
+        # Column summary
+        summary = []
+        for col in df.columns:
+            series = df[col]
+            nonnull = int(series.notna().sum())
+            nulls = int(series.isna().sum())
+            unique = int(series.nunique(dropna=True))
+            dtype = str(series.dtype)
+            entry = {
+                'name': col,
+                'dtype': dtype,
+                'nonnull': nonnull,
+                'nulls': nulls,
+                'unique': unique,
+            }
+            if pd.api.types.is_numeric_dtype(series):
+                desc = series.describe(percentiles=[0.25, 0.5, 0.75])
+                entry.update({
+                    'min': None if pd.isna(desc.get('min')) else float(desc.get('min')),
+                    'max': None if pd.isna(desc.get('max')) else float(desc.get('max')),
+                    'mean': None if pd.isna(desc.get('mean')) else float(desc.get('mean')),
+                    'std': None if pd.isna(desc.get('std')) else float(desc.get('std')),
+                    'p25': None if pd.isna(desc.get('25%')) else float(desc.get('25%')),
+                    'p50': None if pd.isna(desc.get('50%')) else float(desc.get('50%')),
+                    'p75': None if pd.isna(desc.get('75%')) else float(desc.get('75%')),
+                })
+            summary.append(entry)
+
+        # Numeric histograms (up to 20 bins)
+        numeric_distributions = []
+        for col in df.columns:
+            series = df[col]
+            if pd.api.types.is_numeric_dtype(series):
+                # Drop NaNs
+                clean = series.dropna()
+                if len(clean) == 0:
+                    continue
+                try:
+                    counts, bin_edges = np.histogram(clean, bins=min(20, max(5, int(np.sqrt(len(clean))))) )
+                    # Prepare labels as ranges
+                    labels = []
+                    for i in range(len(bin_edges) - 1):
+                        a = bin_edges[i]
+                        b = bin_edges[i+1]
+                        labels.append(f"{a:.2f}–{b:.2f}")
+                    numeric_distributions.append({
+                        'name': col,
+                        'labels': labels,
+                        'counts': [int(x) for x in counts.tolist()],
+                    })
+                except Exception:
+                    pass
+
+        # Categorical top values (top 10)
+        categorical_distributions = []
+        for col in df.columns:
+            series = df[col]
+            if pd.api.types.is_object_dtype(series) or pd.api.types.is_categorical_dtype(series):
+                vc = series.astype('string').value_counts(dropna=True).head(10)
+                labels = vc.index.fillna('null').tolist()
+                counts = [int(x) for x in vc.values.tolist()]
+                if len(labels) > 0:
+                    categorical_distributions.append({
+                        'name': col,
+                        'labels': labels,
+                        'counts': counts,
+                    })
+
+        return jsonify({
+            'success': True,
+            'metadata': metadata,
+            'summary': summary,
+            'numeric_distributions': numeric_distributions,
+            'categorical_distributions': categorical_distributions,
+            'row_count': int(len(df)),
+            'col_count': int(len(df.columns)),
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', '4999'))
     app.run(host='0.0.0.0', port=PORT, debug=True)

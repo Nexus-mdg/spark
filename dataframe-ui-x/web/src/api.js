@@ -53,3 +53,14 @@ export const uploadDataframe = async ({ file, name, description }) => {
   }
   return res.json();
 };
+
+// URL builders for downloads and share links
+export const buildDownloadCsvUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.csv`;
+export const buildDownloadJsonUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.json`;
+
+// Profile/analysis endpoint
+export const getProfile = async (name) => {
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}/profile`);
+  if (!res.ok) throw new Error(`Failed profile: ${res.status}`);
+  return res.json();
+};
