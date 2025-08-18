@@ -15,6 +15,7 @@ import base64
 from datetime import datetime
 import os
 import numpy as np
+import sys
 
 app = Flask(__name__)
 CORS(app)
@@ -452,6 +453,7 @@ def op_compare():
         df2 = _load_df_from_cache(n2)
 
         # Try Spark-based comparator for robust order-independent compare and auto-caching diffs
+        spark_error = None
         try:
             import socket
             from pyspark.sql import SparkSession
@@ -462,7 +464,10 @@ def op_compare():
                        .config('spark.sql.adaptive.enabled', 'true')
                        .config('spark.executor.memory', os.getenv('SPARK_EXECUTOR_MEMORY', '4g'))
                        .config('spark.driver.memory', os.getenv('SPARK_DRIVER_MEMORY', '4g'))
-                       .config('spark.network.timeout', os.getenv('SPARK_NETWORK_TIMEOUT', '120s')))
+                       .config('spark.network.timeout', os.getenv('SPARK_NETWORK_TIMEOUT', '120s'))
+                       # Align Python versions across driver and executors
+                       .config('spark.pyspark.python', os.getenv('PYSPARK_PYTHON', 'python3'))
+                       .config('spark.pyspark.driver.python', os.getenv('PYSPARK_DRIVER_PYTHON', 'python3')))
             driver_host = os.getenv('SPARK_DRIVER_HOST')
             if driver_host:
                 builder = builder.config('spark.driver.host', driver_host)
@@ -521,18 +526,22 @@ def op_compare():
             except Exception:
                 pass
             return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': int(c1), 'right_unique': int(c2), 'created': created, 'note': f'Spark comparator used; master={master_url}'})
-        except Exception:
-            # Fallback to pandas method
-            pass
+        except Exception as e:
+            # Log Spark failure and fall back to pandas
+            spark_error = str(e)
+            try:
+                app.logger.exception('Spark comparator failed: %s', e)
+            except Exception:
+                pass
 
         # Schema comparison
         schema_match = list(df1.columns) == list(df2.columns) and list(map(str, df1.dtypes)) == list(map(str, df2.dtypes))
         if not schema_match:
-            return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch'})
+            return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch', 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Row count check
         if len(df1) != len(df2):
-            return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch'})
+            return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch', 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Data comparison (order independent): use indicator merge on all columns
         cols = list(df1.columns)
@@ -542,7 +551,7 @@ def op_compare():
         c1 = int(len(left_only)); c2 = int(len(right_only))
         created = []
         if c1 == 0 and c2 == 0:
-            return jsonify({'success': True, 'identical': True, 'result_type': 'identical', 'created': created})
+            return jsonify({'success': True, 'identical': True, 'result_type': 'identical', 'created': created, 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Cache differing rows (cap to 100k)
         THRESH = 100_000
@@ -555,7 +564,7 @@ def op_compare():
             _save_df_to_cache(name_u2, right_only, description=f'Rows unique to {n2} vs {n1}', source='ops:compare')
             created.append(name_u2)
 
-        return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': c1, 'right_unique': c2, 'created': created, 'note': 'pandas fallback used'})
+        return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': c1, 'right_unique': c2, 'created': created, 'note': 'pandas fallback used', 'spark_error': spark_error})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
