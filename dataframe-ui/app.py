@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Redis DataFrame Web UI - Flask Backend
+Spark test visualizer - Flask Backend
 =====================================
 REST API for managing DataFrames stored in Redis
 """
