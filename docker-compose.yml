@@ -53,7 +53,7 @@ services:
       - ./dataframe-ui:/app
 
   dataframe-ui-x:
-    build: ./dataframe-ui-tailwind
+    build: ./dataframe-ui-x
     container_name: dataframe-ui-x
     restart: always
     network_mode: "host"
