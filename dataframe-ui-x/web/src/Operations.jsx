@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   listDataframes,
@@ -48,21 +48,24 @@ export default function Operations() {
   useEffect(() => { refresh() }, [])
 
   const dfOptions = dfs.map(d => ({ value: d.name, label: d.name, columns: d.columns || [] }))
-  const findDf = (name) => dfs.find(d => d.name === name)
 
   // Compare state
   const [cmp1, setCmp1] = useState('')
   const [cmp2, setCmp2] = useState('')
   const [cmpRes, setCmpRes] = useState(null)
+  const [cmpLoading, setCmpLoading] = useState(false)
 
   const onCompare = async () => {
     if (!cmp1 || !cmp2) return toast.show('Pick two dataframes')
+    setCmpLoading(true)
+    setCmpRes(null)
     try {
       const res = await opsCompare({ name1: cmp1, name2: cmp2 })
       setCmpRes(res)
       toast.show(res.identical ? 'DataFrames are identical' : `Compared: ${res.result_type}`)
       if (res.created && res.created.length) await refresh()
     } catch (e) { toast.show(e.message || 'Compare failed') }
+    finally { setCmpLoading(false) }
   }
 
   // Merge state
@@ -183,13 +186,20 @@ export default function Operations() {
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
-            <button onClick={onCompare} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Compare</button>
+            <button disabled={cmpLoading} onClick={onCompare} className={`px-4 py-2 text-white rounded hover:bg-indigo-700 ${cmpLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600'}`}>{cmpLoading ? 'Comparing…' : 'Compare'}</button>
           </div>
-          {cmpRes && (
+          {/* Loader image while waiting for compare response */}
+          {cmpLoading && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+              <img src="/loader.svg" alt="loading" className="w-6 h-6" />
+              <span>Running comparison…</span>
+            </div>
+          )}
+          {cmpRes && !cmpLoading && (
             <div className="mt-3 text-sm">
               <div>Result: <span className="font-medium">{cmpRes.identical ? 'identical' : cmpRes.result_type}</span></div>
-              {!!(cmpRes.left_unique > 0) && (<div>Left unique rows: {cmpRes.left_unique}</div>)}
-              {!!(cmpRes.right_unique > 0) && (<div>Right unique rows: {cmpRes.right_unique}</div>)}
+              {(cmpRes.left_unique > 0) && (<div>Left unique rows: {cmpRes.left_unique}</div>)}
+              {(cmpRes.right_unique > 0) && (<div>Right unique rows: {cmpRes.right_unique}</div>)}
               {(cmpRes.created || []).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(cmpRes.created || []).map(n => (
@@ -366,4 +376,3 @@ export default function Operations() {
     </div>
   )
 }
-

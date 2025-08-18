@@ -687,6 +687,8 @@ def op_filter():
         if combine not in ['and', 'or']:
             return jsonify({'success': False, 'error': 'combine must be and/or'}), 400
         mask = None
+        # Collect human-readable pieces for description
+        desc_parts = []
         for cond in conditions:
             col = cond.get('col'); op = (cond.get('op') or 'eq').lower(); val = cond.get('value')
             if col not in df.columns:
@@ -722,6 +724,8 @@ def op_filter():
                 if not isinstance(vals, list):
                     vals = [vals]
                 m = s.isin(vals)
+                # for description
+                val = vals
             elif op == 'nin':
                 vals = val
                 if isinstance(val, str):
@@ -737,6 +741,7 @@ def op_filter():
                 if not isinstance(vals, list):
                     vals = [vals]
                 m = ~s.isin(vals)
+                val = vals
             elif op == 'contains':
                 m = s.astype('string').str.contains(str(val), na=False)
             elif op == 'startswith':
@@ -745,14 +750,25 @@ def op_filter():
                 m = s.astype('string').str.endswith(str(val), na=False)
             elif op == 'isnull':
                 m = s.isna()
+                val = None
             elif op == 'notnull':
                 m = s.notna()
+                val = None
             else:
                 return jsonify({'success': False, 'error': f'Unsupported op {op}'}), 400
+            # Append condition to description
+            if val is None:
+                desc_parts.append(f"{col} {op}")
+            else:
+                # Compact list display for in/nin; stringify scalars safely
+                vstr = ','.join(map(str, val)) if isinstance(val, list) else str(val)
+                desc_parts.append(f"{col} {op} {vstr}")
             mask = m if mask is None else (mask & m if combine == 'and' else mask | m)
         filtered = df[mask] if mask is not None else df.copy()
         out_name = _unique_name(f"{name}__filter")
-        meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {len(conditions)} conditions ({combine})", source='ops:filter')
+        # Build detailed description
+        detail = (' ' + combine + ' ').join(desc_parts) if desc_parts else 'no conditions'
+        meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {detail}", source='ops:filter')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -783,7 +799,10 @@ def op_groupby():
             grouped.columns = ['__'.join([str(x) for x in tup if str(x) != '']) for tup in grouped.columns.to_flat_index()]
         base = f"{name}__groupby_{'-'.join(by)}"
         out_name = _unique_name(base)
-        meta = _save_df_to_cache(out_name, grouped, description=f"Group-by {by} aggs={aggs or 'count'}", source='ops:groupby')
+        # Build clearer description including columns
+        by_str = ','.join(by)
+        aggs_str = aggs if aggs else 'count'
+        meta = _save_df_to_cache(out_name, grouped, description=f"Group-by columns={by_str}; aggs={aggs_str}", source='ops:groupby')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
