@@ -28,8 +28,8 @@ $(document).ready(function() {
             $('#file-input').trigger('click');
         });
 
-        // File input change handler
-        $('#file-input').on('change', function(e) {
+        // File input change handler (delegated for robustness)
+        $(document).on('change', '#file-input', function(e) {
             const file = this.files[0];
             if (file) {
                 updateUploadArea(file.name);
@@ -57,9 +57,17 @@ $(document).ready(function() {
             const files = e.originalEvent.dataTransfer.files;
             if (files.length > 0) {
                 const fileInput = $('#file-input')[0];
-                fileInput.files = files;
+                try {
+                    // Some browsers allow setting via DataTransfer for security reasons
+                    const dt = new DataTransfer();
+                    dt.items.add(files[0]);
+                    fileInput.files = dt.files;
+                } catch (err) {
+                    // Fallback: ignore setting files programmatically, rely on formData later
+                    console.warn('Could not set file input from drop:', err);
+                }
 
-                // Trigger change event manually
+                // Trigger change event manually regardless
                 const changeEvent = new Event('change', { bubbles: true });
                 fileInput.dispatchEvent(changeEvent);
 
@@ -92,19 +100,27 @@ $(document).ready(function() {
     }
 
     function updateUploadArea(filename) {
-        $('#upload-area').html(`
+        const $area = $('#upload-area');
+        const $input = $area.find('#file-input');
+        // Rebuild the visible content but keep the input element attached
+        $area.html(`
             <i class="fas fa-file fa-2x text-success mb-3"></i>
             <h5 class="text-success">File Selected</h5>
             <p class="text-muted">${filename}</p>
         `);
+        // Re-append the preserved input so clicks continue to work
+        if ($input.length) $area.append($input);
     }
 
     function resetUploadArea() {
-        $('#upload-area').html(`
+        const $area = $('#upload-area');
+        const $input = $area.find('#file-input');
+        $area.html(`
             <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
             <h5>Drop files here or click to browse</h5>
             <p class="text-muted">Supports CSV, Excel (.xlsx, .xls), and JSON files</p>
         `);
+        if ($input.length) $area.append($input);
     }
 
     function loadStats() {
