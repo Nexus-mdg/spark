@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-ui
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime all prepare build build-ui build-ui-x
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename all prepare build build-ui build-ui-x
 
 help:
 	@echo "Targets:"
@@ -29,6 +29,7 @@ help:
 	@echo "  compare-schema    - run COMPARE schema mismatch test"
 	@echo "  mutate     - run MUTATE test (total_value)"
 	@echo "  datetime   - run DATETIME parse test"
+	@echo "  rename     - run DataFrame RENAME test"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -92,6 +93,9 @@ mutate: prepare
 
 datetime: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh datetime
+
+rename: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh rename
 
 down:
 	docker compose -f ./docker-compose.yml down

@@ -97,6 +97,36 @@ test_datetime_parse() {
     -d '{"name":"purchases","action":"parse","source":"date","target":"date_dt","overwrite":true}' | python3 -m json.tool || true
 }
 
+# New: rename dataframe name and description
+
+test_rename_dataframe() {
+  echo "\n[TEST] RENAME DataFrame: people -> temp name, update description, then revert"
+  local tmp_name="people_renamed_$(date +%s)"
+  # Rename to temporary name with new description
+  curl -sS -X POST "${API_BASE}/api/dataframes/people/rename" \
+    -H 'Content-Type: application/json' \
+    -d "{\"new_name\":\"${tmp_name}\",\"description\":\"Renamed via test\"}" | python3 -m json.tool || true
+  # Verify new name exists
+  curl -sS "${API_BASE}/api/dataframes/${tmp_name}" | python3 -m json.tool || true
+  # Attempt to rename back to 'people'; if conflict, delete and retry
+  http_code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "${API_BASE}/api/dataframes/${tmp_name}/rename" \
+    -H 'Content-Type: application/json' \
+    -d '{"new_name":"people"}') || http_code=000
+  if [[ "$http_code" == "409" ]]; then
+    echo "Conflict renaming back to 'people', deleting existing and retrying..."
+    curl -sS -X DELETE "${API_BASE}/api/dataframes/people" | python3 -m json.tool || true
+    curl -sS -X POST "${API_BASE}/api/dataframes/${tmp_name}/rename" \
+      -H 'Content-Type: application/json' \
+      -d '{"new_name":"people"}' | python3 -m json.tool || true
+  elif [[ "$http_code" == "200" ]]; then
+    echo "Renamed back to people."
+  else
+    echo "Unexpected HTTP ${http_code} while renaming back (continuing)."
+  fi
+  # Final check
+  curl -sS "${API_BASE}/api/dataframes/people" | python3 -m json.tool || true
+}
+
 run_all() {
   test_select
   test_select_exclude
@@ -108,6 +138,7 @@ run_all() {
   test_compare_schema
   test_mutate_total_value
   test_datetime_parse
+  test_rename_dataframe
 }
 
 main() {
@@ -128,6 +159,7 @@ main() {
     compare-schema) test_compare_schema ;;
     mutate) test_mutate_total_value ;;
     datetime) test_datetime_parse ;;
+    rename) test_rename_dataframe ;;
     all) run_all ;;
     *) echo "Unknown command: $cmd" >&2; exit 2 ;;
   esac

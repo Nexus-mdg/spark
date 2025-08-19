@@ -252,6 +252,80 @@ def upload_dataframe():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# New endpoint: rename dataframe and/or update its description
+@app.route('/api/dataframes/<name>/rename', methods=['POST'])
+def rename_dataframe(name):
+    try:
+        body = request.get_json(force=True) or {}
+        new_name = (body.get('new_name') or body.get('name') or '').strip()
+        new_desc = body.get('description') if 'description' in body else None
+
+        df_key_old = f"df:{name}"
+        meta_key_old = f"meta:{name}"
+        if not redis_client.exists(df_key_old):
+            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+
+        # Load prior metadata if available
+        meta_json = redis_client.get(meta_key_old) or '{}'
+        try:
+            meta = json.loads(meta_json)
+        except Exception:
+            meta = {}
+
+        changed = False
+
+        # Perform rename if requested and different
+        if new_name and new_name != name:
+            if redis_client.exists(f"df:{new_name}"):
+                return jsonify({'success': False, 'error': f'DataFrame with name "{new_name}" already exists'}), 409
+            csv_string = redis_client.get(df_key_old)
+
+            # Write new keys
+            redis_client.set(f"df:{new_name}", csv_string)
+            meta['name'] = new_name
+            if new_desc is not None:
+                meta['description'] = new_desc
+            # Ensure basic fields if missing
+            try:
+                if not meta.get('columns') or not meta.get('rows') or not meta.get('cols') or not meta.get('size_mb'):
+                    df_tmp = pd.read_csv(io.StringIO(csv_string))
+                    size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
+                    meta.update({
+                        'rows': int(len(df_tmp)),
+                        'cols': int(len(df_tmp.columns)),
+                        'columns': df_tmp.columns.tolist(),
+                        'size_mb': round(size_mb, 2),
+                        'format': meta.get('format') or 'csv',
+                    })
+            except Exception:
+                pass
+            redis_client.set(f"meta:{new_name}", json.dumps(meta))
+
+            # Update index and delete old keys
+            pipe = redis_client.pipeline()
+            pipe.srem('dataframe_index', name)
+            pipe.sadd('dataframe_index', new_name)
+            pipe.delete(df_key_old)
+            pipe.delete(meta_key_old)
+            pipe.execute()
+
+            name = new_name  # for response
+            changed = True
+            meta_key_old = f"meta:{name}"
+
+        # Description-only update
+        if (new_desc is not None) and not changed:
+            meta['description'] = new_desc
+            redis_client.set(meta_key_old, json.dumps(meta))
+            changed = True
+
+        if not changed:
+            return jsonify({'success': False, 'error': 'Nothing to change; provide new_name and/or description'}), 400
+
+        return jsonify({'success': True, 'metadata': meta, 'new_name': name})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/stats', methods=['GET'])
 def get_cache_stats():
     """Get cache statistics"""
