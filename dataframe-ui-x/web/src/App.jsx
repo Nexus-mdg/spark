@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Home from './Home.jsx'
 import Analysis from './Analysis.jsx'
 import Operations from './Operations.jsx'
+import ChainedOperations from './ChainedOperations.jsx'
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/analysis/:name" element={<Analysis />} />
       <Route path="/operations" element={<Operations />} />
+      <Route path="/chained-operations" element={<ChainedOperations />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
