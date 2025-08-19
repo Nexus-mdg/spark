@@ -966,6 +966,62 @@ def op_datetime():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# --- New: mutate operation endpoint ---
+@app.route('/api/ops/mutate', methods=['POST'])
+def op_mutate():
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        target = (p.get('target') or p.get('to') or '').strip()
+        expr = p.get('expr') or p.get('expression')
+        mode = (p.get('mode') or 'vector').lower()  # 'vector' or 'row'
+        overwrite = bool(p.get('overwrite') or False)
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not target:
+            return jsonify({'success': False, 'error': 'target is required'}), 400
+        if not isinstance(expr, str) or not expr.strip():
+            return jsonify({'success': False, 'error': 'expr (string) is required'}), 400
+        df = _load_df_from_cache(name)
+        if (target in df.columns) and not overwrite:
+            return jsonify({'success': False, 'error': f'target column {target} already exists'}), 400
+
+        # Safe-ish eval: expose only whitelisted symbols
+        safe_builtins = {
+            'abs': abs, 'min': min, 'max': max, 'round': round,
+            'int': int, 'float': float, 'str': str, 'bool': bool, 'len': len,
+        }
+        def _safe_eval(expression: str, local_ctx: dict):
+            code = compile(expression, '<mutate-expr>', 'eval')
+            return eval(code, {'__builtins__': {}}, {**safe_builtins, **local_ctx})
+
+        base_locals = {'pd': pd, 'np': np, 'df': df}
+        base_locals['col'] = lambda c: df[c]
+
+        if mode not in ('vector', 'row'):
+            return jsonify({'success': False, 'error': 'mode must be vector or row'}), 400
+
+        if mode == 'vector':
+            try:
+                result = _safe_eval(expr, base_locals)
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'eval error: {e}'}), 400
+        else:
+            try:
+                result = df.apply(lambda r: _safe_eval(expr, {**base_locals, 'r': r}), axis=1)
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'row-eval error: {e}'}), 400
+
+        out_df = df.copy()
+        # Pandas will align Series by index; scalars will broadcast
+        out_df[target] = result
+
+        out_name = _unique_name(f"{name}__mutate_{target}")
+        meta = _save_df_to_cache(out_name, out_df, description=f"Mutate {target} via expr ({mode})", source='ops:mutate')
+        return jsonify({'success': True, 'name': out_name, 'metadata': meta})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # --- Pipeline engine: apply operations and preview/run ---
 
 def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, str]:
@@ -1112,6 +1168,41 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if len(set(new_cols)) != len(new_cols):
             raise ValueError('rename: would cause duplicate columns')
         return df_curr.rename(columns=mapping), f"rename {mapping}"
+
+    # mutate
+    if op == 'mutate':
+        # df source
+        df = df_curr if df_curr is not None else _load_df_from_cache(params.get('name'))
+        if df is None:
+            raise ValueError('mutate: add a load step or set params.name')
+        target = (params.get('target') or params.get('to') or '').strip()
+        expr = params.get('expr') or params.get('expression')
+        mode = (params.get('mode') or 'vector').lower()
+        overwrite = bool(params.get('overwrite') or False)
+        if not target:
+            raise ValueError('mutate: target is required')
+        if not isinstance(expr, str) or not expr.strip():
+            raise ValueError('mutate: expr is required')
+        if (target in df.columns) and not overwrite:
+            raise ValueError(f'mutate: target column {target} exists')
+        safe_builtins = {
+            'abs': abs, 'min': min, 'max': max, 'round': round,
+            'int': int, 'float': float, 'str': str, 'bool': bool, 'len': len,
+        }
+        def _safe_eval(expression: str, local_ctx: dict):
+            code = compile(expression, '<mutate-expr>', 'eval')
+            return eval(code, {'__builtins__': {}}, {**safe_builtins, **local_ctx})
+        base_locals = {'pd': pd, 'np': np, 'df': df}
+        base_locals['col'] = lambda c: df[c]
+        if mode not in ('vector', 'row'):
+            raise ValueError('mutate: mode must be vector or row')
+        if mode == 'vector':
+            result = _safe_eval(expr, base_locals)
+        else:
+            result = df.apply(lambda r: _safe_eval(expr, {**base_locals, 'r': r}), axis=1)
+        out = df.copy()
+        out[target] = result
+        return out, f"mutate {target} ({mode})"
 
     # pivot
     if op == 'pivot':

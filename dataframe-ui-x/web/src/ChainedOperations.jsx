@@ -267,6 +267,38 @@ function ParamInput({ op, dfOptions, onCreate }) {
             )}
           </div>
         )
+      case 'mutate':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <label className="block">
+                <span className="block text-sm">Target column</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
+              </label>
+              <label className="block">
+                <span className="block text-sm">Mode</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
+                  <option value="vector">vector</option>
+                  <option value="row">row</option>
+                </select>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
+                <span className="text-sm">Overwrite if exists</span>
+              </label>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                const target = String(state.target||'').trim(); const expr = String(state.expr||'').trim();
+                if (!target || !expr) return
+                onCreate({ op: 'mutate', params: { target, expr, mode: state.mode || 'vector', overwrite: !!state.overwrite } })
+              }}>Add step</button>
+            </div>
+            <label className="block">
+              <span className="block text-sm">Expression</span>
+              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+            </label>
+            <div className="text-xs text-slate-600">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
+          </div>
+        )
       default:
         return <div className="text-sm text-slate-600">Pick an operation</div>
     }
@@ -682,6 +714,7 @@ function AddStep({ dfOptions, onAdd }) {
           <option value="rename">rename</option>
           <option value="compare">compare</option>
           <option value="datetime">datetime</option>
+          <option value="mutate">mutate</option>
         </select>
       </div>
       <ParamInput op={op} dfOptions={dfOptions} onCreate={onAdd} />

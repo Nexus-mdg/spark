@@ -11,7 +11,8 @@ import {
   getDataframe,
   opsSelect,
   opsRename,
-  opsDatetime
+  opsDatetime,
+  opsMutate
 } from './api.js'
 
 function Section({ title, children }) {
@@ -595,6 +596,11 @@ export default function Operations() {
         <Section title="Date / Time">
           <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsDatetime(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
         </Section>
+
+        {/* New: Mutate */}
+        <Section title="Mutate (create/overwrite column via expression)">
+          <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
+        </Section>
       </main>
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
@@ -713,6 +719,59 @@ function DateTimeSection({ dfOptions, onRun }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function MutateSection({ dfOptions, onRun }) {
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [expr, setExpr] = useState('')
+  const [mode, setMode] = useState('vector')
+  const [overwrite, setOverwrite] = useState(false)
+
+  const selectedDf = dfOptions.find(o => o.value === name)
+
+  const run = () => {
+    if (!name || !target || !expr.trim()) return
+    const payload = { name, target: target.trim(), expr: expr.trim(), mode, overwrite }
+    onRun(payload)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <label className="block md:col-span-2">
+          <span className="block text-sm">DataFrame</span>
+          <select className="mt-1 border rounded w-full p-2" value={name} onChange={e => setName(e.target.value)}>
+            <option value="">Select…</option>
+            {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-sm">Target column</span>
+          <input className="mt-1 border rounded w-full p-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_col" />
+        </label>
+        <label className="block">
+          <span className="block text-sm">Mode</span>
+          <select className="mt-1 border rounded w-full p-2" value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="vector">vector (Series/scalar)</option>
+            <option value="row">row (use r[\"col\"]) </option>
+          </select>
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
+          <span className="text-sm">Overwrite if exists</span>
+        </label>
+      </div>
+      {name && (<DataframePreview name={name} />)}
+      <label className="block">
+        <span className="block text-sm">Expression</span>
+        <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
+      </label>
+      <div>
+        <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Mutate</button>
+      </div>
     </div>
   )
 }

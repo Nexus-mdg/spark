@@ -151,6 +151,17 @@ export const opsDatetime = async (payload) => {
   return res.json()
 }
 
+// New: Mutate operation (create/overwrite a column via expression)
+export const opsMutate = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/mutate`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  })
+  if (!res.ok) {
+    const t = await res.text(); throw new Error(`Mutate failed: ${res.status} ${t}`)
+  }
+  return res.json()
+}
+
 // Pipeline endpoints
 export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
   const res = await fetch(`${BASE()}/api/pipeline/preview`, {
