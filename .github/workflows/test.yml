@@ -1,0 +1,172 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      spark:
+        image: bitnami/spark:3.5
+        ports:
+          - 7077:7077
+          - 8081:8081
+        env:
+          SPARK_MODE: master
+          SPARK_RPC_AUTHENTICATION_ENABLED: no
+          SPARK_RPC_ENCRYPTION_ENABLED: no
+          SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+          SPARK_SSL_ENABLED: no
+          SPARK_MASTER_HOST: localhost
+          PYSPARK_PYTHON: python3
+        options: >-
+          --health-cmd "curl -f http://localhost:8081 || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+      spark-worker:
+        image: bitnami/spark:3.5
+        ports:
+          - 8082:8082
+        env:
+          SPARK_MODE: worker
+          SPARK_MASTER_URL: spark://localhost:7077
+          SPARK_WORKER_WEBUI_PORT: 8082
+          PYSPARK_PYTHON: python3
+        options: >-
+          --health-cmd "curl -f http://localhost:8082 || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        cd dataframe-ui
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Wait for services to be ready
+      run: |
+        # Wait for Redis
+        until redis-cli -h localhost -p 6379 ping; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+        
+        # Wait for Spark Master
+        until curl -f http://localhost:8081 > /dev/null 2>&1; do
+          echo "Waiting for Spark Master..."
+          sleep 5
+        done
+        
+        # Wait for Spark Worker
+        until curl -f http://localhost:8082 > /dev/null 2>&1; do
+          echo "Waiting for Spark Worker..."
+          sleep 5
+        done
+
+    - name: Start dataframe-ui service
+      run: |
+        cd dataframe-ui
+        export FLASK_ENV=development
+        export REDIS_HOST=localhost
+        export REDIS_PORT=6379
+        export PORT=4999
+        export ENABLE_WEB_UI=false
+        export SPARK_MASTER_URL=spark://localhost:7077
+        export SPARK_DRIVER_HOST=localhost
+        export SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+        export SPARK_EXECUTOR_MEMORY=2g
+        export SPARK_DRIVER_MEMORY=2g
+        export PYSPARK_PYTHON=python3
+        export PYSPARK_DRIVER_PYTHON=python3
+        python app.py &
+        APP_PID=$!
+        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        
+        # Wait for the app to start
+        sleep 10
+
+    - name: Wait for API readiness
+      run: |
+        cd dataframe-ui
+        chmod +x test.sh
+        export API_BASE=http://localhost:4999
+        ./test.sh wait
+
+    - name: Run all tests (matching run_all function)
+      run: |
+        cd dataframe-ui
+        export API_BASE=http://localhost:4999
+        
+        # Run each test that's part of run_all() function
+        echo "Running test_select..."
+        ./test.sh select
+        
+        echo "Running test_select_exclude..."
+        ./test.sh select-exclude
+        
+        echo "Running test_groupby..."
+        ./test.sh groupby
+        
+        echo "Running test_filter..."
+        ./test.sh filter
+        
+        echo "Running test_merge..."
+        ./test.sh merge
+        
+        echo "Running test_pivot..."
+        ./test.sh pivot
+        
+        echo "Running test_compare_identical..."
+        ./test.sh compare-identical
+        
+        echo "Running test_compare_schema..."
+        ./test.sh compare-schema
+        
+        echo "Running test_mutate_total_value..."
+        ./test.sh mutate
+        
+        echo "Running test_datetime_parse..."
+        ./test.sh datetime
+        
+        echo "Running test_rename_dataframe..."
+        ./test.sh rename
+
+    - name: Run complete test suite (alternative method)
+      run: |
+        cd dataframe-ui
+        export API_BASE=http://localhost:4999
+        ./test.sh all
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$APP_PID" ]; then
+          kill $APP_PID || true
+        fi
