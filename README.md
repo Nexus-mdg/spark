@@ -1,5 +1,7 @@
 # Spark test visualizer
 
+[![Tests](https://github.com/Nexus-mdg/spark-test-visualizer/actions/workflows/test.yml/badge.svg)](https://github.com/Nexus-mdg/spark-test-visualizer.git/actions/workflows/test.yml)
+
 A lightweight Flask-based web UI to upload, cache, browse, and preview tabular test data (CSV/Excel/JSON) using Redis as a backing store. The UI is built with Bootstrap 5, DataTables, and jQuery (all served locally, no external CDNs).
 
 ## Features
