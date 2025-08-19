@@ -192,6 +192,113 @@ function ParamInput({ op, dfOptions, onCreate }) {
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => state.other && onCreate({ op: 'compare', params: { name: state.other, action: state.action || 'mismatch' } })}>Add step</button>
           </div>
         )
+      case 'datetime':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <label className="block md:col-span-2">
+                <span className="block text-sm">Action</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.action || 'parse'} onChange={e => update({ action: e.target.value })}>
+                  <option value="parse">parse (string -&gt; date)</option>
+                  <option value="derive">derive parts</option>
+                </select>
+              </label>
+              <label className="block md:col-span-2">
+                <span className="block text-sm">Source column</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.source || ''} onChange={e => update({ source: e.target.value })} placeholder="date_col" />
+              </label>
+            </div>
+            { (state.action || 'parse') === 'parse' ? (
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm">Format (optional)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={state.format || ''} onChange={e => update({ format: e.target.value })} placeholder="%Y-%m-%d" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">Target (optional)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_date" />
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
+                  <span className="text-sm">Overwrite if exists</span>
+                </label>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                  if (!state.source) return
+                  const payload = { action: 'parse', source: state.source }
+                  if (String(state.format||'').trim()) payload.format = state.format
+                  if (String(state.target||'').trim()) payload.target = state.target
+                  if (state.overwrite) payload.overwrite = true
+                  onCreate({ op: 'datetime', params: payload })
+                }}>Add step</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm">Month style</span>
+                  <select className="mt-1 border rounded w-full p-2" value={state.month_style || 'short'} onChange={e => update({ month_style: e.target.value })}>
+                    <option value="short">Jan</option>
+                    <option value="short_lower">jan</option>
+                    <option value="long">January</option>
+                    <option value="num">1..12</option>
+                  </select>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'year' in (state.outputs||{}) ? !!state.outputs.year : true} onChange={e => update({ outputs: { ...(state.outputs||{}), year: e.target.checked } })} />
+                  <span className="text-sm">year</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'month' in (state.outputs||{}) ? !!state.outputs.month : true} onChange={e => update({ outputs: { ...(state.outputs||{}), month: e.target.checked } })} />
+                  <span className="text-sm">month</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'day' in (state.outputs||{}) ? !!state.outputs.day : true} onChange={e => update({ outputs: { ...(state.outputs||{}), day: e.target.checked } })} />
+                  <span className="text-sm">day</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'year_month' in (state.outputs||{}) ? !!state.outputs.year_month : true} onChange={e => update({ outputs: { ...(state.outputs||{}), year_month: e.target.checked } })} />
+                  <span className="text-sm">year_month</span>
+                </label>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                  if (!state.source) return
+                  const payload = { action: 'derive', source: state.source, month_style: state.month_style || 'short', outputs: state.outputs || { year: true, month: true, day: true, year_month: true } }
+                  onCreate({ op: 'datetime', params: payload })
+                }}>Add step</button>
+              </div>
+            )}
+          </div>
+        )
+      case 'mutate':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <label className="block">
+                <span className="block text-sm">Target column</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
+              </label>
+              <label className="block">
+                <span className="block text-sm">Mode</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
+                  <option value="vector">vector</option>
+                  <option value="row">row</option>
+                </select>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
+                <span className="text-sm">Overwrite if exists</span>
+              </label>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                const target = String(state.target||'').trim(); const expr = String(state.expr||'').trim();
+                if (!target || !expr) return
+                onCreate({ op: 'mutate', params: { target, expr, mode: state.mode || 'vector', overwrite: !!state.overwrite } })
+              }}>Add step</button>
+            </div>
+            <label className="block">
+              <span className="block text-sm">Expression</span>
+              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+            </label>
+            <div className="text-xs text-slate-600">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
+          </div>
+        )
       default:
         return <div className="text-sm text-slate-600">Pick an operation</div>
     }
@@ -606,6 +713,8 @@ function AddStep({ dfOptions, onAdd }) {
           <option value="select">select</option>
           <option value="rename">rename</option>
           <option value="compare">compare</option>
+          <option value="datetime">datetime</option>
+          <option value="mutate">mutate</option>
         </select>
       </div>
       <ParamInput op={op} dfOptions={dfOptions} onCreate={onAdd} />

@@ -4,6 +4,7 @@ Overview
 - Separate UI that consumes the existing dataframe-ui Flask REST API (port 4999 by default).
 - Built with React (Vite) and Tailwind CSS; served by a tiny Flask server.
 - Does not modify the original dataframe-ui service.
+- Expressions Guide for mutate and pipeline steps: see EXPRESSIONS.md
 
 Local development (frontend only)
 1) Install Node 18+.

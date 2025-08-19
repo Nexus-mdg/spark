@@ -10,7 +10,9 @@ import {
   buildDownloadCsvUrl,
   getDataframe,
   opsSelect,
-  opsRename
+  opsRename,
+  opsDatetime,
+  opsMutate
 } from './api.js'
 
 function Section({ title, children }) {
@@ -260,6 +262,52 @@ export default function Operations() {
     } catch (e) {
       if (e instanceof SyntaxError) return toast.show('Invalid JSON mapping')
       toast.show(e.message || 'Rename failed')
+    }
+  }
+
+  // Date/Time state
+  const [dtName, setDtName] = useState('')
+  const [dtAction, setDtAction] = useState('parse')
+  const [dtSource, setDtSource] = useState('')
+  const [dtFormat, setDtFormat] = useState('')
+  const [dtTarget, setDtTarget] = useState('')
+  const [dtOverwrite, setDtOverwrite] = useState(false)
+  const [dtMonthStyle, setDtMonthStyle] = useState('short')
+  const [dtOutYear, setDtOutYear] = useState(true)
+  const [dtOutMonth, setDtOutMonth] = useState(true)
+  const [dtOutDay, setDtOutDay] = useState(true)
+  const [dtOutYearMonth, setDtOutYearMonth] = useState(true)
+
+  const selectedDf = dfOptions.find(o => o.value === dtName)
+  useEffect(() => { setDtSource('') }, [dtName])
+
+  const onDateTimeRun = async (payload) => {
+    try {
+      const res = await opsDatetime(payload)
+      if (!res.success) throw new Error(res.error || '')
+      toast.show(`Created ${res.name}`)
+      await refresh()
+    } catch (e) { toast.show(e.message || 'Datetime op failed') }
+  }
+
+  const runDateTime = () => {
+    if (!dtName) return
+    if (!dtSource) return
+    if (dtAction === 'parse') {
+      const payload = { name: dtName, action: 'parse', source: dtSource }
+      if (dtFormat.trim()) payload.format = dtFormat.trim()
+      if (dtTarget.trim()) payload.target = dtTarget.trim()
+      if (dtOverwrite) payload.overwrite = true
+      onDateTimeRun(payload)
+    } else {
+      const payload = {
+        name: dtName,
+        action: 'derive',
+        source: dtSource,
+        month_style: dtMonthStyle,
+        outputs: { year: dtOutYear, month: dtOutMonth, day: dtOutDay, year_month: dtOutYearMonth }
+      }
+      onDateTimeRun(payload)
     }
   }
 
@@ -543,10 +591,186 @@ export default function Operations() {
             </div>
           </div>
         </Section>
+
+        {/* New: Date / Time */}
+        <Section title="Date / Time">
+          <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsDatetime(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
+        </Section>
+
+        {/* New: Mutate */}
+        <Section title="Mutate (create/overwrite column via expression)">
+          <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
+        </Section>
       </main>
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
+      </div>
+    </div>
+  )
+}
+
+function DateTimeSection({ dfOptions, onRun }) {
+  const [name, setName] = useState('')
+  const [action, setAction] = useState('parse')
+  const [source, setSource] = useState('')
+  const [format, setFormat] = useState('')
+  const [target, setTarget] = useState('')
+  const [overwrite, setOverwrite] = useState(false)
+  const [monthStyle, setMonthStyle] = useState('short')
+  const [outYear, setOutYear] = useState(true)
+  const [outMonth, setOutMonth] = useState(true)
+  const [outDay, setOutDay] = useState(true)
+  const [outYearMonth, setOutYearMonth] = useState(true)
+
+  const selectedDf = dfOptions.find(o => o.value === name)
+  useEffect(() => { setSource('') }, [name])
+
+  const run = () => {
+    if (!name) return
+    if (!source) return
+    if (action === 'parse') {
+      const payload = { name, action: 'parse', source }
+      if (format.trim()) payload.format = format.trim()
+      if (target.trim()) payload.target = target.trim()
+      if (overwrite) payload.overwrite = true
+      onRun(payload)
+    } else {
+      const payload = { name, action: 'derive', source, month_style: monthStyle, outputs: { year: outYear, month: outMonth, day: outDay, year_month: outYearMonth } }
+      onRun(payload)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <label className="block md:col-span-2">
+          <span className="block text-sm">DataFrame</span>
+          <select className="mt-1 border rounded w-full p-2" value={name} onChange={e => setName(e.target.value)}>
+            <option value="">Select…</option>
+            {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-sm">Action</span>
+          <select className="mt-1 border rounded w-full p-2" value={action} onChange={e => setAction(e.target.value)}>
+            <option value="parse">parse (string -> date)</option>
+            <option value="derive">derive parts</option>
+          </select>
+        </label>
+        <label className="block md:col-span-2">
+          <span className="block text-sm">Source column</span>
+          <input className="mt-1 border rounded w-full p-2" list="dt-cols" value={source} onChange={e => setSource(e.target.value)} placeholder="date_col" />
+          <datalist id="dt-cols">
+            {(selectedDf?.columns || []).map(c => (<option key={c} value={c}>{c}</option>))}
+          </datalist>
+        </label>
+      </div>
+      {name && (<DataframePreview name={name} />)}
+      {action === 'parse' ? (
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+          <label className="block">
+            <span className="block text-sm">Format (optional)</span>
+            <input className="mt-1 border rounded w-full p-2" value={format} onChange={e => setFormat(e.target.value)} placeholder="e.g. %Y-%m-%d" />
+          </label>
+          <label className="block">
+            <span className="block text-sm">Target column (optional)</span>
+            <input className="mt-1 border rounded w-full p-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_date" />
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
+            <span className="text-sm">Overwrite if exists</span>
+          </label>
+          <div className="md:col-span-6">
+            <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Parse</button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+            <label className="block">
+              <span className="block text-sm">Month style</span>
+              <select className="mt-1 border rounded w-full p-2" value={monthStyle} onChange={e => setMonthStyle(e.target.value)}>
+                <option value="short">Jan</option>
+                <option value="short_lower">jan</option>
+                <option value="long">January</option>
+                <option value="num">1..12</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={outYear} onChange={e => setOutYear(e.target.checked)} />
+              <span className="text-sm">year</span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={outMonth} onChange={e => setOutMonth(e.target.checked)} />
+              <span className="text-sm">month</span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={outDay} onChange={e => setOutDay(e.target.checked)} />
+              <span className="text-sm">day</span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={outYearMonth} onChange={e => setOutYearMonth(e.target.checked)} />
+              <span className="text-sm">year_month</span>
+            </label>
+            <div className="md:col-span-6">
+              <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Derive</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MutateSection({ dfOptions, onRun }) {
+  const [name, setName] = useState('')
+  const [target, setTarget] = useState('')
+  const [expr, setExpr] = useState('')
+  const [mode, setMode] = useState('vector')
+  const [overwrite, setOverwrite] = useState(false)
+
+  const selectedDf = dfOptions.find(o => o.value === name)
+
+  const run = () => {
+    if (!name || !target || !expr.trim()) return
+    const payload = { name, target: target.trim(), expr: expr.trim(), mode, overwrite }
+    onRun(payload)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+        <label className="block md:col-span-2">
+          <span className="block text-sm">DataFrame</span>
+          <select className="mt-1 border rounded w-full p-2" value={name} onChange={e => setName(e.target.value)}>
+            <option value="">Select…</option>
+            {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-sm">Target column</span>
+          <input className="mt-1 border rounded w-full p-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_col" />
+        </label>
+        <label className="block">
+          <span className="block text-sm">Mode</span>
+          <select className="mt-1 border rounded w-full p-2" value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="vector">vector (Series/scalar)</option>
+            <option value="row">row (use r[\"col\"]) </option>
+          </select>
+        </label>
+        <label className="inline-flex items-center gap-2">
+          <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
+          <span className="text-sm">Overwrite if exists</span>
+        </label>
+      </div>
+      {name && (<DataframePreview name={name} />)}
+      <label className="block">
+        <span className="block text-sm">Expression</span>
+        <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
+      </label>
+      <div>
+        <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Mutate</button>
       </div>
     </div>
   )
