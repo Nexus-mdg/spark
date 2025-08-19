@@ -40,6 +40,13 @@ test_select() {
   curl -sS "${API_BASE}/api/ops/select/get?name=people&columns=id,name" | python3 -m json.tool || true
 }
 
+# New: select exclude
+
+test_select_exclude() {
+  echo "\n[TEST] SELECT (exclude): people drop id,name"
+  curl -sS "${API_BASE}/api/ops/select/get?name=people&columns=id,name&exclude=true" | python3 -m json.tool || true
+}
+
 test_groupby() {
   echo "\n[TEST] GROUPBY: purchases by product sum(quantity)"
   AGGS='%7B%22quantity%22%3A%22sum%22%7D'
@@ -92,6 +99,7 @@ test_datetime_parse() {
 
 run_all() {
   test_select
+  test_select_exclude
   test_groupby
   test_filter
   test_merge
@@ -111,6 +119,7 @@ main() {
   case "$cmd" in
     wait) exit 0 ;;
     select) test_select ;;
+    select-exclude) test_select_exclude ;;
     groupby) test_groupby ;;
     filter) test_filter ;;
     merge) test_merge ;;

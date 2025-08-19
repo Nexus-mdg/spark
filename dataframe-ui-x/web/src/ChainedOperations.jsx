@@ -146,15 +146,21 @@ function ParamInput({ op, dfOptions, onCreate }) {
         )
       case 'select':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block md:col-span-2">
               <span className="block text-sm">Columns (comma)</span>
               <input className="mt-1 border rounded w-full p-2" value={state.columns || ''} onChange={e => update({ columns: e.target.value })} placeholder="id,name,value" />
             </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={!!state.exclude} onChange={e => update({ exclude: e.target.checked })} />
+              <span className="text-sm">Exclude selected</span>
+            </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               const columns = String(state.columns||'').split(',').map(s=>s.trim()).filter(Boolean)
               if (columns.length === 0) return
-              onCreate({ op: 'select', params: { columns } })
+              const params = { columns }
+              if (state.exclude) params.exclude = true
+              onCreate({ op: 'select', params })
             }}>Add step</button>
           </div>
         )

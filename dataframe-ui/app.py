@@ -831,6 +831,7 @@ def op_select():
         p = request.get_json(force=True)
         name = p.get('name')
         cols = p.get('columns') or []
+        exclude = bool(p.get('exclude') or False)
         if not name:
             return jsonify({'success': False, 'error': 'name is required'}), 400
         if not isinstance(cols, list) or len(cols) == 0:
@@ -839,10 +840,17 @@ def op_select():
         missing = [c for c in cols if c not in df.columns]
         if missing:
             return jsonify({'success': False, 'error': f'Columns not found: {", ".join(missing)}'}), 400
-        projected = df[cols].copy()
-        base = f"{name}__select_{'-'.join(cols)}"
+        if exclude:
+            keep_cols = [c for c in df.columns if c not in cols]
+            projected = df[keep_cols].copy()
+            base = f"{name}__drop_{'-'.join(cols)}"
+            desc = f"Drop columns={','.join(cols)}"
+        else:
+            projected = df[cols].copy()
+            base = f"{name}__select_{'-'.join(cols)}"
+            desc = f"Select columns={','.join(cols)}"
         out_name = _unique_name(base)
-        meta = _save_df_to_cache(out_name, projected, description=f"Select columns={','.join(cols)}", source='ops:select')
+        meta = _save_df_to_cache(out_name, projected, description=desc, source='ops:select')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1142,11 +1150,15 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if df_curr is None:
             raise ValueError('select: no current dataframe; add a load step first')
         cols = params.get('columns') or []
+        exclude = bool(params.get('exclude') or False)
         if not cols:
             raise ValueError('select: columns are required')
         missing = [c for c in cols if c not in df_curr.columns]
         if missing:
             raise ValueError(f'select: columns not found: {", ".join(missing)}')
+        if exclude:
+            keep_cols = [c for c in df_curr.columns if c not in cols]
+            return df_curr[keep_cols].copy(), f"drop columns={cols}"
         return df_curr[cols].copy(), f"select columns={cols}"
 
     # rename

@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-ui
 
-.PHONY: help up down restart restart-x logs logs-x wait test select groupby filter merge pivot compare-identical compare-schema mutate datetime all prepare build build-ui build-ui-x
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime all prepare build build-ui build-ui-x
 
 help:
 	@echo "Targets:"
@@ -20,6 +20,7 @@ help:
 	@echo "  wait       - wait for API readiness"
 	@echo "  test       - run all curl tests"
 	@echo "  select     - run SELECT test"
+	@echo "  select-exclude - run SELECT exclude test"
 	@echo "  groupby    - run GROUPBY test"
 	@echo "  filter     - run FILTER test"
 	@echo "  merge      - run MERGE test"
@@ -64,6 +65,9 @@ test: prepare
 
 select: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh select
+
+select-exclude: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh select-exclude
 
 groupby: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh groupby

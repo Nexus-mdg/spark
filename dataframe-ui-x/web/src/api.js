@@ -116,11 +116,11 @@ export const opsGroupBy = async (payload) => {
   return res.json();
 };
 
-export const opsSelect = async ({ name, columns }) => {
+export const opsSelect = async ({ name, columns, exclude }) => {
   const res = await fetch(`${BASE()}/api/ops/select`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, columns })
+    body: JSON.stringify({ name, columns, ...(exclude ? { exclude: true } : {}) })
   });
   if (!res.ok) throw new Error(`Select failed: ${res.status}`);
   return res.json();

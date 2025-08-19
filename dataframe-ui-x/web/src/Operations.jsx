@@ -36,7 +36,7 @@ function useToast() {
   return { show: (m) => setMsg(m), visible, msg }
 }
 
-function DataframePreview({ name, columnsFilter }) {
+function DataframePreview({ name, columnsFilter, excludeSelected }) {
   const [state, setState] = useState({ loading: false, error: '', columns: [], rows: [], total: null })
   useEffect(() => {
     let alive = true
@@ -48,21 +48,23 @@ function DataframePreview({ name, columnsFilter }) {
         const cols = (res.columns || [])
         const rows = (res.preview || [])
         const total = res.total_rows || (res.pagination ? res.pagination.total_rows : null) || null
-        // Filter columns if requested
-        const useCols = Array.isArray(columnsFilter) && columnsFilter.length > 0 ? cols.filter(c => columnsFilter.includes(c)) : cols
+        // Decide which columns to show
+        let useCols = cols
+        if (Array.isArray(columnsFilter) && columnsFilter.length > 0) {
+          useCols = excludeSelected ? cols.filter(c => !columnsFilter.includes(c)) : cols.filter(c => columnsFilter.includes(c))
+        }
         const projRows = rows.map(r => {
           if (!Array.isArray(columnsFilter) || columnsFilter.length === 0) return r
           const obj = {}
           useCols.forEach(c => { obj[c] = r[c] })
           return obj
         })
-        // Only show first 10 rows in Operations preview
         const limitedRows = projRows.slice(0, 10)
         setState({ loading: false, error: '', columns: useCols, rows: limitedRows, total })
       })
       .catch(e => { if (alive) setState({ loading: false, error: e.message || 'Failed to load preview', columns: [], rows: [], total: null }) })
     return () => { alive = false }
-  }, [name, JSON.stringify(columnsFilter)])
+  }, [name, JSON.stringify(columnsFilter), !!excludeSelected])
 
   if (!name) return null
   return (
@@ -234,6 +236,7 @@ export default function Operations() {
   // Select (column projection)
   const [selName, setSelName] = useState('')
   const [selCols, setSelCols] = useState([])
+  const [selExclude, setSelExclude] = useState(false)
   const selectedDfMeta = dfOptions.find(o => o.value === selName)
   useEffect(() => { setSelCols([]) }, [selName])
   const toggleSelCol = (col) => setSelCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])
@@ -241,7 +244,7 @@ export default function Operations() {
     if (!selName) return toast.show('Pick a dataframe')
     if (selCols.length === 0) return toast.show('Pick at least one column')
     try {
-      const res = await opsSelect({ name: selName, columns: selCols })
+      const res = await opsSelect({ name: selName, columns: selCols, exclude: selExclude })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Select failed') }
@@ -561,10 +564,14 @@ export default function Operations() {
                     </label>
                   ))}
                 </div>
+                <label className="inline-flex items-center gap-2 mt-2">
+                  <input type="checkbox" checked={selExclude} onChange={e => setSelExclude(e.target.checked)} />
+                  <span className="text-sm">Exclude selected</span>
+                </label>
               </div>
             )}
-            {/* Preview filtered to selected columns */}
-            {selName && (<DataframePreview name={selName} columnsFilter={selCols} />)}
+            {/* Preview filtered to selected columns (or remaining if exclude) */}
+            {selName && (<DataframePreview name={selName} columnsFilter={selCols} excludeSelected={selExclude} />)}
             <div>
               <button onClick={onSelectCols} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create selection</button>
             </div>
