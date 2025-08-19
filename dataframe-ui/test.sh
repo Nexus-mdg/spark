@@ -72,6 +72,24 @@ test_compare_schema() {
   curl -sS "${API_BASE}/api/ops/compare/get?name1=people&name2=purchases" | python3 -m json.tool || true
 }
 
+# New: mutate tests (POST JSON)
+
+test_mutate_total_value() {
+  echo "\n[TEST] MUTATE (vector): purchases total_value = quantity * price"
+  curl -sS -X POST "${API_BASE}/api/ops/mutate" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","target":"total_value","mode":"vector","expr":"col('\''quantity'\'') * col('\''price'\'')"}' | python3 -m json.tool || true
+}
+
+# New: datetime test (POST JSON)
+
+test_datetime_parse() {
+  echo "\n[TEST] DATETIME parse: purchases date -> date_dt"
+  curl -sS -X POST "${API_BASE}/api/ops/datetime" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","action":"parse","source":"date","target":"date_dt","overwrite":true}' | python3 -m json.tool || true
+}
+
 run_all() {
   test_select
   test_groupby
@@ -80,6 +98,8 @@ run_all() {
   test_pivot
   test_compare_identical
   test_compare_schema
+  test_mutate_total_value
+  test_datetime_parse
 }
 
 main() {
@@ -89,6 +109,7 @@ main() {
   ensure_upload people "${SAMPLES_DIR}/people.csv"
   ensure_upload purchases "${SAMPLES_DIR}/purchases.csv"
   case "$cmd" in
+    wait) exit 0 ;;
     select) test_select ;;
     groupby) test_groupby ;;
     filter) test_filter ;;
@@ -96,6 +117,8 @@ main() {
     pivot) test_pivot ;;
     compare-identical) test_compare_identical ;;
     compare-schema) test_compare_schema ;;
+    mutate) test_mutate_total_value ;;
+    datetime) test_datetime_parse ;;
     all) run_all ;;
     *) echo "Unknown command: $cmd" >&2; exit 2 ;;
   esac
