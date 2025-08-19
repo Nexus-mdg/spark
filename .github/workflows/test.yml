@@ -39,10 +39,12 @@ jobs:
 
     - name: Wait for Redis
       run: |
-        until redis-cli -h localhost -p 6379 ping; do
+        # Simple approach using netcat (already available on GitHub runners)
+        until timeout 2 bash -c "</dev/tcp/localhost/6379"; do
           echo "Waiting for Redis..."
           sleep 2
         done
+        echo "Redis is ready!"
 
     - name: Start dataframe-ui service (without Spark)
       run: |
