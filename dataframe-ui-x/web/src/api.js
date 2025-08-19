@@ -137,6 +137,20 @@ export const opsRename = async ({ name, map }) => {
   return res.json();
 }
 
+// New: DateTime operation (parse/derive)
+export const opsDatetime = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/datetime`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Datetime op failed: ${res.status} ${t}`)
+  }
+  return res.json()
+}
+
 // Pipeline endpoints
 export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
   const res = await fetch(`${BASE()}/api/pipeline/preview`, {
