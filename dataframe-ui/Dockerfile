@@ -2,10 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including JRE 21
 RUN apt-get update && apt-get install -y \
     gcc \
+    openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
+
+# Set Java environment variables
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -16,14 +21,6 @@ COPY . .
 
 # Create uploads directory
 RUN mkdir -p uploads
-
-# Install Spark driver dependencies (JRE) late to preserve cache of earlier layers
-RUN apt-get update && apt-get install -y --no-install-recommends default-jre-headless && \
-    rm -rf /var/lib/apt/lists/* && \
-    JAVA_HOME_PATH=$(dirname $(dirname $(readlink -f $(which java)))) && \
-    ln -s "$JAVA_HOME_PATH" /opt/java-home
-ENV JAVA_HOME=/opt/java-home
-ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Expose port 4999
 EXPOSE 4999
