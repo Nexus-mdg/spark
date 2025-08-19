@@ -54,6 +54,22 @@ export const uploadDataframe = async ({ file, name, description }) => {
   return res.json();
 };
 
+// New: Rename a dataframe's name and/or description
+export const renameDataframe = async (oldName, { new_name, description } = {}) => {
+  const payload = {};
+  if (new_name && new_name.trim()) payload.new_name = new_name.trim();
+  if (typeof description === 'string') payload.description = description;
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(oldName)}/rename`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    let msg = `Rename failed: ${res.status}`;
+    try { const t = await res.text(); if (t) msg += ` ${t}`; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+};
+
 // URL builders for downloads and share links
 export const buildDownloadCsvUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.csv`;
 export const buildDownloadJsonUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.json`;

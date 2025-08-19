@@ -8,7 +8,8 @@ import {
   deleteDataframe,
   getDataframe,
   buildDownloadCsvUrl,
-  buildDownloadJsonUrl
+  buildDownloadJsonUrl,
+  renameDataframe
 } from './api.js'
 
 function useToast() {
@@ -80,6 +81,13 @@ export default function Home() {
   const [confirmMessage, setConfirmMessage] = useState('Are you sure?')
   const [confirming, setConfirming] = useState(false)
   const confirmActionRef = useRef(null)
+
+  // Edit modal state
+  const [editOpen, setEditOpen] = useState(false)
+  const [editOldName, setEditOldName] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const toast = useToast()
   const navigate = useNavigate()
@@ -164,6 +172,29 @@ export default function Home() {
       toast.show('Link copied')
     } catch {
       toast.show('Copy failed')
+    }
+  }
+
+  // Open edit modal for a given row
+  const openEdit = (row) => {
+    setEditOldName(row.name)
+    setEditName(row.name)
+    setEditDesc(row.description || '')
+    setEditOpen(true)
+  }
+
+  const saveEdit = async () => {
+    if (!editOldName) return
+    setSavingEdit(true)
+    try {
+      await renameDataframe(editOldName, { new_name: editName, description: editDesc })
+      setEditOpen(false)
+      toast.show('Updated successfully')
+      await refreshList(); await refreshStats()
+    } catch (err) {
+      toast.show(err.message || 'Update failed')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -294,6 +325,9 @@ export default function Home() {
                         <button onClick={() => copyLink(buildDownloadJsonUrl(r.name))} className="p-2 rounded hover:bg-gray-100" title="Copy JSON link">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 7a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3h-2v-2h2a1 1 0 001-1V7a1 1 0 00-1-1h-7a1 1 0 00-1 1v2H8V7z"/><path d="M3 10a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3H6a3 3 0 01-3-3v-7zm3-1a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1v-7a1 1 0 00-1-1H6z"/></svg>
                         </button>
+                        <button onClick={() => openEdit(r)} className="p-2 rounded hover:bg-gray-100" title="Edit name/description" aria-label="Edit">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                        </button>
                         <button onClick={() => onDelete(r.name)} className="p-2 rounded hover:bg-red-50 text-red-600" title="Delete">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a1 1 0 00-1 1v1H5.5a1 1 0 100 2H6v12a3 3 0 003 3h6a3 3 0 003-3V7h.5a1 1 0 100-2H16V4a1 1 0 00-1-1H9zm2 4a1 1 0 012 0v10a1 1 0 11-2 0V7zm5 0a1 1 0 10-2 0v10a1 1 0 102 0V7zM10 4h4v1h-4V4z"/></svg>
                         </button>
@@ -338,6 +372,25 @@ export default function Home() {
       </Modal>
 
       <ConfirmDialog open={confirmOpen} title={confirmTitle} message={confirmMessage} confirming={confirming} onConfirm={onConfirmProceed} onCancel={() => !confirming && setConfirmOpen(false)} />
+
+      {/* Edit DataFrame Modal */}
+      <Modal open={editOpen} title={`Edit DataFrame`} onClose={() => !savingEdit && setEditOpen(false)}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+            <div className="text-xs text-gray-500 mt-1">Renaming will update the DataFrame key; update any references in pipelines if needed.</div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button disabled={savingEdit} onClick={() => setEditOpen(false)} className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50">Cancel</button>
+            <button disabled={savingEdit} onClick={saveEdit} className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save Changes'}</button>
+          </div>
+        </div>
+      </Modal>
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
