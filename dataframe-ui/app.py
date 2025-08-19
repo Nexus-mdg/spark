@@ -50,6 +50,37 @@ def df_to_records_json_safe(df: pd.DataFrame):
     safe_df = df.replace([np.inf, -np.inf], None).where(pd.notnull(df), None)
     return json.loads(safe_df.to_json(orient='records'))
 
+# ntfy notification helper
+
+def notify_ntfy(title: str, message: str, tags=None, click: str | None = None, priority: int | None = None) -> None:
+    """Publish a notification to ntfy. Config via env:
+    - NTFY_ENABLE: default true
+    - NTFY_URL: base URL (default http://localhost:8080)
+    - NTFY_TOPIC: topic (default spark)
+    """
+    try:
+        if str(os.getenv('NTFY_ENABLE', 'true')).lower() not in ('1', 'true', 'yes', 'on'):
+            return
+        base = (os.getenv('NTFY_URL', 'http://localhost:8080') or 'http://localhost:8080').rstrip('/')
+        topic = (os.getenv('NTFY_TOPIC', 'spark') or 'spark').strip('/ ')
+        url = f"{base}/{topic}"
+        headers = {}
+        if title:
+            headers['Title'] = title
+        if tags:
+            headers['Tags'] = ','.join(tags) if isinstance(tags, (list, tuple)) else str(tags)
+        if click:
+            headers['Click'] = click
+        if priority is not None:
+            headers['Priority'] = str(priority)
+        # Prefer plain text body
+        requests.post(url, data=message.encode('utf-8'), headers=headers, timeout=2)
+    except Exception as e:
+        try:
+            app.logger.debug('ntfy notify failed: %s', e)
+        except Exception:
+            pass
+
 @app.route('/')
 def index():
     """Serve the main web interface"""
@@ -612,6 +643,12 @@ def op_compare():
                     spark.stop()
                 except Exception:
                     pass
+                # notify
+                notify_ntfy(
+                    title=f"DF Compare: {n1} vs {n2}",
+                    message="schema mismatch",
+                    tags=['compare', 'schema', 'warn']
+                )
                 return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch'})
 
             sdf1 = spark.createDataFrame(_rows_from_pandas(df1), schema=schema1)
@@ -624,6 +661,11 @@ def op_compare():
                     spark.stop()
                 except Exception:
                     pass
+                notify_ntfy(
+                    title=f"DF Compare: {n1} vs {n2}",
+                    message=f"row count mismatch: {count1} != {count2}",
+                    tags=['compare', 'row_count', 'warn']
+                )
                 return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch'})
 
             # Order-independent data comparison using exceptAll
@@ -636,6 +678,11 @@ def op_compare():
                     spark.stop()
                 except Exception:
                     pass
+                notify_ntfy(
+                    title=f"DF Compare: {n1} vs {n2}",
+                    message="identical",
+                    tags=['compare', 'identical', 'ok']
+                )
                 return jsonify({'success': True, 'identical': True, 'result_type': 'identical'})
 
             created = []
@@ -655,6 +702,11 @@ def op_compare():
                 spark.stop()
             except Exception:
                 pass
+            notify_ntfy(
+                title=f"DF Compare: {n1} vs {n2}",
+                message=f"data mismatch: left_unique={int(c1)}, right_unique={int(c2)}; created={created}",
+                tags=['compare', 'mismatch']
+            )
             return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': int(c1), 'right_unique': int(c2), 'created': created, 'note': f'Spark comparator used; master={master_url}'})
         except Exception as e:
             # Log Spark failure and fall back to pandas
@@ -667,10 +719,20 @@ def op_compare():
         # Schema comparison
         schema_match = list(df1.columns) == list(df2.columns) and list(map(str, df1.dtypes)) == list(map(str, df2.dtypes))
         if not schema_match:
+            notify_ntfy(
+                title=f"DF Compare: {n1} vs {n2}",
+                message="schema mismatch (pandas)",
+                tags=['compare', 'schema', 'warn']
+            )
             return jsonify({'success': True, 'identical': False, 'result_type': 'schema_mismatch', 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Row count check
         if len(df1) != len(df2):
+            notify_ntfy(
+                title=f"DF Compare: {n1} vs {n2}",
+                message=f"row count mismatch: {len(df1)} != {len(df2)} (pandas)",
+                tags=['compare', 'row_count', 'warn']
+            )
             return jsonify({'success': True, 'identical': False, 'result_type': 'row_count_mismatch', 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Data comparison (order independent): use indicator merge on all columns
@@ -681,6 +743,11 @@ def op_compare():
         c1 = int(len(left_only)); c2 = int(len(right_only))
         created = []
         if c1 == 0 and c2 == 0:
+            notify_ntfy(
+                title=f"DF Compare: {n1} vs {n2}",
+                message="identical (pandas)",
+                tags=['compare', 'identical', 'ok']
+            )
             return jsonify({'success': True, 'identical': True, 'result_type': 'identical', 'created': created, 'note': 'pandas fallback used', 'spark_error': spark_error})
 
         # Cache differing rows (cap to 100k)
@@ -694,6 +761,11 @@ def op_compare():
             _save_df_to_cache(name_u2, right_only, description=f'Rows unique to {n2} vs {n1}', source='ops:compare')
             created.append(name_u2)
 
+        notify_ntfy(
+            title=f"DF Compare: {n1} vs {n2}",
+            message=f"data mismatch (pandas): left_unique={c1}, right_unique={c2}; created={created}",
+            tags=['compare', 'mismatch']
+        )
         return jsonify({'success': True, 'identical': False, 'result_type': 'data_mismatch', 'left_unique': c1, 'right_unique': c2, 'created': created, 'note': 'pandas fallback used', 'spark_error': spark_error})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1263,7 +1335,7 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
             raise ValueError('mutate: add a load step or set params.name')
         target = (params.get('target') or params.get('to') or '').strip()
         expr = params.get('expr') or params.get('expression')
-        mode = (params.get('mode') or 'vector').lower()
+        mode = params.get('mode') or 'vector'
         overwrite = bool(params.get('overwrite') or False)
         if not target:
             raise ValueError('mutate: target is required')
@@ -1440,10 +1512,10 @@ def pipeline_preview():
         msgs: list[dict] = []
         if isinstance(start, list) and len(start) > 0:
             current = _load_df_from_cache(start[0])
-            msgs.append({'op': 'load', 'desc': f'load {start[0]}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+            msgs.append({'op': 'load', 'desc': f"load {start[0]}", 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
-            msgs.append({'op': 'load', 'desc': f'load {start}', 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+            msgs.append({'op': 'load', 'desc': f"load {start}", 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         for step in steps:
             current, desc = _apply_op(current, step)
             msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
@@ -1473,11 +1545,22 @@ def pipeline_run():
         if current is None:
             return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
         created = None
+        created_name = None
         if materialize:
             base = out_name or 'pipeline_result'
             uniq = _unique_name(base)
             meta = _save_df_to_cache(uniq, current, description='pipeline result', source='ops:pipeline')
             created = {'name': uniq, 'metadata': meta}
+            created_name = uniq
+        # notify success
+        try:
+            title = 'Pipeline run'
+            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            if created_name:
+                msg += f"; materialized={created_name}"
+            notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
+        except Exception:
+            pass
         return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -1577,11 +1660,22 @@ def pipelines_run(name):
         if current is None:
             return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
         created = None
+        created_name = None
         if materialize:
             base = out_name or f'{name}_result'
             uniq = _unique_name(base)
             meta = _save_df_to_cache(uniq, current, description=f'pipeline: {name}', source='ops:pipeline')
             created = {'name': uniq, 'metadata': meta}
+            created_name = uniq
+        # notify success
+        try:
+            title = f'Pipeline run: {name}'
+            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            if created_name:
+                msg += f"; materialized={created_name}"
+            notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
+        except Exception:
+            pass
         return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400

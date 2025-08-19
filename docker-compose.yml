@@ -64,6 +64,10 @@ services:
       # Align driver/executor Python versions
       - PYSPARK_PYTHON=python3
       - PYSPARK_DRIVER_PYTHON=python3
+      # ntfy notifications
+      - NTFY_ENABLE=true
+      - NTFY_URL=http://localhost:8080
+      - NTFY_TOPIC=spark
     depends_on:
       - redis
     volumes:
