@@ -1482,6 +1482,21 @@ def pipeline_run():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
+@app.route('/api/pipelines', methods=['OPTIONS'])
+def pipelines_options():
+    try:
+        from flask import Response
+        resp = Response('', status=204)
+        # Basic CORS headers; flask_cors should also add headers, but be explicit for safety
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        resp.headers['Access-Control-Max-Age'] = '600'
+        return resp
+    except Exception:
+        return '', 204
+
+
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', '4999'))
     app.run(host='0.0.0.0', port=PORT, debug=True)
