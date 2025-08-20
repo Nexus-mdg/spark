@@ -68,7 +68,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Configure environment
-export DATABASE_URL="postgresql://user:password@localhost:5432/dataframe_auth"
+export DATABASE_URL="postgresql://user:password@localhost:15432/dataframe_auth"
 export SECRET_KEY="your-secure-random-key"
 export API_BASE_URL="http://localhost:4999"
 

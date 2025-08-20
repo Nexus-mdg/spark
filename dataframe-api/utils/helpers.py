@@ -20,13 +20,13 @@ def df_to_records_json_safe(df: pd.DataFrame):
 def notify_ntfy(title: str, message: str, tags=None, click: str | None = None, priority: int | None = None) -> None:
     """Publish a notification to ntfy. Config via env:
     - NTFY_ENABLE: default true
-    - NTFY_URL: base URL (default http://localhost:8080)
+    - NTFY_URL: base URL (default https://localhost:8443)
     - NTFY_TOPIC: topic (default spark)
     """
     try:
         if str(os.getenv('NTFY_ENABLE', 'true')).lower() not in ('1', 'true', 'yes', 'on'):
             return
-        base = (os.getenv('NTFY_URL', 'http://localhost:8080') or 'http://localhost:8080').rstrip('/')
+        base = (os.getenv('NTFY_URL', 'https://localhost:8443') or 'https://localhost:8443').rstrip('/')
         topic = (os.getenv('NTFY_TOPIC', 'spark') or 'spark').strip('/ ')
         url = f"{base}/{topic}"
         headers = {}

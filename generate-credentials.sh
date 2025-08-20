@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+POSTGRES_PORT="${POSTGRES_PORT:-15432}"
 POSTGRES_DB="${POSTGRES_DB:-dataframe_ui}"
 POSTGRES_USER="${POSTGRES_USER:-dataframe_user}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dataframe_password}"
@@ -232,7 +232,7 @@ Commands:
 
 Environment Variables:
     POSTGRES_HOST          PostgreSQL host (default: localhost)
-    POSTGRES_PORT          PostgreSQL port (default: 5432)
+    POSTGRES_PORT          PostgreSQL port (default: 15432)
     POSTGRES_DB            PostgreSQL database (default: dataframe_ui)
     POSTGRES_USER          PostgreSQL user (default: dataframe_user)
     POSTGRES_PASSWORD      PostgreSQL password (default: dataframe_password)

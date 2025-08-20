@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
 
 help:
 	@echo "Targets:"
@@ -60,6 +60,13 @@ help:
 	@echo "  dataframe-download-csv - run DataFrame CSV download test"
 	@echo "  dataframe-download-json - run DataFrame JSON download test"
 	@echo "  api-stats             - run API stats test"
+	@echo ""
+	@echo "Database Management:"
+	@echo "  generate-account      - create new user account interactively"
+	@echo "  init-admin            - initialize admin account"
+	@echo "  flush-redis           - clear Redis cache"
+	@echo "  flush-users           - remove all users from PostgreSQL"
+	@echo "  list-users            - list all users in PostgreSQL"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -201,3 +208,27 @@ api-stats: prepare
 
 down:
 	docker compose -f ./docker-compose.yml down
+
+# Authentication and database management commands
+
+generate-account:
+	@echo "Creating new user account..."
+	./generate-credentials.sh generate
+
+init-admin:
+	@echo "Initializing admin account..."
+	./generate-credentials.sh init
+
+flush-redis:
+	@echo "Flushing Redis cache..."
+	docker compose -f ./docker-compose.yml exec redis redis-cli FLUSHALL
+	@echo "Redis cache cleared successfully"
+
+flush-users:
+	@echo "Flushing all users from PostgreSQL..."
+	docker compose -f ./docker-compose.yml exec postgres psql -U dataframe_user -d dataframe_ui -c "DELETE FROM users;"
+	@echo "All users cleared from database"
+
+list-users:
+	@echo "Listing all users in PostgreSQL..."
+	docker compose -f ./docker-compose.yml exec postgres psql -U dataframe_user -d dataframe_ui -c "SELECT username, created_at FROM users ORDER BY created_at;"
