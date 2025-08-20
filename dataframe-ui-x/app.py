@@ -6,6 +6,7 @@ import redis
 import bcrypt
 import json
 from datetime import datetime, timedelta
+import datetime as dt
 from functools import wraps
 
 # Serve built assets from the dist directory (created by Vite build)
@@ -34,6 +35,61 @@ Session(app)
 # Redis client for user management
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 
+# Global error handler for API routes to ensure JSON responses
+@app.errorhandler(Exception)
+def handle_api_error(error):
+    """Handle exceptions for API routes by returning JSON instead of HTML"""
+    if request.path.startswith('/api/'):
+        # For API routes, always return JSON error responses
+        if hasattr(error, 'code') and hasattr(error, 'description'):
+            # Flask HTTP exceptions
+            return jsonify({
+                'error': error.description,
+                'code': error.code
+            }), error.code
+        else:
+            # Generic exceptions
+            print(f"API error: {error}")
+            return jsonify({
+                'error': 'Internal server error',
+                'message': str(error)
+            }), 500
+    else:
+        # For non-API routes, handle normally
+        raise error
+
+# Specific handler for 404 errors
+@app.errorhandler(404)
+def spa_fallback(error):
+    """Handle 404 errors - return JSON for API routes, SPA for others"""
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'error': 'API endpoint not found',
+            'code': 404
+        }), 404
+    else:
+        # Return SPA for client-side routing
+        try:
+            return send_from_directory(app.static_folder, 'index.html')
+        except Exception:
+            return "Build not found. Please build the frontend.", 404
+
+# Specific handler for 405 Method Not Allowed errors
+@app.errorhandler(405)
+def method_not_allowed(error):
+    """Handle method not allowed errors"""
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'error': 'Method not allowed for this endpoint',
+            'code': 405
+        }), 405
+    else:
+        # For non-API routes, return SPA
+        try:
+            return send_from_directory(app.static_folder, 'index.html')
+        except Exception:
+            return "Build not found. Please build the frontend.", 404
+
 # Authentication functions
 def get_user(username):
     """Retrieve user data from Redis"""
@@ -58,7 +114,7 @@ def update_last_login(username):
     try:
         user = get_user(username)
         if user:
-            user['last_login'] = datetime.utcnow().isoformat() + 'Z'
+            user['last_login'] = datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
             redis_client.set(f"user:{username}", json.dumps(user))
     except Exception as e:
         print(f"Error updating last login for {username}: {e}")
@@ -100,7 +156,14 @@ def login_required(f):
 def login():
     """Login endpoint"""
     try:
-        data = request.get_json()
+        # Safely get JSON data
+        data = None
+        try:
+            data = request.get_json(force=True)
+        except Exception as json_error:
+            print(f"JSON parsing error: {json_error}")
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
         if not data or not data.get('username') or not data.get('password'):
             return jsonify({'error': 'Username and password required'}), 400
         
@@ -196,14 +259,6 @@ def config_js():
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
-
-# Fallback for client-side routing (any unknown path returns index.html)
-@app.errorhandler(404)
-def spa_fallback(_):
-    try:
-        return send_from_directory(app.static_folder, 'index.html')
-    except Exception:
-        return "Build not found. Please build the frontend.", 404
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT, debug=True)
