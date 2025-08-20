@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename all prepare build build-ui build-ui-x
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x
 
 help:
 	@echo "Targets:"
@@ -19,6 +19,8 @@ help:
 	@echo "  logs-x     - tail dataframe-ui-x logs"
 	@echo "  wait       - wait for API readiness"
 	@echo "  test       - run all curl tests"
+	@echo ""
+	@echo "Basic Operation Tests:"
 	@echo "  select     - run SELECT test"
 	@echo "  select-exclude - run SELECT exclude test"
 	@echo "  groupby    - run GROUPBY test"
@@ -30,6 +32,34 @@ help:
 	@echo "  mutate     - run MUTATE test (total_value)"
 	@echo "  datetime   - run DATETIME parse test"
 	@echo "  rename     - run DataFrame RENAME test"
+	@echo ""
+	@echo "Advanced Operation Tests:"
+	@echo "  rename-columns - run RENAME columns test"
+	@echo "  pivot-longer   - run PIVOT longer test"
+	@echo "  mutate-row     - run MUTATE row mode test"
+	@echo "  datetime-derive - run DATETIME derive test"
+	@echo "  filter-advanced - run advanced FILTER test"
+	@echo "  filter-null    - run null check FILTER test"
+	@echo "  merge-left     - run LEFT MERGE test"
+	@echo "  merge-outer    - run OUTER MERGE test"
+	@echo ""
+	@echo "Pipeline Tests:"
+	@echo "  pipeline-preview      - run PIPELINE preview test"
+	@echo "  pipeline-run          - run PIPELINE run test"
+	@echo "  pipeline-save         - run PIPELINE save test"
+	@echo "  pipeline-load         - run PIPELINE load test"
+	@echo "  pipeline-run-saved    - run saved PIPELINE run test"
+	@echo "  pipeline-list         - run PIPELINE list test"
+	@echo "  pipeline-export-yaml  - run PIPELINE YAML export test"
+	@echo "  pipeline-import-yaml  - run PIPELINE YAML import test"
+	@echo "  chained-pipelines     - run chained PIPELINE test"
+	@echo ""
+	@echo "Advanced Tests:"
+	@echo "  chained-operations    - run chained operations test"
+	@echo "  dataframe-profile     - run DataFrame profile test"
+	@echo "  dataframe-download-csv - run DataFrame CSV download test"
+	@echo "  dataframe-download-json - run DataFrame JSON download test"
+	@echo "  api-stats             - run API stats test"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -96,6 +126,78 @@ datetime: prepare
 
 rename: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh rename
+
+# Additional operation tests
+
+rename-columns: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh rename-columns
+
+pivot-longer: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pivot-longer
+
+mutate-row: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh mutate-row
+
+datetime-derive: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh datetime-derive
+
+filter-advanced: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh filter-advanced
+
+filter-null: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh filter-null
+
+merge-left: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh merge-left
+
+merge-outer: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh merge-outer
+
+# Pipeline tests
+
+pipeline-preview: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-preview
+
+pipeline-run: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-run
+
+pipeline-save: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-save
+
+pipeline-load: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-load
+
+pipeline-run-saved: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-run-saved
+
+pipeline-list: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-list
+
+pipeline-export-yaml: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-export-yaml
+
+pipeline-import-yaml: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pipeline-import-yaml
+
+chained-pipelines: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh chained-pipelines
+
+# Advanced tests
+
+chained-operations: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh chained-operations
+
+dataframe-profile: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh dataframe-profile
+
+dataframe-download-csv: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh dataframe-download-csv
+
+dataframe-download-json: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh dataframe-download-json
+
+api-stats: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh api-stats
 
 down:
 	docker compose -f ./docker-compose.yml down
