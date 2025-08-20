@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import Header from './Header.jsx'
+import Footer from './components/Footer.jsx'
 
 export default function UserProfile() {
   const navigate = useNavigate()
