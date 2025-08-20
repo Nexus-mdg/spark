@@ -31,19 +31,111 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
             raise ValueError('merge: keys are required')
         names: list[str] = params.get('names') or []
         others: list[str] = params.get('with') or params.get('others') or []
+        
+        # Debug logging
+        print(f"[DEBUG] merge operation: how={how}, keys={keys}, names={names}, others={others}")
+        
+        # Validate that keys is a list of strings
+        if isinstance(keys, str):
+            keys = [k.strip() for k in keys.split(',') if k.strip()]
+        if not isinstance(keys, list) or not keys:
+            raise ValueError('merge: keys must be a non-empty list or comma-separated string')
+            
+        # Handle the case where we have a current dataframe AND named dataframes to merge with
+        if names and df_curr is not None:
+            print(f"[DEBUG] merge: using current dataframe + named dataframes")
+            # In chained pipelines, we want to merge the current dataframe with the named ones
+            # Start with current dataframe
+            df = df_curr.copy()
+            print(f"[DEBUG] starting with current dataframe: shape={df.shape}, columns={list(df.columns)}")
+            
+            # Validate that merge keys exist in current dataframe
+            missing_keys_curr = [k for k in keys if k not in df.columns]
+            if missing_keys_curr:
+                raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+            
+            # Pre-validate that all required named dataframes exist
+            from utils.redis_client import redis_client
+            missing_dfs = []
+            for name in names:
+                exists = redis_client.exists(f"df:{name}")
+                print(f"[DEBUG] checking dataframe '{name}': exists={exists}")
+                if not exists:
+                    missing_dfs.append(name)
+            if missing_dfs:
+                raise ValueError(f'merge: dataframes not found: {", ".join(missing_dfs)}')
+            
+            # Merge current dataframe with each named dataframe
+            for nm in names:
+                try:
+                    d2 = _load_df_from_cache(nm)
+                    print(f"[DEBUG] loaded dataframe '{nm}': shape={d2.shape}, columns={list(d2.columns)}")
+                except ValueError as e:
+                    raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
+                # Validate that merge keys exist in the other dataframe
+                missing_keys_other = [k for k in keys if k not in d2.columns]
+                if missing_keys_other:
+                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
+                df = df.merge(d2, on=keys, how=how)
+                print(f"[DEBUG] merge result: shape={df.shape}")
+            return df, f'merge current + names={names} how={how} keys={keys}'
+        
         if names:
             if len(names) < 2:
                 raise ValueError('merge: names must include at least two')
-            df = _load_df_from_cache(names[0])
+            
+            # Pre-validate that all required dataframes exist
+            from utils.redis_client import redis_client
+            missing_dfs = []
+            for name in names:
+                exists = redis_client.exists(f"df:{name}")
+                print(f"[DEBUG] checking dataframe '{name}': exists={exists}")
+                if not exists:
+                    missing_dfs.append(name)
+            if missing_dfs:
+                raise ValueError(f'merge: dataframes not found: {", ".join(missing_dfs)}')
+            
+            try:
+                df = _load_df_from_cache(names[0])
+                print(f"[DEBUG] loaded dataframe '{names[0]}': shape={df.shape}, columns={list(df.columns)}")
+            except ValueError as e:
+                raise ValueError(f'merge: failed to load dataframe "{names[0]}": {str(e)}')
             for nm in names[1:]:
-                d2 = _load_df_from_cache(nm)
+                try:
+                    d2 = _load_df_from_cache(nm)
+                    print(f"[DEBUG] loaded dataframe '{nm}': shape={d2.shape}, columns={list(d2.columns)}")
+                except ValueError as e:
+                    raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
+                # Validate that merge keys exist in both dataframes
+                missing_keys_df1 = [k for k in keys if k not in df.columns]
+                missing_keys_df2 = [k for k in keys if k not in d2.columns]
+                if missing_keys_df1:
+                    raise ValueError(f'merge: keys {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
+                if missing_keys_df2:
+                    raise ValueError(f'merge: keys {missing_keys_df2} not found in dataframe "{nm}"')
+                print(f"[DEBUG] merging dataframes on keys {keys} with how='{how}'")
                 df = df.merge(d2, on=keys, how=how)
+                print(f"[DEBUG] merge result: shape={df.shape}")
             return df, f'merge names={names} how={how} keys={keys}'
         if df_curr is None:
             raise ValueError('merge: no current dataframe; add a load step or use params.names')
         df = df_curr.copy()
+        
+        # Validate that merge keys exist in current dataframe
+        missing_keys_curr = [k for k in keys if k not in df.columns]
+        if missing_keys_curr:
+            raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+            
         for nm in others:
-            d2 = _load_df_from_cache(nm)
+            try:
+                d2 = _load_df_from_cache(nm)
+            except ValueError as e:
+                raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
+            # Validate that merge keys exist in the other dataframe
+            missing_keys_other = [k for k in keys if k not in d2.columns]
+            if missing_keys_other:
+                raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
             df = df.merge(d2, on=keys, how=how)
         return df, f'merge with={others} how={how} keys={keys}'
 
@@ -330,5 +422,53 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
             return out, f"datetime derive from {source}"
         else:
             raise ValueError('datetime: action must be parse or derive')
+
+    # chain_pipeline - execute another pipeline at this point
+    if op == 'chain_pipeline':
+        pipeline_name = params.get('pipeline') or params.get('name')
+        if not pipeline_name:
+            raise ValueError('chain_pipeline: pipeline name is required')
+        
+        if df_curr is None:
+            raise ValueError('chain_pipeline: no current dataframe; add a load step first')
+        
+        print(f"[DEBUG] chain_pipeline: executing pipeline '{pipeline_name}' with input shape={df_curr.shape}")
+        
+        # Load the chained pipeline
+        from utils.redis_client import redis_client
+        import json
+        
+        key = f'pipeline:{pipeline_name}'
+        if not redis_client.exists(key):
+            raise ValueError(f'chain_pipeline: pipeline {pipeline_name} not found')
+        
+        obj = json.loads(redis_client.get(key))
+        chained_steps = obj.get('steps') or []
+        
+        if not chained_steps:
+            raise ValueError(f'chain_pipeline: pipeline {pipeline_name} has no steps')
+        
+        print(f"[DEBUG] chain_pipeline: found {len(chained_steps)} steps to execute")
+        
+        # Execute the chained pipeline with current dataframe as input
+        current = df_curr.copy()  # Make a copy to avoid modifying original
+        for i, chained_step in enumerate(chained_steps):
+            print(f"[DEBUG] chain_pipeline: executing step {i+1}: {chained_step.get('op', 'unknown')}")
+            current, step_desc = _apply_op(current, chained_step)
+            print(f"[DEBUG] chain_pipeline: step {i+1} result: {step_desc}, shape={current.shape}")
+        
+        # Save the chained pipeline result as a named dataframe
+        # This allows subsequent steps to access it via merge operations
+        result_name = f'chained_{pipeline_name}'
+        print(f"[DEBUG] chain_pipeline: saving result as '{result_name}' with shape={current.shape}")
+        try:
+            _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name}')
+            print(f"[DEBUG] chain_pipeline: successfully saved '{result_name}' to cache")
+        except Exception as e:
+            raise ValueError(f'chain_pipeline: failed to save result "{result_name}": {str(e)}')
+        
+        # Return the original dataframe to preserve the main pipeline flow
+        # The chained result is now available as a named dataframe for merge operations
+        return df_curr, f'chain_pipeline: {pipeline_name} (saved as {result_name}, applied {len(chained_steps)} steps)'
 
     raise ValueError(f'Unsupported op: {op}')

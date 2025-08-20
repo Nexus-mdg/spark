@@ -1,11 +1,9 @@
-// filepath: /home/toavina/Apps/spark/dataframe-ui-x/web/src/ChainedOperations.jsx
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   listDataframes,
   pipelinePreview,
   pipelineRun,
-  getDataframe,
   pipelinesList,
   pipelineSave,
   pipelineGet,
@@ -64,6 +62,211 @@ function SmallTable({ columns = [], rows = [] }) {
   )
 }
 
+function FilterBuilder({ onCreate }) {
+  const [filters, setFilters] = useState([{ col: '', op: 'eq', value: '' }])
+  const [combine, setCombine] = useState('and')
+  const add = () => setFilters([...filters, { col: '', op: 'eq', value: '' }])
+  const remove = (idx) => setFilters(filters.filter((_, i) => i !== idx))
+  const update = (idx, patch) => setFilters(filters.map((f, i) => i === idx ? { ...f, ...patch } : f))
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm">Combine</span>
+        <select className="border rounded p-2" value={combine} onChange={e => setCombine(e.target.value)}>
+          <option value="and">and</option>
+          <option value="or">or</option>
+        </select>
+      </div>
+      <div className="space-y-2">
+        {filters.map((f, idx) => (
+          <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
+            <input className="border rounded p-2" placeholder="column" value={f.col} onChange={e => update(idx, { col: e.target.value })} />
+            <select className="border rounded p-2" value={f.op} onChange={e => update(idx, { op: e.target.value })}>
+              <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
+              <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
+            </select>
+            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
+            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
+        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
+      </div>
+    </div>
+  )
+}
+
+function PivotBuilder({ dfOptions, onCreate }) {
+  const [mode, setMode] = useState('wider')
+  const [state, setState] = useState({})
+  useEffect(() => { setState({}) }, [mode])
+  const update = (patch) => setState(s => ({ ...s, ...patch }))
+  if (mode === 'wider') {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Mode</span>
+          <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="wider">wider</option>
+            <option value="longer">longer</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <label className="block">
+            <span className="block text-sm">index (comma)</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.index || ''} onChange={e => update({ index: e.target.value })} placeholder="id" />
+          </label>
+          <label className="block">
+            <span className="block text-sm">names_from</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.names_from || ''} onChange={e => update({ names_from: e.target.value })} placeholder="category" />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="block text-sm">values_from (comma)</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.values_from || ''} onChange={e => update({ values_from: e.target.value })} placeholder="value" />
+          </label>
+          <label className="block">
+            <span className="block text-sm">aggfunc</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.aggfunc || 'first'} onChange={e => update({ aggfunc: e.target.value })} placeholder="first" />
+          </label>
+        </div>
+        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+          const index = String(state.index||'').split(',').map(s=>s.trim()).filter(Boolean)
+          if (!state.names_from || !String(state.values_from||'').trim()) return
+          const values_from = String(state.values_from).split(',').map(s=>s.trim()).filter(Boolean)
+          onCreate({ op: 'pivot', params: { mode: 'wider', index, names_from: state.names_from, values_from, aggfunc: state.aggfunc || 'first' } })
+        }}>Add step</button>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm">Mode</span>
+        <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
+          <option value="wider">wider</option>
+          <option value="longer">longer</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <label className="block md:col-span-2">
+          <span className="block text-sm">id_vars (comma)</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.id_vars || ''} onChange={e => update({ id_vars: e.target.value })} placeholder="id" />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="block text-sm">value_vars (comma)</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.value_vars || ''} onChange={e => update({ value_vars: e.target.value })} placeholder="v1,v2" />
+        </label>
+        <label className="block">
+          <span className="block text-sm">var_name</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.var_name || 'variable'} onChange={e => update({ var_name: e.target.value })} />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="block text-sm">value_name</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.value_name || 'value'} onChange={e => update({ value_name: e.target.value })} />
+        </label>
+      </div>
+      <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+        const id_vars = String(state.id_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
+        const value_vars = String(state.value_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
+        if (value_vars.length === 0) return
+        onCreate({ op: 'pivot', params: { mode: 'longer', id_vars, value_vars, var_name: state.var_name || 'variable', value_name: state.value_name || 'value' } })
+      }}>Add step</button>
+    </div>
+  )
+}
+
+function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChainPipeline }) {
+  const [showChainOptions, setShowChainOptions] = useState(false)
+  const [selectedPipeline, setSelectedPipeline] = useState('')
+
+  const handleChainPipeline = () => {
+    if (selectedPipeline) {
+      onChainPipeline(index, selectedPipeline)
+      setSelectedPipeline('')
+      setShowChainOptions(false)
+    }
+  }
+
+  return (
+    <div className="border rounded p-3 bg-slate-50">
+      <div className="flex items-start justify-between mb-2 gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="font-medium text-sm flex-shrink-0">Step {index + 1}:</span>
+          <code className="text-xs bg-slate-200 rounded px-1 py-0.5 flex-shrink-0">{step.op}</code>
+          <span className="text-xs text-slate-600 break-words min-w-0">{JSON.stringify(step.params)}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button 
+            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            onClick={() => setShowChainOptions(!showChainOptions)}
+          >
+            Chain Pipeline
+          </button>
+          <button 
+            className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+            onClick={() => onRemove(index)}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+      
+      {step.chainedPipelines && step.chainedPipelines.length > 0 && (
+        <div className="mt-2 pl-4 border-l-2 border-blue-300">
+          <div className="text-xs text-blue-700 mb-1">Chained pipelines:</div>
+          {step.chainedPipelines.map((chainedName, idx) => (
+            <div key={idx} className="text-xs bg-blue-50 rounded px-2 py-1 mb-1 flex items-center justify-between">
+              <span>{chainedName}</span>
+              <button 
+                className="text-red-500 hover:text-red-700"
+                onClick={() => {
+                  const updated = step.chainedPipelines.filter((_, i) => i !== idx)
+                  onChainPipeline(index, null, updated)
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showChainOptions && (
+        <div className="mt-2 p-2 bg-white border rounded">
+          <div className="text-xs mb-2">Attach pipeline to run at this point:</div>
+          <div className="flex items-center gap-2">
+            <select 
+              className="text-xs border rounded p-1 flex-1"
+              value={selectedPipeline}
+              onChange={e => setSelectedPipeline(e.target.value)}
+            >
+              <option value="">Select pipeline...</option>
+              {availablePipelines.map(p => (
+                <option key={p.name} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+            <button 
+              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={handleChainPipeline}
+              disabled={!selectedPipeline}
+            >
+              Attach
+            </button>
+            <button 
+              className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+              onClick={() => setShowChainOptions(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
   const [state, setState] = useState({})
   useEffect(() => { setState({}) }, [op])
@@ -96,12 +299,12 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             {hasCurrentDataframe && (
               <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
                 <div className="font-medium text-blue-800">Current dataframe from previous step will be automatically included</div>
-                <div className="text-blue-600 mt-1">Pick 1+ additional dataframes to merge with the current result</div>
+                <div className="text-blue-600">Select additional dataframe(s) to merge with</div>
               </div>
             )}
             <div>
               <div className="text-sm mb-1">
-                {hasCurrentDataframe ? 'Pick 1+ additional dataframes' : 'Pick 2+ dataframes'}
+                {hasCurrentDataframe ? `Pick ${minDataframesRequired}+ additional dataframes` : `Pick ${minDataframesRequired}+ dataframes`}
               </div>
               <div className="flex flex-wrap gap-2">
                 {dfOptions.map(o => (
@@ -129,7 +332,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
               <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
                 const names = state.names || []
                 const keys = String(state.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
-                if (names.length < minDataframesRequired || keys.length === 0) return
+                if (selectedCount < minDataframesRequired || keys.length === 0) return
                 onCreate({ op: 'merge', params: { names, keys, how: state.how || 'inner' } })
               }}>Add step</button>
             </div>
@@ -330,134 +533,18 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
   )
 }
 
-function FilterBuilder({ onCreate }) {
-  const [filters, setFilters] = useState([{ col: '', op: 'eq', value: '' }])
-  const [combine, setCombine] = useState('and')
-  const add = () => setFilters([...filters, { col: '', op: 'eq', value: '' }])
-  const remove = (idx) => setFilters(filters.filter((_, i) => i !== idx))
-  const update = (idx, patch) => setFilters(filters.map((f, i) => i === idx ? { ...f, ...patch } : f))
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="text-sm">Combine</span>
-        <select className="border rounded p-2" value={combine} onChange={e => setCombine(e.target.value)}>
-          <option value="and">and</option>
-          <option value="or">or</option>
-        </select>
-      </div>
-      <div className="space-y-2">
-        {filters.map((f, idx) => (
-          <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
-            <input className="border rounded p-2" placeholder="column" value={f.col} onChange={e => update(idx, { col: e.target.value })} />
-            <select className="border rounded p-2" value={f.op} onChange={e => update(idx, { op: e.target.value })}>
-              <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
-              <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
-            </select>
-            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
-            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
-        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
-      </div>
-    </div>
-  )
-}
-
-function PivotBuilder({ dfOptions, onCreate }) {
-  const [mode, setMode] = useState('wider')
-  const [state, setState] = useState({})
-  useEffect(() => { setState({}) }, [mode])
-  const update = (patch) => setState(s => ({ ...s, ...patch }))
-  if (mode === 'wider') {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm">Mode</span>
-          <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
-            <option value="wider">wider</option>
-            <option value="longer">longer</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-          <label className="block">
-            <span className="block text-sm">index (comma)</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.index || ''} onChange={e => update({ index: e.target.value })} placeholder="id" />
-          </label>
-          <label className="block">
-            <span className="block text-sm">names_from</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.names_from || ''} onChange={e => update({ names_from: e.target.value })} placeholder="category" />
-          </label>
-          <label className="block md:col-span-2">
-            <span className="block text-sm">values_from (comma)</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.values_from || ''} onChange={e => update({ values_from: e.target.value })} placeholder="value" />
-          </label>
-          <label className="block">
-            <span className="block text-sm">aggfunc</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.aggfunc || 'first'} onChange={e => update({ aggfunc: e.target.value })} placeholder="first" />
-          </label>
-        </div>
-        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
-          const index = String(state.index||'').split(',').map(s=>s.trim()).filter(Boolean)
-          if (!state.names_from || !String(state.values_from||'').trim()) return
-          const values_from = String(state.values_from).split(',').map(s=>s.trim()).filter(Boolean)
-          onCreate({ op: 'pivot', params: { mode: 'wider', index, names_from: state.names_from, values_from, aggfunc: state.aggfunc || 'first' } })
-        }}>Add step</button>
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="text-sm">Mode</span>
-        <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
-          <option value="wider">wider</option>
-          <option value="longer">longer</option>
-        </select>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-        <label className="block md:col-span-2">
-          <span className="block text-sm">id_vars (comma)</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.id_vars || ''} onChange={e => update({ id_vars: e.target.value })} placeholder="id" />
-        </label>
-        <label className="block md:col-span-2">
-          <span className="block text-sm">value_vars (comma)</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.value_vars || ''} onChange={e => update({ value_vars: e.target.value })} placeholder="v1,v2" />
-        </label>
-        <label className="block">
-          <span className="block text-sm">var_name</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.var_name || 'variable'} onChange={e => update({ var_name: e.target.value })} />
-        </label>
-        <label className="block md:col-span-2">
-          <span className="block text-sm">value_name</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.value_name || 'value'} onChange={e => update({ value_name: e.target.value })} />
-        </label>
-      </div>
-      <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
-        const id_vars = String(state.id_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
-        const value_vars = String(state.value_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
-        if (value_vars.length === 0) return
-        onCreate({ op: 'pivot', params: { mode: 'longer', id_vars, value_vars, var_name: state.var_name || 'variable', value_name: state.value_name || 'value' } })
-      }}>Add step</button>
-    </div>
-  )
-}
-
-export default function ChainedOperations() {
+export default function ChainedPipelines() {
   const [dfs, setDfs] = useState([])
   const [loading, setLoading] = useState(false)
   const [steps, setSteps] = useState([])
   const [autoPreview, setAutoPreview] = useState(true)
-  const [preview, setPreview] = useState({ loading: false, error: '', steps: [], final: null })
-  const [result, setResult] = useState(null)
   const [pipelines, setPipelines] = useState([])
   const [pipelinesLoading, setPipelinesLoading] = useState(false)
   const [plName, setPlName] = useState('')
   const [plDesc, setPlDesc] = useState('')
   const [plOverwrite, setPlOverwrite] = useState(false)
-  const [importText, setImportText] = useState('')
+  const [result, setResult] = useState(null)
+  const [preview, setPreview] = useState({ loading: false, error: '', steps: [], final: null })
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -482,41 +569,92 @@ export default function ChainedOperations() {
 
   useEffect(() => { refresh(); refreshPipelines() }, [])
 
-  const triggerPreview = async () => {
-    setPreview(p => ({ ...p, loading: true, error: '' }))
-    try {
-      const res = await pipelinePreview({ steps, preview_rows: 10 })
-      if (!res.success) throw new Error(res.error || 'Preview failed')
-      setPreview({ loading: false, error: '', steps: res.steps || [], final: res.final || null })
-    } catch (e) {
-      setPreview({ loading: false, error: e.message || 'Preview failed', steps: [], final: null })
+  useEffect(() => { 
+    if (autoPreview && steps.length > 0) { 
+      triggerPreview() 
+    } else if (steps.length === 0) {
+      setPreview({ loading: false, error: '', steps: [], final: null })
     }
+  }, [autoPreview, JSON.stringify(steps)])
+
+  const addStep = (s) => { 
+    setSteps(prev => [...prev, { ...s, chainedPipelines: [] }])
+    setResult(null)
   }
 
-  useEffect(() => { if (autoPreview && steps.length > 0) { triggerPreview() } }, [autoPreview, JSON.stringify(steps)])
+  const removeStep = (idx) => { 
+    setSteps(prev => prev.filter((_, i) => i !== idx))
+    setResult(null)
+  }
 
-  const addStep = (s) => { setSteps(prev => [...prev, s]); setResult(null) }
-  const removeStep = (idx) => { setSteps(prev => prev.filter((_, i) => i !== idx)); setResult(null) }
-  const clearSteps = () => { setSteps([]); setPreview({ loading: false, error: '', steps: [], final: null }); setResult(null) }
+  const handleChainPipeline = (stepIndex, pipelineName, updatedChained = null) => {
+    setSteps(prev => prev.map((step, idx) => {
+      if (idx === stepIndex) {
+        if (updatedChained !== null) {
+          return { ...step, chainedPipelines: updatedChained }
+        } else if (pipelineName) {
+          return { ...step, chainedPipelines: [...(step.chainedPipelines || []), pipelineName] }
+        }
+      }
+      return step
+    }))
+  }
+
+  const clearSteps = () => { 
+    setSteps([])
+    setPreview({ loading: false, error: '', steps: [], final: null })
+    setResult(null)
+  }
+
+  const convertToExecutableSteps = (stepsWithChains) => {
+    const executableSteps = []
+    
+    stepsWithChains.forEach(step => {
+      // Add the main step
+      executableSteps.push({ op: step.op, params: step.params })
+      
+      // Add chained pipeline steps
+      if (step.chainedPipelines && step.chainedPipelines.length > 0) {
+        step.chainedPipelines.forEach(pipelineName => {
+          executableSteps.push({
+            op: 'chain_pipeline',
+            params: { pipeline: pipelineName }
+          })
+        })
+      }
+    })
+    
+    return executableSteps
+  }
 
   const onRun = async () => {
     if (steps.length === 0) return toast.show('Add at least one step')
     try {
-      const res = await pipelineRun({ steps, materialize: true })
+      const executableSteps = convertToExecutableSteps(steps)
+      const res = await pipelineRun({ steps: executableSteps, materialize: true })
       if (!res.success) throw new Error(res.error || 'Run failed')
       setResult(res.created)
       toast.show(`Created ${res.created?.name || 'result'}`)
       await refresh()
-    } catch (e) { toast.show(e.message || 'Run failed') }
+    } catch (e) { 
+      toast.show(e.message || 'Run failed') 
+    }
   }
 
   const onSavePipeline = async () => {
     if (!plName.trim()) return toast.show('Provide a pipeline name')
     if (steps.length === 0) return toast.show('Nothing to save')
     try {
-      const res = await pipelineSave({ name: plName.trim(), description: plDesc, start: null, steps }, { overwrite: plOverwrite })
+      const executableSteps = convertToExecutableSteps(steps)
+      const res = await pipelineSave({ 
+        name: plName.trim(), 
+        description: plDesc, 
+        start: null, 
+        steps: executableSteps,
+        chainedStructure: steps // Store the UI structure for editing later
+      }, { overwrite: plOverwrite })
       if (!res.success) throw new Error(res.error || 'Save failed')
-      toast.show(`Saved pipeline ${res.pipeline?.name || plName}`)
+      toast.show(`Saved chained pipeline ${res.pipeline?.name || plName}`)
       await refreshPipelines()
     } catch (e) { toast.show(e.message || 'Save failed') }
   }
@@ -527,10 +665,15 @@ export default function ChainedOperations() {
       const res = await pipelineGet(name)
       if (!res.success) throw new Error(res.error || 'Load failed')
       const obj = res.pipeline
-      setSteps(obj.steps || [])
+      if (obj.chainedStructure) {
+        // Load the UI structure if it exists
+        setSteps(obj.chainedStructure)
+      } else {
+        // Convert from regular steps format if no UI structure
+        setSteps(obj.steps || [])
+      }
       setPlName(obj.name || '')
       setPlDesc(obj.description || '')
-      setResult(null)
       toast.show(`Loaded ${obj.name}`)
     } catch (e) { toast.show(e.message || 'Load failed') }
   }
@@ -543,43 +686,65 @@ export default function ChainedOperations() {
     try { const res = await pipelineRunByName(name, { materialize: true }); if (!res.success) throw new Error(res.error || 'Run failed'); toast.show(`Created ${res.created?.name || 'result'}`); await refresh() } catch (e) { toast.show(e.message || 'Run failed') }
   }
 
-  const onImportYaml = async () => {
-    if (!importText.trim()) return toast.show('Paste YAML first')
+  const triggerPreview = async () => {
+    if (steps.length === 0) return
+    setPreview(p => ({ ...p, loading: true, error: '' }))
     try {
-      const res = await pipelineImportYaml({ yaml: importText, overwrite: plOverwrite })
-      if (!res.success) throw new Error(res.error || 'Import failed')
-      toast.show(`Imported ${res.pipeline?.name}`)
-      setImportText('')
-      await refreshPipelines()
+      const executableSteps = convertToExecutableSteps(steps)
+      const res = await pipelinePreview({ steps: executableSteps, preview_rows: 10 })
+      if (!res.success) throw new Error(res.error || 'Preview failed')
+      setPreview({ loading: false, error: '', steps: res.steps || [], final: res.final || null })
+      
+      // Check if any steps have chained pipelines - if so, refresh dataframe list
+      // because chained pipeline results may have been saved during preview
+      const hasChainedPipelines = steps.some(step => step.chainedPipelines && step.chainedPipelines.length > 0)
+      if (hasChainedPipelines) {
+        await refresh()
+      }
     } catch (e) {
-      toast.show(e.message || 'Import failed')
+      setPreview({ loading: false, error: e.message || 'Preview failed', steps: [], final: null })
     }
   }
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
-      {/* ...existing header... */}
       <header className="bg-slate-900 text-white">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button className="text-white/90 hover:text-white" onClick={() => navigate('/')}>← Home</button>
-            <h1 className="text-lg font-semibold">Chained Operations</h1>
+            <h1 className="text-lg font-semibold">Chained Pipelines</h1>
           </div>
           <div className="text-sm text-slate-300">{loading ? 'Loading…' : `${dfs.length} dataframes`}</div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Info Section */}
+        <Section title="About Chained Pipelines">
+          <div className="text-sm text-slate-600 space-y-2">
+            <p>Chained pipelines allow you to attach secondary pipelines to any step in your main pipeline. 
+               The secondary pipelines will execute at that point using the current data state and their results 
+               can be utilized by subsequent steps.</p>
+            <p><strong>Key features:</strong></p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Attach multiple pipelines to any step</li>
+              <li>Secondary pipelines receive current dataframe state</li>
+              <li>Results from chained pipelines are available to following steps</li>
+              <li>Support for complex data processing workflows</li>
+            </ul>
+          </div>
+        </Section>
+
         {/* Save/Load controls */}
-        <Section title="Save / Load pipeline">
+        <Section title="Save / Load chained pipeline">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <label className="block md:col-span-2">
               <span className="block text-sm">Pipeline name</span>
-              <input className="mt-1 border rounded w-full p-2" value={plName} onChange={e => setPlName(e.target.value)} placeholder="my-pipeline" />
+              <input className="mt-1 border rounded w-full p-2" value={plName} onChange={e => setPlName(e.target.value)} placeholder="my-chained-pipeline" />
             </label>
             <label className="block md:col-span-3">
               <span className="block text-sm">Description</span>
-              <input className="mt-1 border rounded w-full p-2" value={plDesc} onChange={e => setPlDesc(e.target.value)} placeholder="optional" />
+              <input className="mt-1 border rounded w-full p-2" value={plDesc} onChange={e => setPlDesc(e.target.value)} placeholder="optional description" />
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} />
@@ -587,20 +752,20 @@ export default function ChainedOperations() {
             </label>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={onSavePipeline}>Save pipeline</button>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Load</span>
-              <select className="border rounded p-2" onChange={e => onLoadPipeline(e.target.value)} value="">
-                <option value="">Select…</option>
-                {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
-              </select>
-              <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
-            </div>
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={onSavePipeline}>Save chained pipeline</button>
           </div>
         </Section>
 
         {/* Pipeline library */}
         <Section title="Pipelines library">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-sm">Load</span>
+            <select className="border rounded p-2" onChange={e => onLoadPipeline(e.target.value)} value="">
+              <option value="">Select…</option>
+              {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
+            </select>
+            <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+          </div>
           {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
           {pipelines.length > 0 && (
@@ -632,47 +797,41 @@ export default function ChainedOperations() {
               </table>
             </div>
           )}
-          <div className="mt-4">
-            <div className="text-sm mb-1">Import from YML</div>
-            <textarea className="w-full border rounded p-2 font-mono text-xs h-32" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
-            <div className="mt-2 flex items-center gap-2">
-              <button className="px-3 py-1.5 rounded border" onClick={onImportYaml}>Import</button>
-              <label className="text-xs text-slate-600 flex items-center gap-2">
-                <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} /> Overwrite existing
-              </label>
-            </div>
-          </div>
         </Section>
 
-        {/* ...existing Build pipeline and Previews sections remain unchanged... */}
-        <Section title="Build pipeline">
-          <div className="flex items-center gap-3">
+        {/* Build chained pipeline */}
+        <Section title="Build chained pipeline">
+          <div className="flex items-center gap-3 mb-4">
             <span className="text-sm">Auto preview</span>
             <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
             <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
-            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear steps</button>
+            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear all steps</button>
+            <span className="text-sm text-slate-600">{steps.length} steps</span>
           </div>
-          <div className="mt-4 space-y-4">
+          
+          <div className="space-y-4">
             <div className="bg-slate-50 border rounded p-3">
               <div className="text-sm font-medium mb-2">Add step</div>
               <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
+            
             {steps.length > 0 && (
-              <div className="bg-white border rounded">
-                <div className="px-4 py-2 text-sm border-b">Steps</div>
-                <ol className="list-decimal pl-6 py-2 space-y-2">
-                  {steps.map((s, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <code className="text-xs bg-slate-100 rounded px-1 py-0.5 flex-shrink-0">{s.op}</code>
-                      <span className="text-xs text-slate-700 break-words flex-1 min-w-0">{JSON.stringify(s.params)}</span>
-                      <button className="text-red-600 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
-                    </li>
-                  ))}
-                </ol>
+              <div className="space-y-3">
+                {steps.map((step, index) => (
+                  <ChainedPipelineStep
+                    key={index}
+                    step={step}
+                    index={index}
+                    availablePipelines={pipelines}
+                    onRemove={removeStep}
+                    onChainPipeline={handleChainPipeline}
+                  />
+                ))}
               </div>
             )}
+            
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run pipeline</button>
+              <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run chained pipeline</button>
               {result?.name && (
                 <span className="text-sm">Created <button className="underline text-indigo-700" onClick={() => navigate(`/analysis/${encodeURIComponent(result.name)}`)}>{result.name}</button></span>
               )}
@@ -680,9 +839,13 @@ export default function ChainedOperations() {
           </div>
         </Section>
 
-        <Section title="Previews">
+        {/* Preview Section */}
+        <Section title="Preview">
           {preview.loading && (
-            <div className="flex items-center gap-2 text-sm text-slate-600"><img src="/loader.svg" className="w-5 h-5" alt=""/> Generating preview…</div>
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+              Generating preview…
+            </div>
           )}
           {preview.error && (
             <div className="text-sm text-red-600">{preview.error}</div>
@@ -707,6 +870,34 @@ export default function ChainedOperations() {
               </div>
             )}
           </div>
+        </Section>
+
+        {/* Available Pipelines */}
+        <Section title="Available pipelines">
+          {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
+          {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
+          {pipelines.length > 0 && (
+            <div className="overflow-auto border rounded">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100 text-left">
+                  <tr>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Steps</th>
+                    <th className="px-3 py-2">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pipelines.map(p => (
+                    <tr key={p.name} className="border-t">
+                      <td className="px-3 py-2 font-medium">{p.name}</td>
+                      <td className="px-3 py-2">{p.steps}</td>
+                      <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Section>
       </main>
 

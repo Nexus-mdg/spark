@@ -206,6 +206,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
             <button onClick={() => navigate('/chained-operations')} className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700">Chained Ops</button>
+            <button onClick={() => navigate('/chained-pipelines')} className="px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-700">Chained Pipes</button>
             <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
           </div>
         </div>
