@@ -630,7 +630,7 @@ export default function Operations() {
             {/* Preview of source */}
             {rnName && (<DataframePreview name={rnName} />)}
             <label className="block">
-              <span className="block text-sm">Mapping JSON (old->new)</span>
+              <span className="block text-sm">Mapping JSON (old→new)</span>
               <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-24" placeholder='{"old_col":"new_col", "age":"age_years"}' value={rnMap} onChange={e => setRnMap(e.target.value)} />
             </label>
             <div>
@@ -701,7 +701,7 @@ function DateTimeSection({ dfOptions, onRun }) {
         <label className="block">
           <span className="block text-sm">Action</span>
           <select className="mt-1 border rounded w-full p-2" value={action} onChange={e => setAction(e.target.value)}>
-            <option value="parse">parse (string -> date)</option>
+            <option value="parse">parse (string → date)</option>
             <option value="derive">derive parts</option>
           </select>
         </label>

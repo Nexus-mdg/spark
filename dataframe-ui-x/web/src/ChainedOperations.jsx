@@ -219,7 +219,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
               <label className="block md:col-span-2">
                 <span className="block text-sm">Action</span>
                 <select className="mt-1 border rounded w-full p-2" value={state.action || 'parse'} onChange={e => update({ action: e.target.value })}>
-                  <option value="parse">parse (string -&gt; date)</option>
+                  <option value="parse">parse (string → date)</option>
                   <option value="derive">derive parts</option>
                 </select>
               </label>
