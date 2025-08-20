@@ -12,6 +12,19 @@ A lightweight Flask-based web UI to upload, cache, browse, and preview tabular t
 - View metadata and columns
 - Delete individual datasets or clear the entire cache
 - Toast notifications and modal confirmations (Bootstrap 5)
+- **Pipeline Operations**: Build and execute data transformation pipelines
+- **Chained Operations**: Sequential pipeline steps for complex data processing
+- **Chained Pipelines**: Advanced pipeline chaining feature for attaching secondary pipelines to any step
+
+### Chained Pipelines Feature
+The new chained pipelines functionality allows you to:
+- Attach secondary pipelines to any step in your main pipeline
+- Secondary pipelines execute using the current dataframe state at the attachment point
+- Results from chained pipelines are available to subsequent steps
+- Build complex data processing workflows with reusable pipeline components
+- Support for parallel execution of secondary pipelines
+
+Access the feature through the "Chained Pipes" button in the navigation bar.
 
 ## Components
 - Backend: Flask (Python), Redis
