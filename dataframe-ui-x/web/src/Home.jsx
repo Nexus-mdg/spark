@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from './Header.jsx'
 import {
   getStats,
   listDataframes,
@@ -200,17 +201,11 @@ export default function Home() {
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Spark test visualizer</h1>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
-            <button onClick={() => navigate('/chained-operations')} className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700">Chained Ops</button>
-            <button onClick={() => navigate('/chained-pipelines')} className="px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-700">Chained Pipes</button>
-            <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
-          </div>
+      <Header title="Spark test visualizer">
+        <div className="text-sm text-slate-300">
+          {stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}
         </div>
-      </header>
+      </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -268,10 +263,19 @@ export default function Home() {
         <section className="bg-white rounded-lg shadow">
           <div className="p-5 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-base font-semibold">Cached DataFrames</h2>
-            <button onClick={onClearCache} className="inline-flex items-center px-3 py-1.5 rounded-md border border-red-600 text-red-600 hover:bg-red-50">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1.5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 8a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm5-3h-3.5l-1-1h-3l-1 1H3v2h14V5z"/><path d="M5 7h10l-1 10a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"/></svg>
-              Clear All Cache
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={refreshStats} className="p-2 rounded hover:bg-gray-100" title="Refresh list">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button onClick={onClearCache} className="p-2 rounded hover:bg-red-50 text-red-600" title="Clear all cache">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M6 8a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v7a1 1 0 11-2 0V9a1 1 0 011-1zm5-3h-3.5l-1-1h-3l-1 1H3v2h14V5z"/>
+                  <path d="M5 7h10l-1 10a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7z"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="p-5 overflow-x-auto">
             <table className="min-w-full text-sm table-fixed">

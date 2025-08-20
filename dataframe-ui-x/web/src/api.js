@@ -7,14 +7,29 @@ const getBaseUrl = () => {
 
 const BASE = () => getBaseUrl();
 
+// API Key for internal access to dataframe-api
+const API_KEY = 'dataframe-api-internal-key';
+
+// Helper function to create headers with API key
+const getHeaders = (additionalHeaders = {}) => {
+  return {
+    'X-API-Key': API_KEY,
+    ...additionalHeaders
+  };
+};
+
 export const getStats = async () => {
-  const res = await fetch(`${BASE()}/api/stats`);
+  const res = await fetch(`${BASE()}/api/stats`, {
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed stats: ${res.status}`);
   return res.json();
 };
 
 export const listDataframes = async () => {
-  const res = await fetch(`${BASE()}/api/dataframes`);
+  const res = await fetch(`${BASE()}/api/dataframes`, {
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed list: ${res.status}`);
   return res.json();
 };
@@ -24,19 +39,27 @@ export const getDataframe = async (name, { page = 1, page_size = 100, preview = 
   params.set('page', String(page));
   params.set('page_size', String(page_size));
   params.set('preview', String(preview));
-  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}?${params.toString()}`);
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}?${params.toString()}`, {
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed get df: ${res.status}`);
   return res.json();
 };
 
 export const deleteDataframe = async (name) => {
-  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}`, { 
+    method: 'DELETE',
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed delete: ${res.status}`);
   return res.json();
 };
 
 export const clearCache = async () => {
-  const res = await fetch(`${BASE()}/api/cache/clear`, { method: 'DELETE' });
+  const res = await fetch(`${BASE()}/api/cache/clear`, { 
+    method: 'DELETE',
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed clear: ${res.status}`);
   return res.json();
 };
@@ -46,7 +69,11 @@ export const uploadDataframe = async ({ file, name, description }) => {
   if (name) form.set('name', name);
   if (description) form.set('description', description);
   form.set('file', file);
-  const res = await fetch(`${BASE()}/api/dataframes/upload`, { method: 'POST', body: form });
+  const res = await fetch(`${BASE()}/api/dataframes/upload`, { 
+    method: 'POST', 
+    body: form,
+    headers: getHeaders() // Note: Don't set Content-Type for FormData, browser will set it automatically
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Upload failed: ${res.status} ${text}`);
@@ -60,7 +87,9 @@ export const renameDataframe = async (oldName, { new_name, description } = {}) =
   if (new_name && new_name.trim()) payload.new_name = new_name.trim();
   if (typeof description === 'string') payload.description = description;
   const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(oldName)}/rename`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    method: 'POST', 
+    headers: getHeaders({ 'Content-Type': 'application/json' }), 
+    body: JSON.stringify(payload)
   });
   if (!res.ok) {
     let msg = `Rename failed: ${res.status}`;
@@ -76,7 +105,9 @@ export const buildDownloadJsonUrl = (name) => `${BASE()}/api/dataframes/${encode
 
 // Profile/analysis endpoint
 export const getProfile = async (name) => {
-  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}/profile`);
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}/profile`, {
+    headers: getHeaders()
+  });
   if (!res.ok) throw new Error(`Failed profile: ${res.status}`);
   return res.json();
 };
@@ -85,7 +116,7 @@ export const getProfile = async (name) => {
 export const opsCompare = async ({ name1, name2 }) => {
   const res = await fetch(`${BASE()}/api/ops/compare`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name1, name2 })
   });
   if (!res.ok) throw new Error(`Compare failed: ${res.status}`);
@@ -95,7 +126,7 @@ export const opsCompare = async ({ name1, name2 }) => {
 export const opsMerge = async ({ names, keys, how }) => {
   const res = await fetch(`${BASE()}/api/ops/merge`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ names, keys, how })
   });
   if (!res.ok) throw new Error(`Merge failed: ${res.status}`);
@@ -105,7 +136,7 @@ export const opsMerge = async ({ names, keys, how }) => {
 export const opsPivot = async (payload) => {
   const res = await fetch(`${BASE()}/api/ops/pivot`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error(`Pivot failed: ${res.status}`);
@@ -115,7 +146,7 @@ export const opsPivot = async (payload) => {
 export const opsFilter = async (payload) => {
   const res = await fetch(`${BASE()}/api/ops/filter`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error(`Filter failed: ${res.status}`);
@@ -125,7 +156,7 @@ export const opsFilter = async (payload) => {
 export const opsGroupBy = async (payload) => {
   const res = await fetch(`${BASE()}/api/ops/groupby`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload)
   });
   if (!res.ok) throw new Error(`GroupBy failed: ${res.status}`);
@@ -135,7 +166,7 @@ export const opsGroupBy = async (payload) => {
 export const opsSelect = async ({ name, columns, exclude }) => {
   const res = await fetch(`${BASE()}/api/ops/select`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name, columns, ...(exclude ? { exclude: true } : {}) })
   });
   if (!res.ok) throw new Error(`Select failed: ${res.status}`);
@@ -146,7 +177,7 @@ export const opsSelect = async ({ name, columns, exclude }) => {
 export const opsRename = async ({ name, map }) => {
   const res = await fetch(`${BASE()}/api/ops/rename`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name, map })
   });
   if (!res.ok) throw new Error(`Rename failed: ${res.status}`);
@@ -157,7 +188,7 @@ export const opsRename = async ({ name, map }) => {
 export const opsDatetime = async (payload) => {
   const res = await fetch(`${BASE()}/api/ops/datetime`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload)
   })
   if (!res.ok) {
@@ -170,7 +201,7 @@ export const opsDatetime = async (payload) => {
 // New: Mutate operation (create/overwrite a column via expression)
 export const opsMutate = async (payload) => {
   const res = await fetch(`${BASE()}/api/ops/mutate`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload)
   })
   if (!res.ok) {
     const t = await res.text(); throw new Error(`Mutate failed: ${res.status} ${t}`)
@@ -182,7 +213,7 @@ export const opsMutate = async (payload) => {
 export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
   const res = await fetch(`${BASE()}/api/pipeline/preview`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ start, steps, preview_rows })
   })
   if (!res.ok) throw new Error(`Pipeline preview failed: ${res.status}`)
@@ -192,7 +223,7 @@ export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
 export const pipelineRun = async ({ start, steps, materialize = true, name }) => {
   const res = await fetch(`${BASE()}/api/pipeline/run`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ start, steps, materialize, name })
   })
   if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
@@ -201,13 +232,17 @@ export const pipelineRun = async ({ start, steps, materialize = true, name }) =>
 
 // Pipelines registry API
 export const pipelinesList = async () => {
-  const res = await fetch(`${BASE()}/api/pipelines`)
+  const res = await fetch(`${BASE()}/api/pipelines`, {
+    headers: getHeaders()
+  })
   if (!res.ok) throw new Error(`Pipelines list failed: ${res.status}`)
   return res.json()
 }
 
 export const pipelineGet = async (name) => {
-  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`)
+  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`, {
+    headers: getHeaders()
+  })
   if (!res.ok) throw new Error(`Pipeline get failed: ${res.status}`)
   return res.json()
 }
@@ -215,7 +250,7 @@ export const pipelineGet = async (name) => {
 export const pipelineSave = async ({ name, description, start = null, steps, tags }, { overwrite = false } = {}) => {
   const payload = { name, description, start, steps, tags, overwrite }
   const res = await fetch(`${BASE()}/api/pipelines`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload)
   })
   if (!res.ok) {
     const text = await res.text(); throw new Error(`Pipeline save failed: ${res.status} ${text}`)
@@ -224,14 +259,17 @@ export const pipelineSave = async ({ name, description, start = null, steps, tag
 }
 
 export const pipelineDelete = async (name) => {
-  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`, { method: 'DELETE' })
+  const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}`, { 
+    method: 'DELETE',
+    headers: getHeaders()
+  })
   if (!res.ok) throw new Error(`Pipeline delete failed: ${res.status}`)
   return res.json()
 }
 
 export const pipelineRunByName = async (name, { materialize = true, outName } = {}) => {
   const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}/run`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ materialize, name: outName })
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ materialize, name: outName })
   })
   if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
   return res.json()
@@ -241,7 +279,7 @@ export const buildPipelineExportUrl = (name) => `${BASE()}/api/pipelines/${encod
 
 export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
   const res = await fetch(`${BASE()}/api/pipelines/import`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ yaml, overwrite })
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ yaml, overwrite })
   })
   if (!res.ok) {
     const text = await res.text(); throw new Error(`Pipeline import failed: ${res.status} ${text}`)
