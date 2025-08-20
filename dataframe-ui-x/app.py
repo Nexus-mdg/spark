@@ -87,7 +87,8 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            if request.is_json:
+            # For API routes, always return JSON error
+            if request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
             # For HTML requests, serve the index.html which will handle routing to login
             return send_from_directory(app.static_folder, 'index.html')
