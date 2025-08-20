@@ -42,9 +42,9 @@ services:
       - redis-data:/data
     command: redis-server --save 60 1 --loglevel warning --port 6379
   
-  dataframe-ui:
-    build: ./dataframe-ui
-    container_name: dataframe-ui
+  dataframe-api:
+    build: ./dataframe-api
+    container_name: dataframe-api
     restart: always
     network_mode: "host"
     environment:
@@ -52,8 +52,6 @@ services:
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
       - PORT=4999
-      # Toggle built-in Flask web UI (templates/static). Set to "false" to disable the pages and serve API only.
-      - ENABLE_WEB_UI=false
       # Spark client configuration for compare endpoint
       - SPARK_MASTER_URL=spark://127.0.0.1:7077
       # Optional: set to a reachable host IP if workers cannot connect back to driver
@@ -71,7 +69,7 @@ services:
     depends_on:
       - redis
     volumes:
-      - ./dataframe-ui:/app
+      - ./dataframe-api:/app
 
   dataframe-ui-x:
     build: ./dataframe-ui-x
@@ -82,7 +80,7 @@ services:
       - PORT=5001
       - API_BASE_URL=http://localhost:4999
     depends_on:
-      - dataframe-ui
+      - dataframe-api
 
   ntfy:
     image: binwiederhier/ntfy

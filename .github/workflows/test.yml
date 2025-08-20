@@ -33,7 +33,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
@@ -46,14 +46,13 @@ jobs:
         done
         echo "Redis is ready!"
 
-    - name: Start dataframe-ui service (without Spark)
+    - name: Start dataframe-api service (without Spark)
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export FLASK_ENV=development
         export REDIS_HOST=localhost
         export REDIS_PORT=6379
         export PORT=4999
-        export ENABLE_WEB_UI=false
         # Disable Spark for core tests - API will fallback to pandas
         export SPARK_MASTER_URL=""
         python app.py &
@@ -65,14 +64,14 @@ jobs:
 
     - name: Wait for API readiness
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         chmod +x test.sh
         export API_BASE=http://localhost:4999
         ./test.sh wait
 
     - name: Run all core tests (matching run_all function)
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export API_BASE=http://localhost:4999
         
         # Run each test that's part of run_all() function
@@ -111,7 +110,7 @@ jobs:
 
     - name: Run complete test suite
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export API_BASE=http://localhost:4999
         ./test.sh all
 
@@ -148,7 +147,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
@@ -201,14 +200,13 @@ jobs:
           sleep 10
         done
 
-    - name: Start dataframe-ui service with Spark
+    - name: Start dataframe-api service with Spark
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export FLASK_ENV=development
         export REDIS_HOST=localhost
         export REDIS_PORT=6379
         export PORT=5000
-        export ENABLE_WEB_UI=false
         export SPARK_MASTER_URL=spark://localhost:7077
         export SPARK_DRIVER_HOST=localhost
         export SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
@@ -225,13 +223,13 @@ jobs:
 
     - name: Wait for API readiness (Spark)
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export API_BASE=http://localhost:5000
         ./test.sh wait
 
     - name: Run Spark-enabled tests
       run: |
-        cd dataframe-ui
+        cd dataframe-api
         export API_BASE=http://localhost:5000
         # Run compare tests which benefit from Spark
         ./test.sh compare-identical

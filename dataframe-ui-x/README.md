@@ -1,16 +1,16 @@
 DataFrame UI (Tailwind + React)
 
 Overview
-- Separate UI that consumes the existing dataframe-ui Flask REST API (port 4999 by default).
+- Separate UI that consumes the existing dataframe-api Flask REST API (port 4999 by default).
 - Built with React (Vite) and Tailwind CSS; served by a tiny Flask server.
-- Does not modify the original dataframe-ui service.
+- Does not modify the original dataframe-api service.
 - Expressions Guide for mutate and pipeline steps: see EXPRESSIONS.md
 
 Local development (frontend only)
 1) Install Node 18+.
 2) In web/: npm install
 3) Start dev server: npm run dev
-4) Ensure the original API is running at http://localhost:4999 (docker-compose up dataframe-ui).
+4) Ensure the original API is running at http://localhost:4999 (docker-compose up dataframe-api).
 5) Open the Vite dev URL and the app will fetch /config.js from the Flask server only in production; in dev it calls http://localhost:4999 directly via api.js fallback.
 
 Build + serve locally with Flask
@@ -23,7 +23,7 @@ Build + serve locally with Flask
 
 With Docker Compose
 - docker compose build dataframe-ui-x
-- docker compose up -d dataframe-ui dataframe-ui-x
+- docker compose up -d dataframe-api dataframe-ui-x
 - Visit http://localhost:5001
 
 Configuration

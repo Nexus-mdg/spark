@@ -39,7 +39,7 @@ Prereqs:
 
 Install backend deps:
 ```bash
-cd dataframe-ui
+cd dataframe-api
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 
 Run Flask backend:
 ```bash
-cd dataframe-ui
+cd dataframe-api
 export PORT=4999
 python3 app.py
 ```
@@ -56,14 +56,14 @@ Open the UI:
 - http://127.0.0.1:4999/
 
 ## Docker / Compose (optional)
-A basic Dockerfile is provided under `dataframe-ui/`. If you have a compose stack for Redis + Web, wire it up accordingly. Example snippet:
+A basic Dockerfile is provided under `dataframe-api/`. If you have a compose stack for Redis + Web, wire it up accordingly. Example snippet:
 ```yaml
 services:
   redis:
     image: redis:7
     ports: ["6379:6379"]
-  ui:
-    build: ./dataframe-ui
+  api:
+    build: ./dataframe-api
     environment:
       - PORT=4999
     ports: ["4999:4999"]
@@ -72,15 +72,15 @@ services:
 
 ## Makefile targets (run from repo root)
 Common helpers are provided via the root Makefile:
-- make up       # start redis, spark, spark-worker, dataframe-ui, dataframe-ui-x
-- make build    # build dataframe-ui and dataframe-ui-x images
-- make build-ui # build dataframe-ui image only
+- make up       # start redis, spark, spark-worker, dataframe-api, dataframe-ui-x
+- make build    # build dataframe-api and dataframe-ui-x images
+- make build-ui # build dataframe-api image only
 - make build-ui-x # build dataframe-ui-x image only
 - make wait     # wait for API readiness
-- make test     # run curl tests defined in dataframe-ui/test.sh
-- make logs     # tail dataframe-ui logs
+- make test     # run curl tests defined in dataframe-api/test.sh
+- make logs     # tail dataframe-api logs
 - make logs-x   # tail dataframe-ui-x logs
-- make restart  # restart dataframe-ui
+- make restart  # restart dataframe-api
 - make restart-x # restart dataframe-ui-x
 - make down     # stop all services
 - Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
@@ -101,15 +101,8 @@ At minimum, ensure the pipeline stages cover:
 - Deploy (optional)
 
 ## Configuration
-- Redis host/port are currently hardcoded in `dataframe-ui/app.py` as `localhost:6379`.
+- Redis host/port are currently hardcoded in `dataframe-api/app.py` as `localhost:6379`.
 - The Flask app port is configurable via `PORT` env var (default 4999).
-
-## Static assets
-All third-party assets are local under `dataframe-ui/static/vendor/`:
-- Bootstrap 5.3.0 (CSS/JS)
-- jQuery 3.7.1
-- DataTables 1.13.6 (core + Bootstrap5 integration)
-- Font Awesome 6.0.0 (CSS + webfonts)
 
 ## License
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See [LICENSE](LICENSE).
