@@ -5,7 +5,7 @@ import os
 # Serve built assets from the dist directory (created by Vite build)
 app = Flask(__name__, static_folder='dist', static_url_path='')
 
-# Configurable API base URL (default points to the existing dataframe-ui API on 4999)
+# Configurable API base URL (default points to the existing dataframe-api API on 4999)
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:4999")
 PORT = int(os.getenv("PORT", "5001"))
 

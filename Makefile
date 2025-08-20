@@ -2,20 +2,20 @@ SHELL := bash
 .ONESHELL:
 
 API_BASE ?= http://localhost:4999
-DFUI_DIR := ./dataframe-ui
+DFUI_DIR := ./dataframe-api
 
 .PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename all prepare build build-ui build-ui-x
 
 help:
 	@echo "Targets:"
-	@echo "  up         - start redis, spark, spark-worker, dataframe-ui, dataframe-ui-x"
+	@echo "  up         - start redis, spark, spark-worker, dataframe-api, dataframe-ui-x"
 	@echo "  down       - stop all services"
-	@echo "  build      - build dataframe-ui and dataframe-ui-x images"
-	@echo "  build-ui   - build dataframe-ui image"
+	@echo "  build      - build dataframe-api and dataframe-ui-x images"
+	@echo "  build-ui   - build dataframe-api image"
 	@echo "  build-ui-x - build dataframe-ui-x image"
-	@echo "  restart    - restart dataframe-ui"
+	@echo "  restart    - restart dataframe-api"
 	@echo "  restart-x  - restart dataframe-ui-x"
-	@echo "  logs       - tail dataframe-ui logs"
+	@echo "  logs       - tail dataframe-api logs"
 	@echo "  logs-x     - tail dataframe-ui-x logs"
 	@echo "  wait       - wait for API readiness"
 	@echo "  test       - run all curl tests"
@@ -35,25 +35,25 @@ prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
 
 up:
-	docker compose -f ./docker-compose.yml up -d redis spark spark-worker dataframe-ui dataframe-ui-x
+	docker compose -f ./docker-compose.yml up -d redis spark spark-worker dataframe-api dataframe-ui-x
 
 build:
-	docker compose -f ./docker-compose.yml build dataframe-ui dataframe-ui-x
+	docker compose -f ./docker-compose.yml build dataframe-api dataframe-ui-x
 
 build-ui:
-	docker compose -f ./docker-compose.yml build dataframe-ui
+	docker compose -f ./docker-compose.yml build dataframe-api
 
 build-ui-x:
 	docker compose -f ./docker-compose.yml build dataframe-ui-x
 
 restart:
-	docker compose -f ./docker-compose.yml restart dataframe-ui
+	docker compose -f ./docker-compose.yml restart dataframe-api
 
 restart-x:
 	docker compose -f ./docker-compose.yml restart dataframe-ui-x
 
 logs:
-	docker compose -f ./docker-compose.yml logs -f dataframe-ui
+	docker compose -f ./docker-compose.yml logs -f dataframe-api
 
 logs-x:
 	docker compose -f ./docker-compose.yml logs -f dataframe-ui-x

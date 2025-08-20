@@ -1,4 +1,4 @@
-DataFrame UI Backend (Flask)
+DataFrame API Backend (Flask)
 
 Overview
 - A Flask REST API for uploading, caching, exploring, and transforming tabular datasets (CSV/Excel/JSON) using Redis for storage.
@@ -8,16 +8,16 @@ Overview
 Services (via docker-compose at project root)
 - Redis (port 6379)
 - Spark master/worker (7077, 8081/8082)
-- Flask API (dataframe-ui, port 4999)
+- Flask API (dataframe-api, port 4999)
 
 Quick start (docker compose)
 - From the project root:
-  - docker compose up -d redis spark spark-worker dataframe-ui
+  - docker compose up -d redis spark spark-worker dataframe-api
   - API: http://localhost:4999
 - Tear down: docker compose down
 
 Quick start (local Python, optional)
-- cd dataframe-ui
+- cd dataframe-api
 - python3 -m venv .venv && . .venv/bin/activate
 - pip install -r requirements.txt
 - export PORT=4999
@@ -55,7 +55,7 @@ Sample data & tests
 - Run via Makefile from the repository root:
   - make up       # brings up dependent services via docker compose
   - make wait     # waits for API to become ready
-  - make test     # runs curl tests in dataframe-ui/test.sh
+  - make test     # runs curl tests in dataframe-api/test.sh
   - make logs     # tails API logs
   - make down     # tears services down
 
