@@ -52,6 +52,10 @@ services:
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
       - PORT=4999
+      # API Protection settings
+      - ENABLE_API_PROTECTION=true
+      - INTERNAL_API_KEY=dataframe-api-internal-key
+      - ALLOWED_USER_AGENTS=python-requests,curl,wget,httpie,postman,insomnia
       # Spark client configuration for compare endpoint
       - SPARK_MASTER_URL=spark://127.0.0.1:7077
       # Optional: set to a reachable host IP if workers cannot connect back to driver
@@ -79,8 +83,14 @@ services:
     environment:
       - PORT=5001
       - API_BASE_URL=http://localhost:4999
+      # Authentication settings
+      - SECRET_KEY=dataframe-ui-secret-key-change-in-production
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379
+      - REDIS_DB=0
     depends_on:
       - dataframe-api
+      - redis
 
   ntfy:
     image: binwiederhier/ntfy

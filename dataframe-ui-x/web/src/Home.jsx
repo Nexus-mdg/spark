@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from './Header.jsx'
 import {
   getStats,
   listDataframes,
@@ -200,17 +201,11 @@ export default function Home() {
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Spark test visualizer</h1>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/operations')} className="px-3 py-1.5 rounded bg-indigo-600 hover:bg-indigo-700">Operations</button>
-            <button onClick={() => navigate('/chained-operations')} className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700">Chained Ops</button>
-            <button onClick={() => navigate('/chained-pipelines')} className="px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-700">Chained Pipes</button>
-            <div className="text-sm text-slate-300">{stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}</div>
-          </div>
+      <Header title="Spark test visualizer">
+        <div className="text-sm text-slate-300">
+          {stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}
         </div>
-      </header>
+      </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
