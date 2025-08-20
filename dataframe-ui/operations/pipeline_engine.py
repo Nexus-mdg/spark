@@ -337,6 +337,9 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if not pipeline_name:
             raise ValueError('chain_pipeline: pipeline name is required')
         
+        if df_curr is None:
+            raise ValueError('chain_pipeline: no current dataframe; add a load step first')
+        
         # Load the chained pipeline
         from utils.redis_client import redis_client
         import json
@@ -348,15 +351,18 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         obj = json.loads(redis_client.get(key))
         chained_steps = obj.get('steps') or []
         
+        if not chained_steps:
+            raise ValueError(f'chain_pipeline: pipeline {pipeline_name} has no steps')
+        
         # Execute the chained pipeline with current dataframe as input
-        current = df_curr
+        current = df_curr.copy()  # Make a copy to avoid modifying original
         for chained_step in chained_steps:
             current, _ = _apply_op(current, chained_step)
         
         # Save the chained pipeline result as a named dataframe
         # This allows subsequent steps to access it via merge operations
         result_name = f'chained_{pipeline_name}'
-        _save_df_to_cache(current, result_name, f'Result from chained pipeline: {pipeline_name}')
+        _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name}')
         
         # Return the original dataframe to preserve the main pipeline flow
         # The chained result is now available as a named dataframe for merge operations
