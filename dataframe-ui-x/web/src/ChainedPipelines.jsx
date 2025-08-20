@@ -654,6 +654,13 @@ export default function ChainedPipelines() {
       const res = await pipelinePreview({ steps: executableSteps, preview_rows: 10 })
       if (!res.success) throw new Error(res.error || 'Preview failed')
       setPreview({ loading: false, error: '', steps: res.steps || [], final: res.final || null })
+      
+      // Check if any steps have chained pipelines - if so, refresh dataframe list
+      // because chained pipeline results may have been saved during preview
+      const hasChainedPipelines = steps.some(step => step.chainedPipelines && step.chainedPipelines.length > 0)
+      if (hasChainedPipelines) {
+        await refresh()
+      }
     } catch (e) {
       setPreview({ loading: false, error: e.message || 'Preview failed', steps: [], final: null })
     }
