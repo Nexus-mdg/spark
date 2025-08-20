@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 from flask import Flask, send_from_directory, Response, request, jsonify, session
-from flask_session import Session
 import os
-import redis
+import psycopg2
+import psycopg2.extras
 import bcrypt
-import json
-from datetime import datetime, timedelta
-import datetime as dt
+from datetime import datetime
 from functools import wraps
 
 # Serve built assets from the dist directory (created by Vite build)
@@ -16,75 +14,62 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:4999")
 PORT = int(os.getenv("PORT", "5001"))
 
-# Redis configuration for sessions and user storage
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+# PostgreSQL configuration
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+POSTGRES_DB = os.getenv("POSTGRES_DB", "dataframe_ui")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "dataframe_user")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "dataframe_password")
 
-# Session configuration
+# Session configuration - using simple file-based sessions
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "dataframe-ui-secret-key-change-in-production")
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_KEY_PREFIX'] = 'dataframe-ui:'
-app.config['SESSION_REDIS'] = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 
-# Initialize session
-Session(app)
-
-# Redis client for user management
-redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+def get_db_connection():
+    """Get PostgreSQL database connection"""
+    try:
+        conn = psycopg2.connect(
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+            database=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            cursor_factory=psycopg2.extras.RealDictCursor
+        )
+        return conn
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        return None
 
 # Global error handler for API routes to ensure JSON responses
 @app.errorhandler(Exception)
 def handle_api_error(error):
     """Handle exceptions for API routes by returning JSON instead of HTML"""
     if request.path.startswith('/api/'):
-        # For API routes, always return JSON error responses
         if hasattr(error, 'code') and hasattr(error, 'description'):
-            # Flask HTTP exceptions
-            return jsonify({
-                'error': error.description,
-                'code': error.code
-            }), error.code
+            return jsonify({'error': error.description, 'code': error.code}), error.code
         else:
-            # Generic exceptions
             print(f"API error: {error}")
-            return jsonify({
-                'error': 'Internal server error',
-                'message': str(error)
-            }), 500
+            return jsonify({'error': 'Internal server error'}), 500
     else:
-        # For non-API routes, handle normally
         raise error
 
-# Specific handler for 404 errors
 @app.errorhandler(404)
 def spa_fallback(error):
     """Handle 404 errors - return JSON for API routes, SPA for others"""
     if request.path.startswith('/api/'):
-        return jsonify({
-            'error': 'API endpoint not found',
-            'code': 404
-        }), 404
+        return jsonify({'error': 'API endpoint not found', 'code': 404}), 404
     else:
-        # Return SPA for client-side routing
         try:
             return send_from_directory(app.static_folder, 'index.html')
         except Exception:
             return "Build not found. Please build the frontend.", 404
 
-# Specific handler for 405 Method Not Allowed errors
 @app.errorhandler(405)
 def method_not_allowed(error):
     """Handle method not allowed errors"""
     if request.path.startswith('/api/'):
-        return jsonify({
-            'error': 'Method not allowed for this endpoint',
-            'code': 405
-        }), 405
+        return jsonify({'error': 'Method not allowed for this endpoint', 'code': 405}), 405
     else:
-        # For non-API routes, return SPA
         try:
             return send_from_directory(app.static_folder, 'index.html')
         except Exception:
@@ -92,14 +77,20 @@ def method_not_allowed(error):
 
 # Authentication functions
 def get_user(username):
-    """Retrieve user data from Redis"""
+    """Retrieve user from database"""
+    conn = get_db_connection()
+    if not conn:
+        return None
     try:
-        user_data = redis_client.get(f"user:{username}")
-        if user_data:
-            return json.loads(user_data)
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+        return dict(user) if user else None
     except Exception as e:
         print(f"Error retrieving user {username}: {e}")
-    return None
+        return None
+    finally:
+        conn.close()
 
 def verify_password(password, password_hash):
     """Verify password against hash"""
@@ -111,42 +102,46 @@ def verify_password(password, password_hash):
 
 def update_last_login(username):
     """Update user's last login timestamp"""
+    conn = get_db_connection()
+    if not conn:
+        return
     try:
-        user = get_user(username)
-        if user:
-            user['last_login'] = datetime.now(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
-            redis_client.set(f"user:{username}", json.dumps(user))
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET last_login = %s WHERE username = %s", 
+                   (datetime.now(), username))
+        conn.commit()
     except Exception as e:
         print(f"Error updating last login for {username}: {e}")
+    finally:
+        conn.close()
 
 def change_user_password(username, new_password):
     """Change user's password"""
+    conn = get_db_connection()
+    if not conn:
+        return False
     try:
-        user = get_user(username)
-        if not user:
-            return False
-        
-        # Hash new password
         salt = bcrypt.gensalt()
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), salt).decode('utf-8')
         
-        # Update user data
-        user['password_hash'] = password_hash
-        redis_client.set(f"user:{username}", json.dumps(user))
-        return True
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET password_hash = %s WHERE username = %s", 
+                   (password_hash, username))
+        conn.commit()
+        return cur.rowcount > 0
     except Exception as e:
         print(f"Error changing password for {username}: {e}")
         return False
+    finally:
+        conn.close()
 
 def login_required(f):
     """Decorator to require authentication"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            # For API routes, always return JSON error
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
-            # For HTML requests, serve the index.html which will handle routing to login
             return send_from_directory(app.static_folder, 'index.html')
         return f(*args, **kwargs)
     return decorated_function
@@ -156,47 +151,30 @@ def login_required(f):
 def login():
     """Login endpoint"""
     try:
-        # Safely get JSON data
-        data = None
-        try:
-            data = request.get_json(force=True)
-        except Exception as json_error:
-            print(f"JSON parsing error: {json_error}")
-            return jsonify({'error': 'Invalid JSON data'}), 400
-        
+        data = request.get_json(force=True)
         if not data or not data.get('username') or not data.get('password'):
             return jsonify({'error': 'Username and password required'}), 400
         
         username = data['username'].strip()
         password = data['password']
         
-        # Get user from Redis
         user = get_user(username)
-        if not user:
-            return jsonify({'error': 'Invalid credentials'}), 401
-        
-        # Verify password
-        if not verify_password(password, user['password_hash']):
+        if not user or not verify_password(password, user['password_hash']):
             return jsonify({'error': 'Invalid credentials'}), 401
         
         # Set session
         session['user_id'] = username
         session['user_data'] = {
             'username': username,
-            'created_at': user.get('created_at'),
-            'last_login': user.get('last_login')
+            'created_at': user['created_at'].isoformat() if user['created_at'] else None,
+            'last_login': user['last_login'].isoformat() if user['last_login'] else None
         }
         
-        # Update last login
         update_last_login(username)
         
         return jsonify({
             'message': 'Login successful',
-            'user': {
-                'username': username,
-                'created_at': user.get('created_at'),
-                'last_login': user.get('last_login')
-            }
+            'user': session['user_data']
         })
         
     except Exception as e:
@@ -231,16 +209,13 @@ def change_password():
         current_password = data['current_password']
         new_password = data['new_password']
         
-        # Verify current password
         user = get_user(username)
         if not user or not verify_password(current_password, user['password_hash']):
             return jsonify({'error': 'Current password is incorrect'}), 400
         
-        # Validate new password
         if len(new_password) < 8:
             return jsonify({'error': 'New password must be at least 8 characters long'}), 400
         
-        # Change password
         if change_user_password(username, new_password):
             return jsonify({'message': 'Password changed successfully'})
         else:
@@ -255,7 +230,6 @@ def config_js():
     js = f"window.APP_CONFIG = {{ API_BASE_URL: '{API_BASE_URL}' }};"
     return Response(js, mimetype='application/javascript')
 
-# Root serves the SPA index.html
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
