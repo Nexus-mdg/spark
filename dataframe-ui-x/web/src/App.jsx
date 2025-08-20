@@ -9,6 +9,8 @@ import Analysis from './Analysis.jsx'
 import Operations from './Operations.jsx'
 import ChainedOperations from './ChainedOperations.jsx'
 import ChainedPipelines from './ChainedPipelines.jsx'
+import Documentation from './Documentation.jsx'
+import ApiDocumentation from './ApiDocumentation.jsx'
 
 // Component to handle authentication requirement
 function AuthenticatedRoute({ children }) {
@@ -66,6 +68,16 @@ function AppRoutes() {
       <Route path="/chained-pipelines" element={
         <AuthenticatedRoute>
           <ChainedPipelines />
+        </AuthenticatedRoute>
+      } />
+      <Route path="/docs" element={
+        <AuthenticatedRoute>
+          <Documentation />
+        </AuthenticatedRoute>
+      } />
+      <Route path="/api" element={
+        <AuthenticatedRoute>
+          <ApiDocumentation />
         </AuthenticatedRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />

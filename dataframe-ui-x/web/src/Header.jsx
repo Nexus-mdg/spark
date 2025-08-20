@@ -48,8 +48,36 @@ export default function Header({ title, children }) {
               className="text-white/90 hover:text-white flex items-center gap-2" 
               onClick={() => navigate('/')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 100 100" fill="none">
+                {/* Bird logo inspired by the provided image */}
+                <defs>
+                  <linearGradient id="headerBirdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#60A5FA"/>
+                    <stop offset="50%" stopColor="#34D399"/>
+                    <stop offset="100%" stopColor="#A78BFA"/>
+                  </linearGradient>
+                </defs>
+                {/* Bird body */}
+                <path d="M25 60 Q20 45 35 40 Q45 35 55 45 Q65 35 75 45 Q70 60 60 65 Q45 70 25 60 Z" fill="url(#headerBirdGradient)" stroke="white" strokeWidth="1"/>
+                {/* Bird wing details */}
+                <path d="M35 45 Q40 50 45 45 Q50 50 55 45" fill="none" stroke="white" strokeWidth="2"/>
+                <path d="M45 50 Q50 55 55 50 Q60 55 65 50" fill="none" stroke="white" strokeWidth="2"/>
+                {/* Bird head */}
+                <circle cx="70" cy="35" r="8" fill="url(#headerBirdGradient)" stroke="white" strokeWidth="1"/>
+                {/* Bird beak */}
+                <path d="M75 32 L85 30 Q87 32 85 34 L75 38" fill="#FCD34D"/>
+                {/* Bird eye */}
+                <circle cx="72" cy="33" r="2" fill="white"/>
+                <circle cx="73" cy="32" r="1" fill="#1E40AF"/>
+                {/* Tech connections (circuit-like) */}
+                <circle cx="30" cy="50" r="1.5" fill="#34D399"/>
+                <circle cx="40" cy="55" r="1.5" fill="#34D399"/>
+                <circle cx="50" cy="52" r="1.5" fill="#34D399"/>
+                <circle cx="60" cy="58" r="1.5" fill="#34D399"/>
+                {/* Connection lines */}
+                <path d="M30 50 L40 55 L50 52 L60 58" fill="none" stroke="#34D399" strokeWidth="1" opacity="0.8"/>
+                {/* DF text */}
+                <text x="20" y="85" fontFamily="sans-serif" fontSize="14" fontWeight="bold" fill="white">DF</text>
               </svg>
               <span className="text-lg font-semibold">
                 {title || 'DataFrame UI'}

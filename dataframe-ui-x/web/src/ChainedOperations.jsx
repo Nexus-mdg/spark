@@ -78,8 +78,8 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <label className="block">
-              <span className="block text-sm">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={state.name || ''} onChange={e => update({ name: e.target.value })}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.name || ''} onChange={e => update({ name: e.target.value })}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
@@ -96,18 +96,18 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="space-y-3">
             {hasCurrentDataframe && (
-              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
-                <div className="font-medium text-blue-800">Current dataframe from previous step will be automatically included</div>
-                <div className="text-blue-600 mt-1">Pick 1+ additional dataframes to merge with the current result</div>
+              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded p-3 text-sm">
+                <div className="font-medium text-blue-800 dark:text-blue-200">Current dataframe from previous step will be automatically included</div>
+                <div className="text-blue-600 dark:text-blue-300 mt-1">Pick 1+ additional dataframes to merge with the current result</div>
               </div>
             )}
             <div>
-              <div className="text-sm mb-1">
+              <div className="text-sm mb-1 text-gray-900 dark:text-gray-100">
                 {hasCurrentDataframe ? 'Pick 1+ additional dataframes' : 'Pick 2+ dataframes'}
               </div>
               <div className="flex flex-wrap gap-2">
                 {dfOptions.map(o => (
-                  <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${((state.names||[]).includes(o.value)) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
+                  <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${((state.names||[]).includes(o.value)) ? 'bg-indigo-50 dark:bg-indigo-900/50 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'} text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600`}>
                     <input type="checkbox" className="mr-1" checked={(state.names||[]).includes(o.value)} onChange={e => pickMany('names', o.value, e.target.checked)} />
                     {o.label}
                   </label>
@@ -116,12 +116,12 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <label className="block">
-                <span className="block text-sm">Join keys (comma)</span>
-                <input className="mt-1 border rounded w-full p-2" value={state.keys || ''} onChange={e => update({ keys: e.target.value })} placeholder="id" />
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
+                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.keys || ''} onChange={e => update({ keys: e.target.value })} placeholder="id" />
               </label>
               <label className="block">
-                <span className="block text-sm">Join type</span>
-                <select className="mt-1 border rounded w-full p-2" value={state.how || 'inner'} onChange={e => update({ how: e.target.value })}>
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Join type</span>
+                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.how || 'inner'} onChange={e => update({ how: e.target.value })}>
                   <option>inner</option>
                   <option>left</option>
                   <option>right</option>
@@ -143,11 +143,11 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">Group by (comma)</span>
-              <input className="mt-1 border rounded w-full p-2" value={state.by || ''} onChange={e => update({ by: e.target.value })} placeholder="country,year" />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Group by (comma)</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.by || ''} onChange={e => update({ by: e.target.value })} placeholder="country,year" />
             </label>
             <label className="block md:col-span-2">
-              <span className="block text-sm">Aggregations (JSON)</span>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Aggregations (JSON)</span>
               <input className="mt-1 border rounded w-full p-2 font-mono" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
@@ -163,8 +163,8 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">Columns (comma)</span>
-              <input className="mt-1 border rounded w-full p-2" value={state.columns || ''} onChange={e => update({ columns: e.target.value })} placeholder="id,name,value" />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Columns (comma)</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.columns || ''} onChange={e => update({ columns: e.target.value })} placeholder="id,name,value" />
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="checkbox" checked={!!state.exclude} onChange={e => update({ exclude: e.target.checked })} />
@@ -183,7 +183,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">Mapping (JSON)</span>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping (JSON)</span>
               <input className="mt-1 border rounded w-full p-2 font-mono" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
@@ -197,15 +197,15 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         return (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block">
-              <span className="block text-sm">Other DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={state.other || ''} onChange={e => update({ other: e.target.value })}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Other DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.other || ''} onChange={e => update({ other: e.target.value })}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
             <label className="block">
-              <span className="block text-sm">Action</span>
-              <select className="mt-1 border rounded w-full p-2" value={state.action || 'mismatch'} onChange={e => update({ action: e.target.value })}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Action</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.action || 'mismatch'} onChange={e => update({ action: e.target.value })}>
                 <option value="mismatch">mismatch (rows)</option>
                 <option value="identical">identical (pass/flag)</option>
               </select>
@@ -218,26 +218,26 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
               <label className="block md:col-span-2">
-                <span className="block text-sm">Action</span>
-                <select className="mt-1 border rounded w-full p-2" value={state.action || 'parse'} onChange={e => update({ action: e.target.value })}>
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Action</span>
+                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.action || 'parse'} onChange={e => update({ action: e.target.value })}>
                   <option value="parse">parse (string → date)</option>
                   <option value="derive">derive parts</option>
                 </select>
               </label>
               <label className="block md:col-span-2">
-                <span className="block text-sm">Source column</span>
-                <input className="mt-1 border rounded w-full p-2" value={state.source || ''} onChange={e => update({ source: e.target.value })} placeholder="date_col" />
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Source column</span>
+                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.source || ''} onChange={e => update({ source: e.target.value })} placeholder="date_col" />
               </label>
             </div>
             { (state.action || 'parse') === 'parse' ? (
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                 <label className="block">
-                  <span className="block text-sm">Format (optional)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={state.format || ''} onChange={e => update({ format: e.target.value })} placeholder="%Y-%m-%d" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Format (optional)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.format || ''} onChange={e => update({ format: e.target.value })} placeholder="%Y-%m-%d" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">Target (optional)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_date" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Target (optional)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_date" />
                 </label>
                 <label className="inline-flex items-center gap-2">
                   <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
@@ -255,8 +255,8 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                 <label className="block">
-                  <span className="block text-sm">Month style</span>
-                  <select className="mt-1 border rounded w-full p-2" value={state.month_style || 'short'} onChange={e => update({ month_style: e.target.value })}>
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Month style</span>
+                  <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.month_style || 'short'} onChange={e => update({ month_style: e.target.value })}>
                     <option value="short">Jan</option>
                     <option value="short_lower">jan</option>
                     <option value="long">January</option>
@@ -293,12 +293,12 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
               <label className="block">
-                <span className="block text-sm">Target column</span>
-                <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Target column</span>
+                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
               </label>
               <label className="block">
-                <span className="block text-sm">Mode</span>
-                <select className="mt-1 border rounded w-full p-2" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
+                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
                   <option value="vector">vector</option>
                   <option value="row">row</option>
                 </select>
@@ -314,7 +314,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
               }}>Add step</button>
             </div>
             <label className="block">
-              <span className="block text-sm">Expression</span>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
               <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
             </label>
             <div className="text-xs text-gray-600 dark:text-gray-300">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
@@ -385,20 +385,20 @@ function PivotBuilder({ dfOptions, onCreate }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <label className="block">
-            <span className="block text-sm">index (comma)</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.index || ''} onChange={e => update({ index: e.target.value })} placeholder="id" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">index (comma)</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.index || ''} onChange={e => update({ index: e.target.value })} placeholder="id" />
           </label>
           <label className="block">
-            <span className="block text-sm">names_from</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.names_from || ''} onChange={e => update({ names_from: e.target.value })} placeholder="category" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">names_from</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.names_from || ''} onChange={e => update({ names_from: e.target.value })} placeholder="category" />
           </label>
           <label className="block md:col-span-2">
-            <span className="block text-sm">values_from (comma)</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.values_from || ''} onChange={e => update({ values_from: e.target.value })} placeholder="value" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">values_from (comma)</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.values_from || ''} onChange={e => update({ values_from: e.target.value })} placeholder="value" />
           </label>
           <label className="block">
-            <span className="block text-sm">aggfunc</span>
-            <input className="mt-1 border rounded w-full p-2" value={state.aggfunc || 'first'} onChange={e => update({ aggfunc: e.target.value })} placeholder="first" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">aggfunc</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.aggfunc || 'first'} onChange={e => update({ aggfunc: e.target.value })} placeholder="first" />
           </label>
         </div>
         <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
@@ -421,20 +421,20 @@ function PivotBuilder({ dfOptions, onCreate }) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <label className="block md:col-span-2">
-          <span className="block text-sm">id_vars (comma)</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.id_vars || ''} onChange={e => update({ id_vars: e.target.value })} placeholder="id" />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">id_vars (comma)</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.id_vars || ''} onChange={e => update({ id_vars: e.target.value })} placeholder="id" />
         </label>
         <label className="block md:col-span-2">
-          <span className="block text-sm">value_vars (comma)</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.value_vars || ''} onChange={e => update({ value_vars: e.target.value })} placeholder="v1,v2" />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">value_vars (comma)</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.value_vars || ''} onChange={e => update({ value_vars: e.target.value })} placeholder="v1,v2" />
         </label>
         <label className="block">
-          <span className="block text-sm">var_name</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.var_name || 'variable'} onChange={e => update({ var_name: e.target.value })} />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">var_name</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.var_name || 'variable'} onChange={e => update({ var_name: e.target.value })} />
         </label>
         <label className="block md:col-span-2">
-          <span className="block text-sm">value_name</span>
-          <input className="mt-1 border rounded w-full p-2" value={state.value_name || 'value'} onChange={e => update({ value_name: e.target.value })} />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">value_name</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.value_name || 'value'} onChange={e => update({ value_name: e.target.value })} />
         </label>
       </div>
       <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
@@ -630,12 +630,12 @@ export default function ChainedOperations() {
         <Section title="Save / Load pipeline">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">Pipeline name</span>
-              <input className="mt-1 border rounded w-full p-2" value={plName} onChange={e => setPlName(e.target.value)} placeholder="my-pipeline" />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Pipeline name</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={plName} onChange={e => setPlName(e.target.value)} placeholder="my-pipeline" />
             </label>
             <label className="block md:col-span-3">
-              <span className="block text-sm">Description</span>
-              <input className="mt-1 border rounded w-full p-2" value={plDesc} onChange={e => setPlDesc(e.target.value)} placeholder="optional" />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Description</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={plDesc} onChange={e => setPlDesc(e.target.value)} placeholder="optional" />
             </label>
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} />

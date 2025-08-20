@@ -82,24 +82,24 @@ function AnimatedFeatureText() {
   const feature = features[currentFeature]
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 via-white to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-xl p-6 shadow-lg border border-indigo-100 dark:border-gray-600">
-      <div className="flex items-center gap-4">
-        <div className={`text-4xl transition-all duration-300 ${isVisible ? 'scale-100 rotate-0' : 'scale-75 rotate-12'}`}>
+    <div className="bg-gradient-to-r from-indigo-50 via-white to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-xl p-8 shadow-lg border border-indigo-100 dark:border-gray-600 min-h-[150px]">
+      <div className="flex items-center gap-6 h-full">
+        <div className={`text-5xl transition-all duration-300 ${isVisible ? 'scale-100 rotate-0' : 'scale-75 rotate-12'}`}>
           {feature.icon}
         </div>
-        <div className="flex-1">
-          <h3 className={`text-lg font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+        <div className="flex-1 space-y-3">
+          <h3 className={`text-xl font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             {feature.title}
           </h3>
-          <p className={`text-gray-600 dark:text-gray-300 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <p className={`text-gray-600 dark:text-gray-300 text-lg leading-relaxed transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
             {feature.description}
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-col gap-2">
           {features.map((_, index) => (
             <div
               key={index}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
                 index === currentFeature 
                   ? 'bg-indigo-500 scale-125' 
                   : 'bg-gray-300 dark:bg-gray-500'

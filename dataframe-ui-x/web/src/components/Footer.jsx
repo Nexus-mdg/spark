@@ -7,8 +7,36 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 100 100" fill="none">
+                {/* Bird logo inspired by the provided image */}
+                <defs>
+                  <linearGradient id="birdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3B82F6"/>
+                    <stop offset="50%" stopColor="#06B6D4"/>
+                    <stop offset="100%" stopColor="#8B5CF6"/>
+                  </linearGradient>
+                </defs>
+                {/* Bird body */}
+                <path d="M25 60 Q20 45 35 40 Q45 35 55 45 Q65 35 75 45 Q70 60 60 65 Q45 70 25 60 Z" fill="url(#birdGradient)" stroke="#1E40AF" strokeWidth="1"/>
+                {/* Bird wing details */}
+                <path d="M35 45 Q40 50 45 45 Q50 50 55 45" fill="none" stroke="#1E40AF" strokeWidth="2"/>
+                <path d="M45 50 Q50 55 55 50 Q60 55 65 50" fill="none" stroke="#1E40AF" strokeWidth="2"/>
+                {/* Bird head */}
+                <circle cx="70" cy="35" r="8" fill="url(#birdGradient)" stroke="#1E40AF" strokeWidth="1"/>
+                {/* Bird beak */}
+                <path d="M75 32 L85 30 Q87 32 85 34 L75 38" fill="#F59E0B"/>
+                {/* Bird eye */}
+                <circle cx="72" cy="33" r="2" fill="white"/>
+                <circle cx="73" cy="32" r="1" fill="#1E40AF"/>
+                {/* Tech connections (circuit-like) */}
+                <circle cx="30" cy="50" r="1.5" fill="#06B6D4"/>
+                <circle cx="40" cy="55" r="1.5" fill="#06B6D4"/>
+                <circle cx="50" cy="52" r="1.5" fill="#06B6D4"/>
+                <circle cx="60" cy="58" r="1.5" fill="#06B6D4"/>
+                {/* Connection lines */}
+                <path d="M30 50 L40 55 L50 52 L60 58" fill="none" stroke="#06B6D4" strokeWidth="1" opacity="0.6"/>
+                {/* DF text */}
+                <text x="20" y="85" fontFamily="sans-serif" fontSize="14" fontWeight="bold" fill="#1E40AF">DF</text>
               </svg>
               <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Spark Test Visualizer</span>
             </div>

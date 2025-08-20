@@ -79,7 +79,7 @@ export default function Analysis() {
 
   return (
     <div className="bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
-      <Header title={`Analysis: ${name}`}>
+      <Header title="Analysis">
         <Link 
           to="/" 
           className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm font-medium text-white transition-colors" 
@@ -93,6 +93,15 @@ export default function Analysis() {
       </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Dataframe name section */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 break-all">
+            📊 {name}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Dataframe Analysis Dashboard
+          </p>
+        </div>
         {loading && <div>Loading analysis…</div>}
         {error && <div className="text-red-600">{error}</div>}
 
@@ -133,11 +142,11 @@ export default function Analysis() {
                   <tbody className="divide-y">
                     {dfPreview.map((row, idx) => (
                       <tr key={idx}>
-                        {dfColumns.map((c) => (<td key={c} className="px-2 py-1 whitespace-nowrap text-gray-700">{String(row?.[c] ?? '')}</td>))}
+                        {dfColumns.map((c) => (<td key={c} className="px-2 py-1 whitespace-nowrap text-gray-700 dark:text-gray-300">{String(row?.[c] ?? '')}</td>))}
                       </tr>
                     ))}
                     {(!dfLoading && dfPreview.length === 0) && (
-                      <tr><td className="px-2 py-2 text-gray-500" colSpan={Math.max(1, dfColumns.length)}>No preview rows</td></tr>
+                      <tr><td className="px-2 py-2 text-gray-500 dark:text-gray-400" colSpan={Math.max(1, dfColumns.length)}>No preview rows</td></tr>
                     )}
                   </tbody>
                 </table>
