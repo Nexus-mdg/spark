@@ -524,6 +524,7 @@ export default function ChainedPipelines() {
   const [dfs, setDfs] = useState([])
   const [loading, setLoading] = useState(false)
   const [steps, setSteps] = useState([])
+  const [autoPreview, setAutoPreview] = useState(true)
   const [pipelines, setPipelines] = useState([])
   const [pipelinesLoading, setPipelinesLoading] = useState(false)
   const [plName, setPlName] = useState('')
@@ -554,6 +555,14 @@ export default function ChainedPipelines() {
   }
 
   useEffect(() => { refresh(); refreshPipelines() }, [])
+
+  useEffect(() => { 
+    if (autoPreview && steps.length > 0) { 
+      triggerPreview() 
+    } else if (steps.length === 0) {
+      setPreview({ loading: false, error: '', steps: [], final: null })
+    }
+  }, [autoPreview, JSON.stringify(steps)])
 
   const addStep = (s) => { 
     setSteps(prev => [...prev, { ...s, chainedPipelines: [] }])
@@ -703,7 +712,9 @@ export default function ChainedPipelines() {
         {/* Build chained pipeline */}
         <Section title="Build chained pipeline">
           <div className="flex items-center gap-3 mb-4">
-            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview</button>
+            <span className="text-sm">Auto preview</span>
+            <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
+            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
             <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear all steps</button>
             <span className="text-sm text-slate-600">{steps.length} steps</span>
           </div>
