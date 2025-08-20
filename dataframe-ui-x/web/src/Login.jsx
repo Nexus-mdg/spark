@@ -1,12 +1,67 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext.jsx'
 
+// Gradient theme configurations
+const gradientThemes = {
+  sunset: {
+    background: "from-orange-500 via-red-500 to-pink-600",
+    blobs: [
+      { color: "bg-orange-400", position: "top-20 left-20" },
+      { color: "bg-red-400", position: "top-40 right-20" },
+      { color: "bg-pink-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  ocean: {
+    background: "from-blue-600 via-cyan-600 to-teal-600",
+    blobs: [
+      { color: "bg-blue-400", position: "top-20 left-20" },
+      { color: "bg-cyan-400", position: "top-40 right-20" },
+      { color: "bg-teal-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  forest: {
+    background: "from-green-600 via-emerald-600 to-teal-600",
+    blobs: [
+      { color: "bg-green-400", position: "top-20 left-20" },
+      { color: "bg-emerald-400", position: "top-40 right-20" },
+      { color: "bg-teal-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  purple: {
+    background: "from-indigo-900 via-purple-900 to-pink-900",
+    blobs: [
+      { color: "bg-purple-500", position: "top-20 left-20" },
+      { color: "bg-indigo-500", position: "top-40 right-20" },
+      { color: "bg-pink-500", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  midnight: {
+    background: "from-gray-900 via-blue-900 to-indigo-900",
+    blobs: [
+      { color: "bg-gray-600", position: "top-20 left-20" },
+      { color: "bg-blue-600", position: "top-40 right-20" },
+      { color: "bg-indigo-600", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  aurora: {
+    background: "from-purple-600 via-pink-600 to-red-600",
+    blobs: [
+      { color: "bg-purple-400", position: "top-20 left-20" },
+      { color: "bg-pink-400", position: "top-40 right-20" },
+      { color: "bg-red-400", position: "-bottom-8 left-1/2" }
+    ]
+  }
+}
+
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { login, isAuthenticated } = useAuth()
+
+  // Get gradient theme from environment variable, default to forest (greenish)
+  const gradientTheme = gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'] || gradientThemes.forest
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -36,27 +91,49 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <div className="flex items-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-            </svg>
-            <span className="text-2xl font-bold text-gray-900">DataFrame UI</span>
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Sign in to your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Access the Spark test visualizer dashboard
-        </p>
+    <div className={`min-h-screen bg-gradient-to-br ${gradientTheme.background} relative overflow-hidden`}>
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0">
+        {gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'].blobs.map((blob, index) => (
+          <div 
+            key={index}
+            className={`absolute w-72 h-72 ${blob.color} rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob ${blob.position}`}
+            style={{
+              animationDelay: `${index * 2000}ms`
+            }}
+          ></div>
+        ))}
       </div>
+      
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 opacity-40">
+        <div className="w-full h-full" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M0 0h60v60H0z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '60px 60px'
+        }}></div>
+      </div>
+      
+      <div className="relative z-10 flex flex-col justify-center py-12 sm:px-6 lg:px-8 min-h-screen">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center">
+            <div className="flex items-center space-x-3 backdrop-blur-sm bg-white/10 rounded-2xl px-6 py-3 shadow-2xl border border-white/20">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+              </svg>
+              <span className="text-2xl font-bold text-white">DataFrame UI</span>
+            </div>
+          </div>
+          <h2 className="mt-8 text-center text-4xl font-extrabold text-white">
+            Welcome Back
+          </h2>
+          <p className="mt-3 text-center text-lg text-white/80">
+            Sign in to access your data visualization platform
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="backdrop-blur-md bg-white/95 dark:bg-gray-800/95 py-10 px-6 shadow-2xl rounded-2xl border border-white/20">
+            <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="rounded-md bg-red-50 p-4">
                 <div className="flex">
@@ -146,6 +223,7 @@ export default function Login() {
             <p className="text-xs text-gray-500">
               Contact your administrator for access credentials
             </p>
+          </div>
           </div>
         </div>
       </div>

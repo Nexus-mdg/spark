@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
+import Footer from './components/Footer.jsx'
 import {
   listDataframes,
   opsCompare,
@@ -18,8 +19,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
       {children}
     </section>
   )
@@ -69,36 +70,36 @@ function DataframePreview({ name, columnsFilter, excludeSelected }) {
 
   if (!name) return null
   return (
-    <div className="mt-3 border rounded bg-slate-50">
-      <div className="px-3 py-2 text-xs text-slate-600 flex items-center gap-2">
+    <div className="mt-3 border rounded bg-slate-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600">
+      <div className="px-3 py-2 text-xs text-slate-600 dark:text-gray-300 flex items-center gap-2">
         <span className="font-medium">Preview:</span>
         <span className="">{name}</span>
         {state.total != null && (<span className="ml-auto">showing {state.rows.length} of {state.total}</span>)}
       </div>
       {state.loading ? (
-        <div className="px-3 py-3 text-sm text-slate-600 flex items-center gap-2"><img src="/loader.svg" className="w-5 h-5" alt=""/> Loading…</div>
+        <div className="px-3 py-3 text-sm text-slate-600 dark:text-gray-300 flex items-center gap-2"><img src="/loader.svg" className="w-5 h-5" alt=""/> Loading…</div>
       ) : state.error ? (
-        <div className="px-3 py-3 text-sm text-red-600">{state.error}</div>
+        <div className="px-3 py-3 text-sm text-red-600 dark:text-red-400">{state.error}</div>
       ) : (
         <div className="overflow-auto">
           <table className="min-w-full text-xs">
-            <thead className="bg-slate-100">
+            <thead className="bg-slate-100 dark:bg-gray-700">
               <tr>
-                {state.columns.map(c => (<th key={c} className="text-left px-3 py-2 whitespace-nowrap border-b">{c}</th>))}
+                {state.columns.map(c => (<th key={c} className="text-left px-3 py-2 whitespace-nowrap border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">{c}</th>))}
               </tr>
             </thead>
             <tbody>
               {state.rows.map((r, i) => (
-                <tr key={i} className={i % 2 ? 'bg-white' : ''}>
+                <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-750'}>
                   {state.columns.map(c => (
-                    <td key={c} className="px-3 py-1 align-top border-b max-w-[300px] truncate" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
+                    <td key={c} className="px-3 py-1 align-top border-b border-gray-200 dark:border-gray-600 max-w-[300px] truncate text-gray-900 dark:text-gray-100" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
                       {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
                     </td>
                   ))}
                 </tr>
               ))}
               {state.rows.length === 0 && (
-                <tr><td className="px-3 py-2 text-slate-500" colSpan={state.columns.length || 1}>No rows</td></tr>
+                <tr><td className="px-3 py-2 text-slate-500 dark:text-gray-400" colSpan={state.columns.length || 1}>No rows</td></tr>
               )}
             </tbody>
           </table>
@@ -316,26 +317,69 @@ export default function Operations() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen text-gray-900">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
       <Header title="Operations">
         <div className="text-sm text-slate-300">
           {loading ? 'Loading…' : `${dfs.length} dataframes`}
         </div>
       </Header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6 flex-grow">
+        {/* Explanatory Text */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">DataFrame Operations</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-3">
+                Perform single operations on your DataFrames. Each operation creates a new DataFrame with the results, 
+                preserving your original data. Perfect for quick transformations and data exploration.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Compare DataFrames</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Merge & Join operations</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Pivot & Reshape data</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Filter & Group operations</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Column selection & renaming</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Date/time & expression handling</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <Section title="Compare two DataFrames">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block">
-              <span className="block text-sm">Left</span>
-              <select className="mt-1 border rounded w-full p-2" value={cmp1} onChange={e => setCmp1(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Left</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp1} onChange={e => setCmp1(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
             <label className="block">
-              <span className="block text-sm">Right</span>
-              <select className="mt-1 border rounded w-full p-2" value={cmp2} onChange={e => setCmp2(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Right</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp2} onChange={e => setCmp2(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
@@ -373,12 +417,12 @@ export default function Operations() {
         <Section title="Merge multiple DataFrames">
           <div className="space-y-3">
             <div>
-              <div className="text-sm mb-1">Pick 2+ dataframes</div>
-              <div className="flex flex-wrap gap-2">
+              <div className="text-sm mb-2 text-gray-900 dark:text-gray-100">Pick 2+ dataframes</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {dfOptions.map(o => (
-                  <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${mergeNames.includes(o.value) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
-                    <input type="checkbox" className="mr-1" checked={mergeNames.includes(o.value)} onChange={e => setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))} />
-                    {o.label}
+                  <label key={o.value} className={`px-3 py-2 rounded border cursor-pointer flex items-center gap-2 transition-colors ${mergeNames.includes(o.value) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650'}`}>
+                    <input type="checkbox" className="rounded text-indigo-600 focus:ring-indigo-500" checked={mergeNames.includes(o.value)} onChange={e => setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))} />
+                    <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{o.label}</span>
                   </label>
                 ))}
               </div>
@@ -391,12 +435,12 @@ export default function Operations() {
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <label className="block">
-                <span className="block text-sm">Join keys (comma)</span>
-                <input className="mt-1 border rounded w-full p-2" value={mergeKeys} onChange={e => setMergeKeys(e.target.value)} placeholder="id" />
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
+                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={mergeKeys} onChange={e => setMergeKeys(e.target.value)} placeholder="id" />
               </label>
               <label className="block">
-                <span className="block text-sm">Join type</span>
-                <select className="mt-1 border rounded w-full p-2" value={mergeHow} onChange={e => setMergeHow(e.target.value)}>
+                <span className="block text-sm text-gray-900 dark:text-gray-100">Join type</span>
+                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={mergeHow} onChange={e => setMergeHow(e.target.value)}>
                   <option>inner</option>
                   <option>left</option>
                   <option>right</option>
@@ -411,15 +455,15 @@ export default function Operations() {
         <Section title="Pivot">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={pvName} onChange={e => setPvName(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvName} onChange={e => setPvName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
             <label className="block">
-              <span className="block text-sm">Mode</span>
-              <select className="mt-1 border rounded w-full p-2" value={pvMode} onChange={e => setPvMode(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvMode} onChange={e => setPvMode(e.target.value)}>
                 <option value="wider">wider</option>
                 <option value="longer">longer</option>
               </select>
@@ -427,39 +471,39 @@ export default function Operations() {
             {pvMode === 'wider' ? (
               <>
                 <label className="block">
-                  <span className="block text-sm">Index cols (comma)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={pvIndex} onChange={e => setPvIndex(e.target.value)} placeholder="id" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Index cols (comma)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvIndex} onChange={e => setPvIndex(e.target.value)} placeholder="id" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">names_from</span>
-                  <input className="mt-1 border rounded w-full p-2" value={pvNamesFrom} onChange={e => setPvNamesFrom(e.target.value)} placeholder="category" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">names_from</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvNamesFrom} onChange={e => setPvNamesFrom(e.target.value)} placeholder="category" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">values_from (comma)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={pvValuesFrom} onChange={e => setPvValuesFrom(e.target.value)} placeholder="value" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">values_from (comma)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvValuesFrom} onChange={e => setPvValuesFrom(e.target.value)} placeholder="value" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">aggfunc</span>
-                  <input className="mt-1 border rounded w-full p-2" value={pvAgg} onChange={e => setPvAgg(e.target.value)} placeholder="first" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">aggfunc</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvAgg} onChange={e => setPvAgg(e.target.value)} placeholder="first" />
                 </label>
               </>
             ) : (
               <>
                 <label className="block">
-                  <span className="block text-sm">id_vars (comma)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={plIdVars} onChange={e => setPlIdVars(e.target.value)} placeholder="id" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">id_vars (comma)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plIdVars} onChange={e => setPlIdVars(e.target.value)} placeholder="id" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">value_vars (comma)</span>
-                  <input className="mt-1 border rounded w-full p-2" value={plValueVars} onChange={e => setPlValueVars(e.target.value)} placeholder="col1,col2" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">value_vars (comma)</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plValueVars} onChange={e => setPlValueVars(e.target.value)} placeholder="col1,col2" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">var_name</span>
-                  <input className="mt-1 border rounded w-full p-2" value={plVarName} onChange={e => setPlVarName(e.target.value)} />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">var_name</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plVarName} onChange={e => setPlVarName(e.target.value)} />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">value_name</span>
-                  <input className="mt-1 border rounded w-full p-2" value={plValueName} onChange={e => setPlValueName(e.target.value)} />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">value_name</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plValueName} onChange={e => setPlValueName(e.target.value)} />
                 </label>
               </>
             )}
@@ -474,7 +518,7 @@ export default function Operations() {
         <Section title="Filter">
           <div className="space-y-3">
             <label className="block">
-              <span className="block text-sm">DataFrame</span>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
               <select className="mt-1 border rounded w-full p-2 max-w-sm" value={ftName} onChange={e => setFtName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
@@ -492,20 +536,20 @@ export default function Operations() {
             {filters.map((f, idx) => (
               <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                 <label className="block">
-                  <span className="block text-sm">Column</span>
-                  <input className="mt-1 border rounded w-full p-2" value={f.col} onChange={e => updateFilter(idx, { col: e.target.value })} placeholder="column name" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Column</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={f.col} onChange={e => updateFilter(idx, { col: e.target.value })} placeholder="column name" />
                 </label>
                 <label className="block">
-                  <span className="block text-sm">Op</span>
-                  <select className="mt-1 border rounded w-full p-2" value={f.op} onChange={e => updateFilter(idx, { op: e.target.value })}>
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Op</span>
+                  <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={f.op} onChange={e => updateFilter(idx, { op: e.target.value })}>
                     <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
                     <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option>
                     <option>isnull</option><option>notnull</option>
                   </select>
                 </label>
                 <label className="block md:col-span-3">
-                  <span className="block text-sm">Value</span>
-                  <input className="mt-1 border rounded w-full p-2" value={f.value} onChange={e => updateFilter(idx, { value: e.target.value })} placeholder="value or [v1,v2] for in" />
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Value</span>
+                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={f.value} onChange={e => updateFilter(idx, { value: e.target.value })} placeholder="value or [v1,v2] for in" />
                 </label>
                 <button className="px-3 py-2 border rounded" onClick={() => removeFilter(idx)}>Remove</button>
               </div>
@@ -520,19 +564,19 @@ export default function Operations() {
         <Section title="Group by">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <label className="block">
-              <span className="block text-sm">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={gbName} onChange={e => setGbName(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbName} onChange={e => setGbName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
             <label className="block">
-              <span className="block text-sm">Group by (comma)</span>
-              <input className="mt-1 border rounded w-full p-2" value={gbBy} onChange={e => setGbBy(e.target.value)} placeholder="col1,col2" />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Group by (comma)</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbBy} onChange={e => setGbBy(e.target.value)} placeholder="col1,col2" />
             </label>
             <label className="block md:col-span-2">
-              <span className="block text-sm">Aggs JSON (optional)</span>
-              <input className="mt-1 border rounded w-full p-2" value={gbAggs} onChange={e => setGbAggs(e.target.value)} placeholder='{"col":"sum","col2":["mean","max"]}' />
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Aggs JSON (optional)</span>
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbAggs} onChange={e => setGbAggs(e.target.value)} placeholder='{"col":"sum","col2":["mean","max"]}' />
             </label>
             <button onClick={onGroupBy} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run GroupBy</button>
           </div>
@@ -543,8 +587,8 @@ export default function Operations() {
         <Section title="Select columns">
           <div className="space-y-3">
             <label className="block max-w-sm">
-              <span className="block text-sm">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={selName} onChange={e => setSelName(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={selName} onChange={e => setSelName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
@@ -578,8 +622,8 @@ export default function Operations() {
         <Section title="Rename columns">
           <div className="space-y-3">
             <label className="block max-w-sm">
-              <span className="block text-sm">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2" value={rnName} onChange={e => setRnName(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={rnName} onChange={e => setRnName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
@@ -587,7 +631,7 @@ export default function Operations() {
             {/* Preview of source */}
             {rnName && (<DataframePreview name={rnName} />)}
             <label className="block">
-              <span className="block text-sm">Mapping JSON (old->new)</span>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping JSON (old→new)</span>
               <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-24" placeholder='{"old_col":"new_col", "age":"age_years"}' value={rnMap} onChange={e => setRnMap(e.target.value)} />
             </label>
             <div>
@@ -606,6 +650,8 @@ export default function Operations() {
           <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
         </Section>
       </main>
+
+      <Footer />
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
@@ -649,22 +695,22 @@ function DateTimeSection({ dfOptions, onRun }) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <label className="block md:col-span-2">
-          <span className="block text-sm">DataFrame</span>
-          <select className="mt-1 border rounded w-full p-2" value={name} onChange={e => setName(e.target.value)}>
+          <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={name} onChange={e => setName(e.target.value)}>
             <option value="">Select…</option>
             {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
           </select>
         </label>
         <label className="block">
-          <span className="block text-sm">Action</span>
-          <select className="mt-1 border rounded w-full p-2" value={action} onChange={e => setAction(e.target.value)}>
-            <option value="parse">parse (string -> date)</option>
+          <span className="block text-sm text-gray-900 dark:text-gray-100">Action</span>
+          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={action} onChange={e => setAction(e.target.value)}>
+            <option value="parse">parse (string → date)</option>
             <option value="derive">derive parts</option>
           </select>
         </label>
         <label className="block md:col-span-2">
-          <span className="block text-sm">Source column</span>
-          <input className="mt-1 border rounded w-full p-2" list="dt-cols" value={source} onChange={e => setSource(e.target.value)} placeholder="date_col" />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">Source column</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" list="dt-cols" value={source} onChange={e => setSource(e.target.value)} placeholder="date_col" />
           <datalist id="dt-cols">
             {(selectedDf?.columns || []).map(c => (<option key={c} value={c}>{c}</option>))}
           </datalist>
@@ -674,12 +720,12 @@ function DateTimeSection({ dfOptions, onRun }) {
       {action === 'parse' ? (
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
           <label className="block">
-            <span className="block text-sm">Format (optional)</span>
-            <input className="mt-1 border rounded w-full p-2" value={format} onChange={e => setFormat(e.target.value)} placeholder="e.g. %Y-%m-%d" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">Format (optional)</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={format} onChange={e => setFormat(e.target.value)} placeholder="e.g. %Y-%m-%d" />
           </label>
           <label className="block">
-            <span className="block text-sm">Target column (optional)</span>
-            <input className="mt-1 border rounded w-full p-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_date" />
+            <span className="block text-sm text-gray-900 dark:text-gray-100">Target column (optional)</span>
+            <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_date" />
           </label>
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
@@ -693,8 +739,8 @@ function DateTimeSection({ dfOptions, onRun }) {
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <label className="block">
-              <span className="block text-sm">Month style</span>
-              <select className="mt-1 border rounded w-full p-2" value={monthStyle} onChange={e => setMonthStyle(e.target.value)}>
+              <span className="block text-sm text-gray-900 dark:text-gray-100">Month style</span>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={monthStyle} onChange={e => setMonthStyle(e.target.value)}>
                 <option value="short">Jan</option>
                 <option value="short_lower">jan</option>
                 <option value="long">January</option>
@@ -746,19 +792,19 @@ function MutateSection({ dfOptions, onRun }) {
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <label className="block md:col-span-2">
-          <span className="block text-sm">DataFrame</span>
-          <select className="mt-1 border rounded w-full p-2" value={name} onChange={e => setName(e.target.value)}>
+          <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
+          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={name} onChange={e => setName(e.target.value)}>
             <option value="">Select…</option>
             {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
           </select>
         </label>
         <label className="block">
-          <span className="block text-sm">Target column</span>
-          <input className="mt-1 border rounded w-full p-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_col" />
+          <span className="block text-sm text-gray-900 dark:text-gray-100">Target column</span>
+          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_col" />
         </label>
         <label className="block">
-          <span className="block text-sm">Mode</span>
-          <select className="mt-1 border rounded w-full p-2" value={mode} onChange={e => setMode(e.target.value)}>
+          <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
+          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={mode} onChange={e => setMode(e.target.value)}>
             <option value="vector">vector (Series/scalar)</option>
             <option value="row">row (use r[\"col\"]) </option>
           </select>
@@ -770,7 +816,7 @@ function MutateSection({ dfOptions, onRun }) {
       </div>
       {name && (<DataframePreview name={name} />)}
       <label className="block">
-        <span className="block text-sm">Expression</span>
+        <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
         <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
       </label>
       <div>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
+import Header from './Header.jsx'
+import Footer from './components/Footer.jsx'
 
 export default function UserProfile() {
   const navigate = useNavigate()
@@ -13,6 +15,7 @@ export default function UserProfile() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
 
   const handlePasswordChange = async (e) => {
     e.preventDefault()
@@ -51,55 +54,47 @@ export default function UserProfile() {
   }
 
   const handleLogout = async () => {
-    if (confirm('Are you sure you want to logout?')) {
-      await logout()
-    }
+    setShowLogoutDialog(true)
+  }
+
+  const confirmLogout = async () => {
+    setShowLogoutDialog(false)
+    await logout()
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen text-gray-900">
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              className="text-white/90 hover:text-white" 
-              onClick={() => navigate('/')}
-            >
-              ← Home
-            </button>
-            <h1 className="text-lg font-semibold">User Profile</h1>
-          </div>
-          <div className="text-sm text-slate-300">
-            Logged in as {user?.username}
-          </div>
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
+      <Header title="User Profile">
+        <div className="text-sm text-slate-300">
+          Logged in as {user?.username}
         </div>
-      </header>
+      </Header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
           {/* User Information */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Account Information</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Username</label>
-                  <div className="mt-1 p-3 border border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                  <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                     {user?.username}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Account Created</label>
-                  <div className="mt-1 p-3 border border-gray-300 rounded-md bg-gray-50">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Created</label>
+                  <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                     {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Last Login</label>
-                <div className="mt-1 p-3 border border-gray-300 rounded-md bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Login</label>
+                <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                   {user?.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
                 </div>
               </div>
@@ -107,20 +102,20 @@ export default function UserProfile() {
           </div>
 
           {/* Password Management */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Security Settings</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Security Settings</h2>
             </div>
             <div className="px-6 py-4">
               {!showChangePassword ? (
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">Password</h3>
-                    <p className="text-sm text-gray-500">Change your password to keep your account secure</p>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Password</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Change your password to keep your account secure</p>
                   </div>
                   <button
                     onClick={() => setShowChangePassword(true)}
-                    className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500 border border-indigo-600 hover:border-indigo-500 rounded-md"
+                    className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 border border-indigo-600 dark:border-indigo-400 hover:border-indigo-500 dark:hover:border-indigo-300 rounded-md"
                   >
                     Change Password
                   </button>
@@ -128,7 +123,7 @@ export default function UserProfile() {
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium text-gray-900">Change Password</h3>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Change Password</h3>
                     <button
                       onClick={() => {
                         setShowChangePassword(false)
@@ -138,14 +133,14 @@ export default function UserProfile() {
                         setNewPassword('')
                         setConfirmPassword('')
                       }}
-                      className="text-sm text-gray-500 hover:text-gray-700"
+                      className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     >
                       Cancel
                     </button>
                   </div>
 
                   {message && (
-                    <div className="rounded-md bg-green-50 p-4">
+                    <div className="rounded-md bg-green-50 dark:bg-green-900/20 p-4">
                       <div className="flex">
                         <div className="flex-shrink-0">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -153,14 +148,14 @@ export default function UserProfile() {
                           </svg>
                         </div>
                         <div className="ml-3">
-                          <p className="text-sm font-medium text-green-800">{message}</p>
+                          <p className="text-sm font-medium text-green-800 dark:text-green-400">{message}</p>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {error && (
-                    <div className="rounded-md bg-red-50 p-4">
+                    <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
                       <div className="flex">
                         <div className="flex-shrink-0">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -168,7 +163,7 @@ export default function UserProfile() {
                           </svg>
                         </div>
                         <div className="ml-3">
-                          <p className="text-sm font-medium text-red-800">{error}</p>
+                          <p className="text-sm font-medium text-red-800 dark:text-red-400">{error}</p>
                         </div>
                       </div>
                     </div>
@@ -176,7 +171,7 @@ export default function UserProfile() {
 
                   <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div>
-                      <label htmlFor="current-password" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Current Password
                       </label>
                       <input
@@ -185,12 +180,12 @@ export default function UserProfile() {
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         New Password
                       </label>
                       <input
@@ -200,13 +195,13 @@ export default function UserProfile() {
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
                         minLength={8}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters long</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Must be at least 8 characters long</p>
                     </div>
 
                     <div>
-                      <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         Confirm New Password
                       </label>
                       <input
@@ -215,7 +210,7 @@ export default function UserProfile() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                        className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                       />
                     </div>
 
@@ -235,19 +230,19 @@ export default function UserProfile() {
           </div>
 
           {/* Account Actions */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Account Actions</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Account Actions</h2>
             </div>
             <div className="px-6 py-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900">Sign Out</h3>
-                  <p className="text-sm text-gray-500">Sign out of your account on this device</p>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Sign Out</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Sign out of your account on this device</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-500 border border-red-600 hover:border-red-500 rounded-md"
+                  className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 border border-red-600 dark:border-red-400 hover:border-red-500 dark:hover:border-red-300 rounded-md"
                 >
                   Sign Out
                 </button>
@@ -256,6 +251,34 @@ export default function UserProfile() {
           </div>
         </div>
       </main>
+      
+      {/* Logout Confirmation Dialog */}
+      {showLogoutDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowLogoutDialog(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-600">
+              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">Confirm Sign Out</h4>
+            </div>
+            <div className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+              Are you sure you want to sign out? You'll need to log in again to access your data.
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
+              <button 
+                onClick={() => setShowLogoutDialog(false)} 
+                className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmLogout} 
+                className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

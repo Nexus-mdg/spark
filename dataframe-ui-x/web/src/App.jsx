@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import Login from './Login.jsx'
 import UserProfile from './UserProfile.jsx'
 import Home from './Home.jsx'
@@ -8,6 +9,8 @@ import Analysis from './Analysis.jsx'
 import Operations from './Operations.jsx'
 import ChainedOperations from './ChainedOperations.jsx'
 import ChainedPipelines from './ChainedPipelines.jsx'
+import Documentation from './Documentation.jsx'
+import ApiDocumentation from './ApiDocumentation.jsx'
 
 // Component to handle authentication requirement
 function AuthenticatedRoute({ children }) {
@@ -67,6 +70,16 @@ function AppRoutes() {
           <ChainedPipelines />
         </AuthenticatedRoute>
       } />
+      <Route path="/docs" element={
+        <AuthenticatedRoute>
+          <Documentation />
+        </AuthenticatedRoute>
+      } />
+      <Route path="/api" element={
+        <AuthenticatedRoute>
+          <ApiDocumentation />
+        </AuthenticatedRoute>
+      } />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -74,8 +87,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
