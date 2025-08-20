@@ -88,6 +88,10 @@ def protect_api():
     if not ENABLE_API_PROTECTION:
         return None
     
+    # Always allow OPTIONS requests (CORS preflight)
+    if request.method == 'OPTIONS':
+        return None
+    
     # Allow requests with valid API key
     if has_valid_api_key():
         return None
