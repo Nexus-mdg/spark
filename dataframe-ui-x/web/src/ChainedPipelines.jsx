@@ -267,7 +267,7 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
   )
 }
 
-function ParamInput({ op, dfOptions, onCreate }) {
+function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
   const [state, setState] = useState({})
   useEffect(() => { setState({}) }, [op])
   const update = (patch) => setState(s => ({ ...s, ...patch }))
@@ -289,10 +289,23 @@ function ParamInput({ op, dfOptions, onCreate }) {
           </div>
         )
       case 'merge':
+        // Check if we have a current dataframe context (not the first step)
+        const hasCurrentDataframe = stepCount > 0;
+        const minDataframesRequired = hasCurrentDataframe ? 1 : 2;
+        const selectedCount = (state.names || []).length;
+        
         return (
           <div className="space-y-3">
+            {hasCurrentDataframe && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm">
+                <div className="font-medium text-blue-800">Current dataframe from previous step will be automatically included</div>
+                <div className="text-blue-600">Select additional dataframe(s) to merge with</div>
+              </div>
+            )}
             <div>
-              <div className="text-sm mb-1">Pick 2+ dataframes</div>
+              <div className="text-sm mb-1">
+                {hasCurrentDataframe ? `Pick ${minDataframesRequired}+ additional dataframes` : `Pick ${minDataframesRequired}+ dataframes`}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {dfOptions.map(o => (
                   <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${((state.names||[]).includes(o.value)) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
@@ -319,7 +332,7 @@ function ParamInput({ op, dfOptions, onCreate }) {
               <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
                 const names = state.names || []
                 const keys = String(state.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
-                if (names.length < 2 || keys.length === 0) return
+                if (selectedCount < minDataframesRequired || keys.length === 0) return
                 onCreate({ op: 'merge', params: { names, keys, how: state.how || 'inner' } })
               }}>Add step</button>
             </div>
@@ -729,7 +742,7 @@ export default function ChainedPipelines() {
           <div className="space-y-4">
             <div className="bg-slate-50 border rounded p-3">
               <div className="text-sm font-medium mb-2">Add step</div>
-              <AddStep dfOptions={dfOptions} onAdd={addStep} />
+              <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
             
             {steps.length > 0 && (
@@ -825,7 +838,7 @@ export default function ChainedPipelines() {
   )
 }
 
-function AddStep({ dfOptions, onAdd }) {
+function AddStep({ dfOptions, onAdd, stepCount }) {
   const [op, setOp] = useState('load')
   return (
     <div className="space-y-3">
@@ -844,7 +857,7 @@ function AddStep({ dfOptions, onAdd }) {
           <option value="mutate">mutate</option>
         </select>
       </div>
-      <ParamInput op={op} dfOptions={dfOptions} onCreate={onAdd} />
+      <ParamInput op={op} dfOptions={dfOptions} onCreate={onAdd} stepCount={stepCount} />
     </div>
   )
 }
