@@ -191,13 +191,13 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
 
   return (
     <div className="border rounded p-3 bg-slate-50">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">Step {index + 1}:</span>
-          <code className="text-xs bg-slate-200 rounded px-1 py-0.5">{step.op}</code>
-          <span className="text-xs text-slate-600">{JSON.stringify(step.params)}</span>
+      <div className="flex items-start justify-between mb-2 gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="font-medium text-sm flex-shrink-0">Step {index + 1}:</span>
+          <code className="text-xs bg-slate-200 rounded px-1 py-0.5 flex-shrink-0">{step.op}</code>
+          <span className="text-xs text-slate-600 break-words min-w-0">{JSON.stringify(step.params)}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button 
             className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
             onClick={() => setShowChainOptions(!showChainOptions)}
@@ -659,6 +659,33 @@ export default function ChainedPipelines() {
     } catch (e) { toast.show(e.message || 'Save failed') }
   }
 
+  const onLoadPipeline = async (name) => {
+    if (!name) return
+    try {
+      const res = await pipelineGet(name)
+      if (!res.success) throw new Error(res.error || 'Load failed')
+      const obj = res.pipeline
+      if (obj.chainedStructure) {
+        // Load the UI structure if it exists
+        setSteps(obj.chainedStructure)
+      } else {
+        // Convert from regular steps format if no UI structure
+        setSteps(obj.steps || [])
+      }
+      setPlName(obj.name || '')
+      setPlDesc(obj.description || '')
+      toast.show(`Loaded ${obj.name}`)
+    } catch (e) { toast.show(e.message || 'Load failed') }
+  }
+
+  const onDeletePipeline = async (name) => {
+    try { await pipelineDelete(name); toast.show('Deleted'); await refreshPipelines() } catch (e) { toast.show(e.message || 'Delete failed') }
+  }
+
+  const onRunByName = async (name) => {
+    try { const res = await pipelineRunByName(name, { materialize: true }); if (!res.success) throw new Error(res.error || 'Run failed'); toast.show(`Created ${res.created?.name || 'result'}`); await refresh() } catch (e) { toast.show(e.message || 'Run failed') }
+  }
+
   const triggerPreview = async () => {
     if (steps.length === 0) return
     setPreview(p => ({ ...p, loading: true, error: '' }))
@@ -727,6 +754,49 @@ export default function ChainedPipelines() {
           <div className="mt-3 flex flex-wrap gap-2">
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={onSavePipeline}>Save chained pipeline</button>
           </div>
+        </Section>
+
+        {/* Pipeline library */}
+        <Section title="Pipelines library">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-sm">Load</span>
+            <select className="border rounded p-2" onChange={e => onLoadPipeline(e.target.value)} value="">
+              <option value="">Select…</option>
+              {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
+            </select>
+            <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+          </div>
+          {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
+          {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
+          {pipelines.length > 0 && (
+            <div className="overflow-auto border rounded">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-100 text-left">
+                  <tr>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Steps</th>
+                    <th className="px-3 py-2">Description</th>
+                    <th className="px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pipelines.map(p => (
+                    <tr key={p.name} className="border-t">
+                      <td className="px-3 py-2 font-medium">{p.name}</td>
+                      <td className="px-3 py-2">{p.steps}</td>
+                      <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+                      <td className="px-3 py-2 flex flex-wrap gap-2">
+                        <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                        <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
+                        <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                        <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Section>
 
         {/* Build chained pipeline */}

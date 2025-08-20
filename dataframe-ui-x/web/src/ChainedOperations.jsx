@@ -663,9 +663,9 @@ export default function ChainedOperations() {
                 <ol className="list-decimal pl-6 py-2 space-y-2">
                   {steps.map((s, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <code className="text-xs bg-slate-100 rounded px-1 py-0.5">{s.op}</code>
-                      <span className="text-xs text-slate-700 break-all">{JSON.stringify(s.params)}</span>
-                      <button className="ml-auto text-red-600 text-xs underline" onClick={() => removeStep(i)}>Remove</button>
+                      <code className="text-xs bg-slate-100 rounded px-1 py-0.5 flex-shrink-0">{s.op}</code>
+                      <span className="text-xs text-slate-700 break-words flex-1 min-w-0">{JSON.stringify(s.params)}</span>
+                      <button className="text-red-600 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
                     </li>
                   ))}
                 </ol>
