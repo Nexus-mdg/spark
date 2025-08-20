@@ -1,7 +1,7 @@
 # ntfy server configuration
 
 # Base URL for the ntfy server
-base-url: "https://localhost"
+base-url: "https://localhost:8443"
 
 # Listen address (on host network)
 listen-http: ":8080"

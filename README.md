@@ -137,11 +137,12 @@ open http://localhost:5001
 ```
 
 Services started:
-- **PostgreSQL**: Database for authentication
+- **PostgreSQL**: Database for authentication (port 15432)
 - **Redis**: Cache for DataFrame operations  
 - **DataFrame API**: Data processing backend (port 4999)
 - **Authentication UI**: Secure frontend with login (port 5001)
-- **NGINX**: Reverse proxy and SSL termination
+- **NGINX**: Reverse proxy and SSL termination (ports 8880/8443)
+- **ntfy**: Notifications service accessible at https://localhost:8443
 
 Example docker-compose.yml structure:
 ```yaml
@@ -170,7 +171,7 @@ services:
     environment:
       - PORT=5001
       - API_BASE_URL=http://dataframe-api:4999
-      - DATABASE_URL=postgresql://dataframe_user:secure_password@postgres:5432/dataframe_auth
+      - DATABASE_URL=postgresql://dataframe_user:secure_password@postgres:15432/dataframe_auth
     ports: ["5001:5001"]
     depends_on: [postgres, dataframe-api]
 ```
@@ -221,7 +222,7 @@ At minimum, ensure the pipeline stages cover:
 ### Production Settings
 ```bash
 # Authentication database
-export DATABASE_URL="postgresql://user:password@localhost:5432/dataframe_auth"
+export DATABASE_URL="postgresql://user:password@localhost:15432/dataframe_auth"
 export SECRET_KEY="your-secure-random-key-here"
 
 # API configuration  

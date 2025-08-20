@@ -16,7 +16,7 @@ PORT = int(os.getenv("PORT", "5001"))
 
 # PostgreSQL configuration
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "15432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "dataframe_ui")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "dataframe_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "dataframe_password")

@@ -65,6 +65,27 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+        
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "15432:15432"
+    environment:
+      - POSTGRES_DB=dataframe_ui
+      - POSTGRES_USER=dataframe_user
+      - POSTGRES_PASSWORD=dataframe_password
+      - PGPORT=15432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./dataframe-ui-x/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - spark-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
 
   dataframe-api:
     build: ./dataframe-api
@@ -75,6 +96,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=4999
+      # API Protection settings
+      - ENABLE_API_PROTECTION=true
+      - INTERNAL_API_KEY=dataframe-api-internal-key
+      - ALLOWED_USER_AGENTS=python-requests,curl,wget,httpie,postman,insomnia
+      # Spark client configuration for compare endpoint
       - SPARK_MASTER_URL=spark://spark:7077
       - SPARK_DRIVER_HOST=dataframe-api
       - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
@@ -82,8 +108,9 @@ services:
       - SPARK_DRIVER_MEMORY=4g
       - PYSPARK_PYTHON=python3
       - PYSPARK_DRIVER_PYTHON=python3
+      # ntfy notifications
       - NTFY_ENABLE=true
-      - NTFY_URL=http://ntfy:8080
+      - NTFY_URL=https://ntfy:8443
       - NTFY_TOPIC=spark
     depends_on:
       - redis
@@ -106,8 +133,16 @@ services:
     environment:
       - PORT=5001
       - API_BASE_URL=http://dataframe-api:4999
+      # Authentication settings
+      - SECRET_KEY=dataframe-ui-secret-key-change-in-production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=15432
+      - POSTGRES_DB=dataframe_ui
+      - POSTGRES_USER=dataframe_user
+      - POSTGRES_PASSWORD=dataframe_password
     depends_on:
       - dataframe-api
+      - postgres
     networks:
       - spark-network
     deploy:
@@ -137,8 +172,8 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+      - "8880:8880"
+      - "8443:8443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
@@ -162,6 +197,8 @@ volumes:
   spark-data:
     driver: local
   redis-data:
+    driver: local
+  postgres-data:
     driver: local
   ntfy-data:
     driver: local

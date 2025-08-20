@@ -50,7 +50,7 @@ services:
       - POSTGRES_DB=dataframe_ui
       - POSTGRES_USER=dataframe_user
       - POSTGRES_PASSWORD=dataframe_password
-      - PGPORT=5432
+      - PGPORT=15432
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./dataframe-ui-x/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -81,7 +81,7 @@ services:
       - PYSPARK_DRIVER_PYTHON=python3
       # ntfy notifications
       - NTFY_ENABLE=true
-      - NTFY_URL=http://localhost:8080
+      - NTFY_URL=https://localhost:8443
       - NTFY_TOPIC=spark
     depends_on:
       - redis
@@ -99,7 +99,7 @@ services:
       # Authentication settings
       - SECRET_KEY=dataframe-ui-secret-key-change-in-production
       - POSTGRES_HOST=localhost
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=15432
       - POSTGRES_DB=dataframe_ui
       - POSTGRES_USER=dataframe_user
       - POSTGRES_PASSWORD=dataframe_password
