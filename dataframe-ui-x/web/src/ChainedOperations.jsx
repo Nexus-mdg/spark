@@ -18,8 +18,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
       {children}
     </section>
   )
@@ -576,12 +576,55 @@ export default function ChainedOperations() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen text-gray-900">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
       <Header title="Chained Operations">
         <div className="text-sm text-slate-300">{loading ? 'Loading…' : `${dfs.length} dataframes`}</div>
       </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Explanatory Text */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Chained Operations Pipeline</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-3">
+                Build complex data transformation pipelines by chaining multiple operations together. 
+                Each step processes the output from the previous step, allowing you to create sophisticated workflows with live previews.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Sequential step execution</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Live pipeline previews</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Save & reuse pipelines</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">YAML import/export</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Complex transformations</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Reproducible workflows</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Save/Load controls */}
         <Section title="Save / Load pipeline">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">

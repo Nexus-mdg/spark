@@ -18,8 +18,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
       {children}
     </section>
   )
@@ -316,7 +316,7 @@ export default function Operations() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen text-gray-900">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
       <Header title="Operations">
         <div className="text-sm text-slate-300">
           {loading ? 'Loading…' : `${dfs.length} dataframes`}
@@ -324,6 +324,49 @@ export default function Operations() {
       </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Explanatory Text */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">DataFrame Operations</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-3">
+                Perform single operations on your DataFrames. Each operation creates a new DataFrame with the results, 
+                preserving your original data. Perfect for quick transformations and data exploration.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Compare DataFrames</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Merge & Join operations</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Pivot & Reshape data</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Filter & Group operations</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Column selection & renaming</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Date/time & expression handling</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <Section title="Compare two DataFrames">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block">

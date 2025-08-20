@@ -17,8 +17,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
       {children}
     </section>
   )
@@ -727,7 +727,7 @@ export default function ChainedPipelines() {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen text-gray-900">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors">
       <Header title="Chained Pipelines">
         <div className="text-sm text-slate-300">
           {loading ? 'Loading…' : `${dfs.length} dataframes`}
@@ -735,6 +735,49 @@ export default function ChainedPipelines() {
       </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Explanatory Text */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Advanced Chained Pipelines</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-3">
+                Create sophisticated workflows by chaining multiple pipelines together. Each step can trigger secondary pipelines 
+                that execute using the current data state, enabling complex branching and parallel processing scenarios.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Multi-pipeline orchestration</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Branch & parallel execution</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Dynamic data state sharing</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Complex workflow management</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Reusable pipeline components</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Enterprise-grade processing</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Info Section */}
         <Section title="About Chained Pipelines">
           <div className="text-sm text-slate-600 space-y-2">

@@ -105,6 +105,7 @@ services:
       - POSTGRES_PASSWORD=dataframe_password
       # UI settings
       - MAX_ITEMS_PER_PAGE=15
+      - LOGIN_GRADIENT_THEME=forest
     depends_on:
       - dataframe-api
       - postgres

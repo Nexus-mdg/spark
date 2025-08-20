@@ -28,6 +28,89 @@ import {
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, ArcElement, LineElement, PointElement, Tooltip, Legend)
 
+// Animated feature showcase component
+function AnimatedFeatureText() {
+  const [currentFeature, setCurrentFeature] = useState(0)
+  const [isVisible, setIsVisible] = useState(true)
+
+  const features = [
+    {
+      icon: "📊",
+      title: "Interactive Data Analysis",
+      description: "Explore your DataFrames with powerful visualization tools and real-time charts"
+    },
+    {
+      icon: "🔗",
+      title: "Pipeline Operations",
+      description: "Chain multiple operations together to create complex data transformation workflows"
+    },
+    {
+      icon: "⚡",
+      title: "Lightning Fast Processing",
+      description: "Built on Apache Spark for blazing fast distributed data processing"
+    },
+    {
+      icon: "🎨",
+      title: "Beautiful Interface",
+      description: "Modern, intuitive UI with dark/light modes and responsive design"
+    },
+    {
+      icon: "🔄",
+      title: "Real-time Previews",
+      description: "See your data transformations instantly with live preview capabilities"
+    },
+    {
+      icon: "💾",
+      title: "Multiple Formats",
+      description: "Import and export CSV, Excel, JSON files with automatic schema detection"
+    }
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsVisible(false)
+      setTimeout(() => {
+        setCurrentFeature((prev) => (prev + 1) % features.length)
+        setIsVisible(true)
+      }, 300)
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [features.length])
+
+  const feature = features[currentFeature]
+
+  return (
+    <div className="bg-gradient-to-r from-indigo-50 via-white to-cyan-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-xl p-6 shadow-lg border border-indigo-100 dark:border-gray-600">
+      <div className="flex items-center gap-4">
+        <div className={`text-4xl transition-all duration-300 ${isVisible ? 'scale-100 rotate-0' : 'scale-75 rotate-12'}`}>
+          {feature.icon}
+        </div>
+        <div className="flex-1">
+          <h3 className={`text-lg font-semibold text-gray-900 dark:text-gray-100 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            {feature.title}
+          </h3>
+          <p className={`text-gray-600 dark:text-gray-300 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+            {feature.description}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {features.map((_, index) => (
+            <div
+              key={index}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                index === currentFeature 
+                  ? 'bg-indigo-500 scale-125' 
+                  : 'bg-gray-300 dark:bg-gray-500'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function useToast() {
   const [msg, setMsg] = useState('')
   const [visible, setVisible] = useState(false)
@@ -45,10 +128,10 @@ function Modal({ open, title, onClose, children }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-3 border-b flex items-center justify-between">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
           </button>
         </div>
@@ -62,13 +145,13 @@ function ConfirmDialog({ open, title = 'Confirm action', message = 'Are you sure
   if (!open) return null
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onCancel}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b">
-          <h4 className="text-base font-semibold">{title}</h4>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-600">
+          <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h4>
         </div>
-        <div className="px-5 py-4 text-sm text-gray-700">{message}</div>
-        <div className="px-5 py-3 border-t flex items-center justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50">{cancelText}</button>
+        <div className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{message}</div>
+        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
+          <button onClick={onCancel} className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">{cancelText}</button>
           <button disabled={confirming} onClick={onConfirm} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">{confirming ? 'Working…' : confirmText}</button>
         </div>
       </div>
@@ -315,6 +398,9 @@ export default function Home() {
       </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Animated Feature Showcase */}
+        <AnimatedFeatureText />
+
         {/* Enhanced Stats Section */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-6 shadow-lg">
@@ -443,20 +529,20 @@ export default function Home() {
           <form onSubmit={onUpload} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
-                <span className="block text-sm font-medium text-gray-700">DataFrame Name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} type="text" placeholder="Optional" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">DataFrame Name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} type="text" placeholder="Optional" className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400" />
               </label>
               <label className="block">
-                <span className="block text-sm font-medium text-gray-700">Description</span>
-                <input value={description} onChange={(e) => setDescription(e.target.value)} type="text" placeholder="Optional" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</span>
+                <input value={description} onChange={(e) => setDescription(e.target.value)} type="text" placeholder="Optional" className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400" />
               </label>
             </div>
 
-            <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} onClick={() => document.getElementById('file-input').click()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-10 w-10 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a2 2 0 00-2 2v3h2V5h12v3h2V5a2 2 0 00-2-2H3z"/><path d="M3 9h14v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm7 1a1 1 0 00-1 1v2H8l3 3 3-3h-1v-2a1 1 0 00-1-1h-2z"/></svg>
-              <div className="mt-2 text-sm text-gray-600">Drop files here or click to browse</div>
-              <div className="text-xs text-gray-500">CSV, Excel (.xlsx, .xls), JSON</div>
-              {file && (<div className="mt-2 text-xs text-gray-700">Selected: <span className="font-medium">{file.name}</span></div>)}
+            <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} onClick={() => document.getElementById('file-input').click()} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition cursor-pointer bg-gray-50 dark:bg-gray-700">
+              <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a2 2 0 00-2 2v3h2V5h12v3h2V5a2 2 0 00-2-2H3z"/><path d="M3 9h14v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm7 1a1 1 0 00-1 1v2H8l3 3 3-3h-1v-2a1 1 0 00-1-1h-2z"/></svg>
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Drop files here or click to browse</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">CSV, Excel (.xlsx, .xls), JSON</div>
+              {file && (<div className="mt-2 text-xs text-gray-700 dark:text-gray-300">Selected: <span className="font-medium">{file.name}</span></div>)}
             </div>
             <input id="file-input" className="hidden" type="file" accept=".csv,.xlsx,.xls,.json" onChange={(e) => setFile(e.target.files?.[0] || null)} />
 
@@ -486,7 +572,7 @@ export default function Home() {
           </div>
           <div className="p-6 overflow-x-auto">
             <table className="min-w-full text-sm table-fixed">
-              <thead className="text-left text-gray-600 border-b">
+              <thead className="text-left text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                 <tr>
                   <th className="py-2 pr-4 w-[28ch]">Name</th>
                   <th className="py-2 pr-4 w-[40ch]">Description</th>
@@ -496,15 +582,15 @@ export default function Home() {
                   <th className="py-2">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {loadingList && (<tr><td className="py-3 text-gray-500" colSpan={6}>Loading…</td></tr>)}
-                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500" colSpan={6}>No cached DataFrames</td></tr>)}
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                {loadingList && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>Loading…</td></tr>)}
+                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>No cached DataFrames</td></tr>)}
                 {paginatedRows.map((r) => (
                   <tr key={r.name}>
                     <td className="py-2 pr-4 font-medium align-top">
                       <div className="max-w-[28ch]">
                         <button
-                          className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 hover:underline"
+                          className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:underline"
                           onClick={() => navigate(`/analysis/${encodeURIComponent(r.name)}`)}
                           title={r.name}
                           aria-label="Open analysis"
@@ -513,7 +599,7 @@ export default function Home() {
                         </button>
                       </div>
                     </td>
-                    <td className="py-2 pr-4 text-gray-700">
+                    <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">
                       <div className="max-w-[40ch]">
                         <span
                           className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
@@ -523,24 +609,24 @@ export default function Home() {
                         </span>
                       </div>
                     </td>
-                    <td className="py-2 pr-4">{r.rows} x {r.cols}</td>
-                    <td className="py-2 pr-4">{r.size_mb} MB</td>
-                    <td className="py-2 pr-4">{new Date(r.timestamp).toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.rows} x {r.cols}</td>
+                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.size_mb} MB</td>
+                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{new Date(r.timestamp).toLocaleString()}</td>
                     <td className="py-2">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openViewer(r.name)} className="p-2 rounded hover:bg-gray-100" title="Preview">
+                        <button onClick={() => openViewer(r.name)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Preview">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
                         </button>
-                        <a href={buildDownloadCsvUrl(r.name)} className="p-2 rounded hover:bg-gray-100" title="Download CSV">
+                        <a href={buildDownloadCsvUrl(r.name)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Download CSV">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4.007 4.007a1.25 1.25 0 01-1.772 0L6.92 12.707a1 1 0 011.414-1.414L10.5 13.46V4a1 1 0 011-1z"/><path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-2a1 1 0 112 0v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2a1 1 0 112 0v2z"/></svg>
                         </a>
-                        <button onClick={() => copyLink(buildDownloadJsonUrl(r.name))} className="p-2 rounded hover:bg-gray-100" title="Copy JSON link">
+                        <button onClick={() => copyLink(buildDownloadJsonUrl(r.name))} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Copy JSON link">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 7a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3h-2v-2h2a1 1 0 001-1V7a1 1 0 00-1-1h-7a1 1 0 00-1 1v2H8V7z"/><path d="M3 10a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3H6a3 3 0 01-3-3v-7zm3-1a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1v-7a1 1 0 00-1-1H6z"/></svg>
                         </button>
-                        <button onClick={() => openEdit(r)} className="p-2 rounded hover:bg-gray-100" title="Edit name/description" aria-label="Edit">
+                        <button onClick={() => openEdit(r)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Edit name/description" aria-label="Edit">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
                         </button>
-                        <button onClick={() => onDelete(r.name)} className="p-2 rounded hover:bg-red-50 text-red-600" title="Delete">
+                        <button onClick={() => onDelete(r.name)} className="p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" title="Delete">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a1 1 0 00-1 1v1H5.5a1 1 0 100 2H6v12a3 3 0 003 3h6a3 3 0 003-3V7h.5a1 1 0 100-2H16V4a1 1 0 00-1-1H9zm2 4a1 1 0 012 0v10a1 1 0 11-2 0V7zm5 0a1 1 0 10-2 0v10a1 1 0 102 0V7zM10 4h4v1h-4V4z"/></svg>
                         </button>
                       </div>
@@ -567,27 +653,27 @@ export default function Home() {
 
       <Modal open={viewerOpen} title={viewerTitle} onClose={() => setViewerOpen(false)}>
         {viewerMeta && (
-          <div className="text-sm text-gray-700 mb-3">
+          <div className="text-sm text-gray-700 dark:text-gray-300 mb-3">
             <div className="flex flex-wrap gap-3">
               <span><span className="font-medium">Rows:</span> {viewerMeta.rows}</span>
               <span><span className="font-medium">Cols:</span> {viewerMeta.cols}</span>
               <span><span className="font-medium">Size:</span> {viewerMeta.size_mb} MB</span>
               <span><span className="font-medium">Created:</span> {new Date(viewerMeta.timestamp).toLocaleString()}</span>
             </div>
-            {viewerMeta.description && (<div className="text-gray-600 mt-1">{viewerMeta.description}</div>)}
+            {viewerMeta.description && (<div className="text-gray-600 dark:text-gray-400 mt-1">{viewerMeta.description}</div>)}
           </div>
         )}
-        <div className="overflow-auto border rounded">
+        <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
           <table className="min-w-full text-xs">
-            <thead className="sticky top-0 bg-white border-b">
+            <thead className="sticky top-0 bg-white dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                {viewerColumns.map((c) => (<th key={c} className="px-2 py-1 text-left">{c}</th>))}
+                {viewerColumns.map((c) => (<th key={c} className="px-2 py-1 text-left text-gray-900 dark:text-gray-100">{c}</th>))}
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
               {viewerPreview.map((row, idx) => (
                 <tr key={idx}>
-                  {viewerColumns.map((c) => (<td key={c} className="px-2 py-1 whitespace-nowrap text-gray-700">{String(row?.[c] ?? '')}</td>))}
+                  {viewerColumns.map((c) => (<td key={c} className="px-2 py-1 whitespace-nowrap text-gray-700 dark:text-gray-300">{String(row?.[c] ?? '')}</td>))}
                 </tr>
               ))}
             </tbody>
@@ -601,16 +687,16 @@ export default function Home() {
       <Modal open={editOpen} title={`Edit DataFrame`} onClose={() => !savingEdit && setEditOpen(false)}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
-            <input value={editName} onChange={(e) => setEditName(e.target.value)} type="text" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-            <div className="text-xs text-gray-500 mt-1">Renaming will update the DataFrame key; update any references in pipelines if needed.</div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} type="text" className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400" />
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Renaming will update the DataFrame key; update any references in pipelines if needed.</div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+            <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={2} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"></textarea>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button disabled={savingEdit} onClick={() => setEditOpen(false)} className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50">Cancel</button>
+            <button disabled={savingEdit} onClick={() => setEditOpen(false)} className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">Cancel</button>
             <button disabled={savingEdit} onClick={saveEdit} className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save Changes'}</button>
           </div>
         </div>

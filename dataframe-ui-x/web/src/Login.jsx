@@ -1,12 +1,67 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from './AuthContext.jsx'
 
+// Gradient theme configurations
+const gradientThemes = {
+  sunset: {
+    background: "from-orange-500 via-red-500 to-pink-600",
+    blobs: [
+      { color: "bg-orange-400", position: "top-20 left-20" },
+      { color: "bg-red-400", position: "top-40 right-20" },
+      { color: "bg-pink-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  ocean: {
+    background: "from-blue-600 via-cyan-600 to-teal-600",
+    blobs: [
+      { color: "bg-blue-400", position: "top-20 left-20" },
+      { color: "bg-cyan-400", position: "top-40 right-20" },
+      { color: "bg-teal-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  forest: {
+    background: "from-green-600 via-emerald-600 to-teal-600",
+    blobs: [
+      { color: "bg-green-400", position: "top-20 left-20" },
+      { color: "bg-emerald-400", position: "top-40 right-20" },
+      { color: "bg-teal-400", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  purple: {
+    background: "from-indigo-900 via-purple-900 to-pink-900",
+    blobs: [
+      { color: "bg-purple-500", position: "top-20 left-20" },
+      { color: "bg-indigo-500", position: "top-40 right-20" },
+      { color: "bg-pink-500", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  midnight: {
+    background: "from-gray-900 via-blue-900 to-indigo-900",
+    blobs: [
+      { color: "bg-gray-600", position: "top-20 left-20" },
+      { color: "bg-blue-600", position: "top-40 right-20" },
+      { color: "bg-indigo-600", position: "-bottom-8 left-1/2" }
+    ]
+  },
+  aurora: {
+    background: "from-purple-600 via-pink-600 to-red-600",
+    blobs: [
+      { color: "bg-purple-400", position: "top-20 left-20" },
+      { color: "bg-pink-400", position: "top-40 right-20" },
+      { color: "bg-red-400", position: "-bottom-8 left-1/2" }
+    ]
+  }
+}
+
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { login, isAuthenticated } = useAuth()
+
+  // Get gradient theme from environment variable, default to forest (greenish)
+  const gradientTheme = gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'] || gradientThemes.forest
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -36,12 +91,18 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
+    <div className={`min-h-screen bg-gradient-to-br ${gradientTheme.background} relative overflow-hidden`}>
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-        <div className="absolute top-40 right-20 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+        {gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'].blobs.map((blob, index) => (
+          <div 
+            key={index}
+            className={`absolute w-72 h-72 ${blob.color} rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob ${blob.position}`}
+            style={{
+              animationDelay: `${index * 2000}ms`
+            }}
+          ></div>
+        ))}
       </div>
       
       {/* Grid Pattern Overlay */}
