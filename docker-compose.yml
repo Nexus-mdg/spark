@@ -103,6 +103,8 @@ services:
       - POSTGRES_DB=dataframe_ui
       - POSTGRES_USER=dataframe_user
       - POSTGRES_PASSWORD=dataframe_password
+      # UI settings
+      - MAX_ITEMS_PER_PAGE=15
     depends_on:
       - dataframe-api
       - postgres

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import Login from './Login.jsx'
 import UserProfile from './UserProfile.jsx'
 import Home from './Home.jsx'
@@ -74,8 +75,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
