@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
+import Pagination from './components/Pagination.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -458,6 +459,11 @@ export default function ChainedOperations() {
   const [plDesc, setPlDesc] = useState('')
   const [plOverwrite, setPlOverwrite] = useState(false)
   const [importText, setImportText] = useState('')
+  
+  // Pagination state for pipelines
+  const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
+  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -475,9 +481,22 @@ export default function ChainedOperations() {
     setPipelinesLoading(true)
     try {
       const res = await pipelinesList()
-      if (res.success) setPipelines((res.pipelines || []).sort((a,b) => a.name.localeCompare(b.name)))
+      if (res.success) {
+        setPipelines((res.pipelines || []).sort((a,b) => a.name.localeCompare(b.name)))
+        setPipelinesCurrentPage(1) // Reset to first page when data changes
+      }
     } catch (e) { /* ignore */ }
     finally { setPipelinesLoading(false) }
+  }
+
+  // Pagination calculations for pipelines
+  const totalPipelines = pipelines.length
+  const pipelinesStartIndex = (pipelinesCurrentPage - 1) * itemsPerPage
+  const pipelinesEndIndex = pipelinesStartIndex + itemsPerPage
+  const paginatedPipelines = pipelines.slice(pipelinesStartIndex, pipelinesEndIndex)
+
+  const handlePipelinesPageChange = (page) => {
+    setPipelinesCurrentPage(page)
   }
 
   useEffect(() => { refresh(); refreshPipelines() }, [])
@@ -597,33 +616,45 @@ export default function ChainedOperations() {
           {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
           {pipelines.length > 0 && (
-            <div className="overflow-auto border rounded">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-left">
-                  <tr>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Steps</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pipelines.map(p => (
-                    <tr key={p.name} className="border-t">
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2">{p.steps}</td>
-                      <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
-                      <td className="px-3 py-2 flex flex-wrap gap-2">
-                        <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
-                        <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
-                        <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
-                        <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
-                      </td>
+            <>
+              <div className="overflow-auto border rounded">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-100 text-left">
+                    <tr>
+                      <th className="px-3 py-2">Name</th>
+                      <th className="px-3 py-2">Steps</th>
+                      <th className="px-3 py-2">Description</th>
+                      <th className="px-3 py-2">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedPipelines.map(p => (
+                      <tr key={p.name} className="border-t">
+                        <td className="px-3 py-2 font-medium">{p.name}</td>
+                        <td className="px-3 py-2">{p.steps}</td>
+                        <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+                        <td className="px-3 py-2 flex flex-wrap gap-2">
+                          <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                          <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
+                          <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                          <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination for pipelines */}
+              <div className="mt-4">
+                <Pagination
+                  currentPage={pipelinesCurrentPage}
+                  totalItems={totalPipelines}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePipelinesPageChange}
+                />
+              </div>
+            </>
           )}
           <div className="mt-4">
             <div className="text-sm mb-1">Import from YML</div>

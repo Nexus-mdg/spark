@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
+import Pagination from './components/Pagination.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -546,6 +547,11 @@ export default function ChainedPipelines() {
   const [plOverwrite, setPlOverwrite] = useState(false)
   const [result, setResult] = useState(null)
   const [preview, setPreview] = useState({ loading: false, error: '', steps: [], final: null })
+  
+  // Pagination state for pipelines
+  const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
+  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -563,9 +569,22 @@ export default function ChainedPipelines() {
     setPipelinesLoading(true)
     try {
       const res = await pipelinesList()
-      if (res.success) setPipelines((res.pipelines || []).sort((a,b) => a.name.localeCompare(b.name)))
+      if (res.success) {
+        setPipelines((res.pipelines || []).sort((a,b) => a.name.localeCompare(b.name)))
+        setPipelinesCurrentPage(1) // Reset to first page when data changes
+      }
     } catch (e) { /* ignore */ }
     finally { setPipelinesLoading(false) }
+  }
+
+  // Pagination calculations for pipelines
+  const totalPipelines = pipelines.length
+  const pipelinesStartIndex = (pipelinesCurrentPage - 1) * itemsPerPage
+  const pipelinesEndIndex = pipelinesStartIndex + itemsPerPage
+  const paginatedPipelines = pipelines.slice(pipelinesStartIndex, pipelinesEndIndex)
+
+  const handlePipelinesPageChange = (page) => {
+    setPipelinesCurrentPage(page)
   }
 
   useEffect(() => { refresh(); refreshPipelines() }, [])
@@ -874,26 +893,38 @@ export default function ChainedPipelines() {
           {pipelinesLoading && (<div className="text-sm text-slate-600">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-slate-600">No saved pipelines</div>)}
           {pipelines.length > 0 && (
-            <div className="overflow-auto border rounded">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-left">
-                  <tr>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Steps</th>
-                    <th className="px-3 py-2">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pipelines.map(p => (
-                    <tr key={p.name} className="border-t">
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2">{p.steps}</td>
-                      <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+            <>
+              <div className="overflow-auto border rounded">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-100 text-left">
+                    <tr>
+                      <th className="px-3 py-2">Name</th>
+                      <th className="px-3 py-2">Steps</th>
+                      <th className="px-3 py-2">Description</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedPipelines.map(p => (
+                      <tr key={p.name} className="border-t">
+                        <td className="px-3 py-2 font-medium">{p.name}</td>
+                        <td className="px-3 py-2">{p.steps}</td>
+                        <td className="px-3 py-2 text-slate-600">{p.description || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination for pipelines */}
+              <div className="mt-4">
+                <Pagination
+                  currentPage={pipelinesCurrentPage}
+                  totalItems={totalPipelines}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePipelinesPageChange}
+                />
+              </div>
+            </>
           )}
         </Section>
       </main>
