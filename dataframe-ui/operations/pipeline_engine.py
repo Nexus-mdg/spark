@@ -331,4 +331,28 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         else:
             raise ValueError('datetime: action must be parse or derive')
 
+    # chain_pipeline - execute another pipeline at this point
+    if op == 'chain_pipeline':
+        pipeline_name = params.get('pipeline') or params.get('name')
+        if not pipeline_name:
+            raise ValueError('chain_pipeline: pipeline name is required')
+        
+        # Load the chained pipeline
+        from utils.redis_client import redis_client
+        import json
+        
+        key = f'pipeline:{pipeline_name}'
+        if not redis_client.exists(key):
+            raise ValueError(f'chain_pipeline: pipeline {pipeline_name} not found')
+        
+        obj = json.loads(redis_client.get(key))
+        chained_steps = obj.get('steps') or []
+        
+        # Execute the chained pipeline with current dataframe as input
+        current = df_curr
+        for chained_step in chained_steps:
+            current, _ = _apply_op(current, chained_step)
+        
+        return current, f'chain_pipeline: {pipeline_name} (applied {len(chained_steps)} steps)'
+
     raise ValueError(f'Unsupported op: {op}')

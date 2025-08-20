@@ -4,6 +4,7 @@ import Home from './Home.jsx'
 import Analysis from './Analysis.jsx'
 import Operations from './Operations.jsx'
 import ChainedOperations from './ChainedOperations.jsx'
+import ChainedPipelines from './ChainedPipelines.jsx'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/analysis/:name" element={<Analysis />} />
       <Route path="/operations" element={<Operations />} />
       <Route path="/chained-operations" element={<ChainedOperations />} />
+      <Route path="/chained-pipelines" element={<ChainedPipelines />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
