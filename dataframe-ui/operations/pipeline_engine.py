@@ -353,6 +353,13 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         for chained_step in chained_steps:
             current, _ = _apply_op(current, chained_step)
         
-        return current, f'chain_pipeline: {pipeline_name} (applied {len(chained_steps)} steps)'
+        # Save the chained pipeline result as a named dataframe
+        # This allows subsequent steps to access it via merge operations
+        result_name = f'chained_{pipeline_name}'
+        _save_df_to_cache(current, result_name, f'Result from chained pipeline: {pipeline_name}')
+        
+        # Return the original dataframe to preserve the main pipeline flow
+        # The chained result is now available as a named dataframe for merge operations
+        return df_curr, f'chain_pipeline: {pipeline_name} (saved as {result_name}, applied {len(chained_steps)} steps)'
 
     raise ValueError(f'Unsupported op: {op}')
