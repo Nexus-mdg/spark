@@ -62,6 +62,121 @@ function SmallTable({ columns = [], rows = [] }) {
   )
 }
 
+function FilterBuilder({ onCreate }) {
+  const [filters, setFilters] = useState([{ col: '', op: 'eq', value: '' }])
+  const [combine, setCombine] = useState('and')
+  const add = () => setFilters([...filters, { col: '', op: 'eq', value: '' }])
+  const remove = (idx) => setFilters(filters.filter((_, i) => i !== idx))
+  const update = (idx, patch) => setFilters(filters.map((f, i) => i === idx ? { ...f, ...patch } : f))
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm">Combine</span>
+        <select className="border rounded p-2" value={combine} onChange={e => setCombine(e.target.value)}>
+          <option value="and">and</option>
+          <option value="or">or</option>
+        </select>
+      </div>
+      <div className="space-y-2">
+        {filters.map((f, idx) => (
+          <div key={idx} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
+            <input className="border rounded p-2" placeholder="column" value={f.col} onChange={e => update(idx, { col: e.target.value })} />
+            <select className="border rounded p-2" value={f.op} onChange={e => update(idx, { op: e.target.value })}>
+              <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
+              <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
+            </select>
+            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
+            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
+        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
+      </div>
+    </div>
+  )
+}
+
+function PivotBuilder({ dfOptions, onCreate }) {
+  const [mode, setMode] = useState('wider')
+  const [state, setState] = useState({})
+  useEffect(() => { setState({}) }, [mode])
+  const update = (patch) => setState(s => ({ ...s, ...patch }))
+  if (mode === 'wider') {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Mode</span>
+          <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="wider">wider</option>
+            <option value="longer">longer</option>
+          </select>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <label className="block">
+            <span className="block text-sm">index (comma)</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.index || ''} onChange={e => update({ index: e.target.value })} placeholder="id" />
+          </label>
+          <label className="block">
+            <span className="block text-sm">names_from</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.names_from || ''} onChange={e => update({ names_from: e.target.value })} placeholder="category" />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="block text-sm">values_from (comma)</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.values_from || ''} onChange={e => update({ values_from: e.target.value })} placeholder="value" />
+          </label>
+          <label className="block">
+            <span className="block text-sm">aggfunc</span>
+            <input className="mt-1 border rounded w-full p-2" value={state.aggfunc || 'first'} onChange={e => update({ aggfunc: e.target.value })} placeholder="first" />
+          </label>
+        </div>
+        <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+          const index = String(state.index||'').split(',').map(s=>s.trim()).filter(Boolean)
+          if (!state.names_from || !String(state.values_from||'').trim()) return
+          const values_from = String(state.values_from).split(',').map(s=>s.trim()).filter(Boolean)
+          onCreate({ op: 'pivot', params: { mode: 'wider', index, names_from: state.names_from, values_from, aggfunc: state.aggfunc || 'first' } })
+        }}>Add step</button>
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm">Mode</span>
+        <select className="border rounded p-2" value={mode} onChange={e => setMode(e.target.value)}>
+          <option value="wider">wider</option>
+          <option value="longer">longer</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <label className="block md:col-span-2">
+          <span className="block text-sm">id_vars (comma)</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.id_vars || ''} onChange={e => update({ id_vars: e.target.value })} placeholder="id" />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="block text-sm">value_vars (comma)</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.value_vars || ''} onChange={e => update({ value_vars: e.target.value })} placeholder="v1,v2" />
+        </label>
+        <label className="block">
+          <span className="block text-sm">var_name</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.var_name || 'variable'} onChange={e => update({ var_name: e.target.value })} />
+        </label>
+        <label className="block md:col-span-2">
+          <span className="block text-sm">value_name</span>
+          <input className="mt-1 border rounded w-full p-2" value={state.value_name || 'value'} onChange={e => update({ value_name: e.target.value })} />
+        </label>
+      </div>
+      <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+        const id_vars = String(state.id_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
+        const value_vars = String(state.value_vars||'').split(',').map(s=>s.trim()).filter(Boolean)
+        if (value_vars.length === 0) return
+        onCreate({ op: 'pivot', params: { mode: 'longer', id_vars, value_vars, var_name: state.var_name || 'variable', value_name: state.value_name || 'value' } })
+      }}>Add step</button>
+    </div>
+  )
+}
+
 function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChainPipeline }) {
   const [showChainOptions, setShowChainOptions] = useState(false)
   const [selectedPipeline, setSelectedPipeline] = useState('')
@@ -173,46 +288,224 @@ function ParamInput({ op, dfOptions, onCreate }) {
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => state.name && onCreate({ op: 'load', params: { name: state.name } })}>Add step</button>
           </div>
         )
-      case 'filter':
+      case 'merge':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <label className="block">
-              <span className="block text-sm">Column</span>
-              <input className="mt-1 border rounded w-full p-2" value={state.column || ''} onChange={e => update({ column: e.target.value })} placeholder="column_name" />
+          <div className="space-y-3">
+            <div>
+              <div className="text-sm mb-1">Pick 2+ dataframes</div>
+              <div className="flex flex-wrap gap-2">
+                {dfOptions.map(o => (
+                  <label key={o.value} className={`px-2 py-1 rounded border cursor-pointer ${((state.names||[]).includes(o.value)) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
+                    <input type="checkbox" className="mr-1" checked={(state.names||[]).includes(o.value)} onChange={e => pickMany('names', o.value, e.target.checked)} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <label className="block">
+                <span className="block text-sm">Join keys (comma)</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.keys || ''} onChange={e => update({ keys: e.target.value })} placeholder="id" />
+              </label>
+              <label className="block">
+                <span className="block text-sm">Join type</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.how || 'inner'} onChange={e => update({ how: e.target.value })}>
+                  <option>inner</option>
+                  <option>left</option>
+                  <option>right</option>
+                  <option>outer</option>
+                </select>
+              </label>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                const names = state.names || []
+                const keys = String(state.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
+                if (names.length < 2 || keys.length === 0) return
+                onCreate({ op: 'merge', params: { names, keys, how: state.how || 'inner' } })
+              }}>Add step</button>
+            </div>
+          </div>
+        )
+      case 'filter':
+        return <FilterBuilder onCreate={(filters, combine) => onCreate({ op: 'filter', params: { filters, combine } })} />
+      case 'groupby':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <label className="block md:col-span-2">
+              <span className="block text-sm">Group by (comma)</span>
+              <input className="mt-1 border rounded w-full p-2" value={state.by || ''} onChange={e => update({ by: e.target.value })} placeholder="country,year" />
             </label>
-            <label className="block">
-              <span className="block text-sm">Operation</span>
-              <select className="mt-1 border rounded w-full p-2" value={state.op || 'eq'} onChange={e => update({ op: e.target.value })}>
-                <option value="eq">equals</option>
-                <option value="ne">not equals</option>
-                <option value="gt">greater than</option>
-                <option value="lt">less than</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-sm">Value</span>
-              <input className="mt-1 border rounded w-full p-2" value={state.value || ''} onChange={e => update({ value: e.target.value })} placeholder="value" />
+            <label className="block md:col-span-2">
+              <span className="block text-sm">Aggregations (JSON)</span>
+              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
-              if (state.column && state.value) {
-                onCreate({ op: 'filter', params: { filters: [{ col: state.column, op: state.op || 'eq', value: state.value }], combine: 'and' } })
-              }
+              const by = String(state.by||'').split(',').map(s=>s.trim()).filter(Boolean)
+              let aggs = undefined
+              if (String(state.aggs||'').trim()) { try { aggs = JSON.parse(state.aggs) } catch { return } }
+              if (by.length === 0) return
+              onCreate({ op: 'groupby', params: { by, aggs } })
             }}>Add step</button>
           </div>
         )
       case 'select':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
             <label className="block md:col-span-2">
-              <span className="block text-sm">Columns (comma separated)</span>
-              <input className="mt-1 border rounded w-full p-2" value={state.columns || ''} onChange={e => update({ columns: e.target.value })} placeholder="col1,col2,col3" />
+              <span className="block text-sm">Columns (comma)</span>
+              <input className="mt-1 border rounded w-full p-2" value={state.columns || ''} onChange={e => update({ columns: e.target.value })} placeholder="id,name,value" />
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" checked={!!state.exclude} onChange={e => update({ exclude: e.target.checked })} />
+              <span className="text-sm">Exclude selected</span>
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
-              const columns = String(state.columns || '').split(',').map(s => s.trim()).filter(Boolean)
-              if (columns.length > 0) {
-                onCreate({ op: 'select', params: { columns } })
-              }
+              const columns = String(state.columns||'').split(',').map(s=>s.trim()).filter(Boolean)
+              if (columns.length === 0) return
+              const params = { columns }
+              if (state.exclude) params.exclude = true
+              onCreate({ op: 'select', params })
             }}>Add step</button>
+          </div>
+        )
+      case 'rename':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <label className="block md:col-span-2">
+              <span className="block text-sm">Mapping (JSON)</span>
+              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
+            </label>
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+              try { const m = JSON.parse(state.map || '{}'); if (!m || Array.isArray(m)) return; onCreate({ op: 'rename', params: { map: m } }) } catch { return }
+            }}>Add step</button>
+          </div>
+        )
+      case 'pivot':
+        return <PivotBuilder dfOptions={dfOptions} onCreate={onCreate} />
+      case 'compare':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <label className="block">
+              <span className="block text-sm">Other DataFrame</span>
+              <select className="mt-1 border rounded w-full p-2" value={state.other || ''} onChange={e => update({ other: e.target.value })}>
+                <option value="">Select…</option>
+                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-sm">Action</span>
+              <select className="mt-1 border rounded w-full p-2" value={state.action || 'mismatch'} onChange={e => update({ action: e.target.value })}>
+                <option value="mismatch">mismatch (rows)</option>
+                <option value="identical">identical (pass/flag)</option>
+              </select>
+            </label>
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => state.other && onCreate({ op: 'compare', params: { name: state.other, action: state.action || 'mismatch' } })}>Add step</button>
+          </div>
+        )
+      case 'datetime':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <label className="block md:col-span-2">
+                <span className="block text-sm">Action</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.action || 'parse'} onChange={e => update({ action: e.target.value })}>
+                  <option value="parse">parse (string -&gt; date)</option>
+                  <option value="derive">derive parts</option>
+                </select>
+              </label>
+              <label className="block md:col-span-2">
+                <span className="block text-sm">Source column</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.source || ''} onChange={e => update({ source: e.target.value })} placeholder="date_col" />
+              </label>
+            </div>
+            { (state.action || 'parse') === 'parse' ? (
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm">Format (optional)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={state.format || ''} onChange={e => update({ format: e.target.value })} placeholder="%Y-%m-%d" />
+                </label>
+                <label className="block">
+                  <span className="block text-sm">Target (optional)</span>
+                  <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_date" />
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
+                  <span className="text-sm">Overwrite if exists</span>
+                </label>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                  if (!state.source) return
+                  const payload = { action: 'parse', source: state.source }
+                  if (String(state.format||'').trim()) payload.format = state.format
+                  if (String(state.target||'').trim()) payload.target = state.target
+                  if (state.overwrite) payload.overwrite = true
+                  onCreate({ op: 'datetime', params: payload })
+                }}>Add step</button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm">Month style</span>
+                  <select className="mt-1 border rounded w-full p-2" value={state.month_style || 'short'} onChange={e => update({ month_style: e.target.value })}>
+                    <option value="short">Jan</option>
+                    <option value="short_lower">jan</option>
+                    <option value="long">January</option>
+                    <option value="num">1..12</option>
+                  </select>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'year' in (state.outputs||{}) ? !!state.outputs.year : true} onChange={e => update({ outputs: { ...(state.outputs||{}), year: e.target.checked } })} />
+                  <span className="text-sm">year</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'month' in (state.outputs||{}) ? !!state.outputs.month : true} onChange={e => update({ outputs: { ...(state.outputs||{}), month: e.target.checked } })} />
+                  <span className="text-sm">month</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'day' in (state.outputs||{}) ? !!state.outputs.day : true} onChange={e => update({ outputs: { ...(state.outputs||{}), day: e.target.checked } })} />
+                  <span className="text-sm">day</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={'year_month' in (state.outputs||{}) ? !!state.outputs.year_month : true} onChange={e => update({ outputs: { ...(state.outputs||{}), year_month: e.target.checked } })} />
+                  <span className="text-sm">year_month</span>
+                </label>
+                <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                  if (!state.source) return
+                  const payload = { action: 'derive', source: state.source, month_style: state.month_style || 'short', outputs: state.outputs || { year: true, month: true, day: true, year_month: true } }
+                  onCreate({ op: 'datetime', params: payload })
+                }}>Add step</button>
+              </div>
+            )}
+          </div>
+        )
+      case 'mutate':
+        return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <label className="block">
+                <span className="block text-sm">Target column</span>
+                <input className="mt-1 border rounded w-full p-2" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
+              </label>
+              <label className="block">
+                <span className="block text-sm">Mode</span>
+                <select className="mt-1 border rounded w-full p-2" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
+                  <option value="vector">vector</option>
+                  <option value="row">row</option>
+                </select>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
+                <span className="text-sm">Overwrite if exists</span>
+              </label>
+              <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
+                const target = String(state.target||'').trim(); const expr = String(state.expr||'').trim();
+                if (!target || !expr) return
+                onCreate({ op: 'mutate', params: { target, expr, mode: state.mode || 'vector', overwrite: !!state.overwrite } })
+              }}>Add step</button>
+            </div>
+            <label className="block">
+              <span className="block text-sm">Expression</span>
+              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+            </label>
+            <div className="text-xs text-slate-600">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
           </div>
         )
       default:
@@ -522,8 +815,15 @@ function AddStep({ dfOptions, onAdd }) {
         <span className="text-sm">Operation</span>
         <select className="border rounded p-2" value={op} onChange={e => setOp(e.target.value)}>
           <option value="load">load</option>
+          <option value="merge">merge</option>
+          <option value="pivot">pivot</option>
           <option value="filter">filter</option>
+          <option value="groupby">groupby</option>
           <option value="select">select</option>
+          <option value="rename">rename</option>
+          <option value="compare">compare</option>
+          <option value="datetime">datetime</option>
+          <option value="mutate">mutate</option>
         </select>
       </div>
       <ParamInput op={op} dfOptions={dfOptions} onCreate={onAdd} />
