@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Header from './Header.jsx'
 import {
   listDataframes,
   opsCompare,
@@ -316,15 +317,11 @@ export default function Operations() {
 
   return (
     <div className="bg-gray-50 min-h-screen text-gray-900">
-      <header className="bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button className="text-white/90 hover:text-white" onClick={() => navigate('/')}>← Home</button>
-            <h1 className="text-lg font-semibold">Operations</h1>
-          </div>
-          <div className="text-sm text-slate-300">{loading ? 'Loading…' : `${dfs.length} dataframes`}</div>
+      <Header title="Operations">
+        <div className="text-sm text-slate-300">
+          {loading ? 'Loading…' : `${dfs.length} dataframes`}
         </div>
-      </header>
+      </Header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <Section title="Compare two DataFrames">
