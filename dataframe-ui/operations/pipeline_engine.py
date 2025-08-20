@@ -41,6 +41,46 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         if not isinstance(keys, list) or not keys:
             raise ValueError('merge: keys must be a non-empty list or comma-separated string')
             
+        # Handle the case where we have a current dataframe AND named dataframes to merge with
+        if names and df_curr is not None:
+            print(f"[DEBUG] merge: using current dataframe + named dataframes")
+            # In chained pipelines, we want to merge the current dataframe with the named ones
+            # Start with current dataframe
+            df = df_curr.copy()
+            print(f"[DEBUG] starting with current dataframe: shape={df.shape}, columns={list(df.columns)}")
+            
+            # Validate that merge keys exist in current dataframe
+            missing_keys_curr = [k for k in keys if k not in df.columns]
+            if missing_keys_curr:
+                raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+            
+            # Pre-validate that all required named dataframes exist
+            from utils.redis_client import redis_client
+            missing_dfs = []
+            for name in names:
+                exists = redis_client.exists(f"df:{name}")
+                print(f"[DEBUG] checking dataframe '{name}': exists={exists}")
+                if not exists:
+                    missing_dfs.append(name)
+            if missing_dfs:
+                raise ValueError(f'merge: dataframes not found: {", ".join(missing_dfs)}')
+            
+            # Merge current dataframe with each named dataframe
+            for nm in names:
+                try:
+                    d2 = _load_df_from_cache(nm)
+                    print(f"[DEBUG] loaded dataframe '{nm}': shape={d2.shape}, columns={list(d2.columns)}")
+                except ValueError as e:
+                    raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
+                # Validate that merge keys exist in the other dataframe
+                missing_keys_other = [k for k in keys if k not in d2.columns]
+                if missing_keys_other:
+                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
+                df = df.merge(d2, on=keys, how=how)
+                print(f"[DEBUG] merge result: shape={df.shape}")
+            return df, f'merge current + names={names} how={how} keys={keys}'
+        
         if names:
             if len(names) < 2:
                 raise ValueError('merge: names must include at least two')
