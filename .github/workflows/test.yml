@@ -53,7 +53,6 @@ jobs:
         export REDIS_HOST=localhost
         export REDIS_PORT=6379
         export PORT=4999
-        export ENABLE_WEB_UI=false
         # Disable Spark for core tests - API will fallback to pandas
         export SPARK_MASTER_URL=""
         python app.py &
@@ -208,7 +207,6 @@ jobs:
         export REDIS_HOST=localhost
         export REDIS_PORT=6379
         export PORT=5000
-        export ENABLE_WEB_UI=false
         export SPARK_MASTER_URL=spark://localhost:7077
         export SPARK_DRIVER_HOST=localhost
         export SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
