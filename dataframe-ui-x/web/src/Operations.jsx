@@ -19,8 +19,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+      <h3 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h3>
       {children}
     </section>
   )
@@ -132,9 +132,22 @@ export default function Operations() {
   const [cmp2, setCmp2] = useState('')
   const [cmpRes, setCmpRes] = useState(null)
   const [cmpLoading, setCmpLoading] = useState(false)
+  const [cmpError, setCmpError] = useState('')
+
+  const validateCompare = () => {
+    if (!cmp1) return 'Please select the first dataframe'
+    if (!cmp2) return 'Please select the second dataframe'
+    if (cmp1 === cmp2) return 'Please select two different dataframes'
+    return ''
+  }
 
   const onCompare = async () => {
-    if (!cmp1 || !cmp2) return toast.show('Pick two dataframes')
+    const error = validateCompare()
+    if (error) {
+      setCmpError(error)
+      return toast.show(error)
+    }
+    setCmpError('')
     setCmpLoading(true)
     setCmpRes(null)
     try {
@@ -142,7 +155,11 @@ export default function Operations() {
       setCmpRes(res)
       toast.show(res.identical ? 'DataFrames are identical' : `Compared: ${res.result_type}`)
       if (res.created && res.created.length) await refresh()
-    } catch (e) { toast.show(e.message || 'Compare failed') }
+    } catch (e) { 
+      const errorMsg = e.message || 'Comparison failed. Please try again.'
+      setCmpError(errorMsg)
+      toast.show(errorMsg)
+    }
     finally { setCmpLoading(false) }
   }
 
@@ -150,15 +167,37 @@ export default function Operations() {
   const [mergeNames, setMergeNames] = useState([])
   const [mergeKeys, setMergeKeys] = useState('')
   const [mergeHow, setMergeHow] = useState('inner')
+  const [mergeLoading, setMergeLoading] = useState(false)
+  const [mergeError, setMergeError] = useState('')
+
+  const validateMerge = () => {
+    if (mergeNames.length < 2) return 'Please select at least 2 dataframes to merge'
+    const keys = mergeKeys.split(',').map(s => s.trim()).filter(Boolean)
+    if (keys.length < 1) return 'Please provide at least one join key'
+    return ''
+  }
+
   const onMerge = async () => {
+    const error = validateMerge()
+    if (error) {
+      setMergeError(error)
+      return toast.show(error)
+    }
+    setMergeError('')
+    setMergeLoading(true)
+    
     const names = mergeNames
     const keys = mergeKeys.split(',').map(s => s.trim()).filter(Boolean)
-    if (names.length < 2 || keys.length < 1) return toast.show('Pick 2+ dataframes and at least 1 key')
     try {
       const res = await opsMerge({ names, keys, how: mergeHow })
-      toast.show(`Created ${res.name}`)
+      toast.show(`Successfully created merged dataframe: ${res.name}`)
       await refresh()
-    } catch (e) { toast.show(e.message || 'Merge failed') }
+    } catch (e) { 
+      const errorMsg = e.message || 'Merge operation failed. Please check your join keys and try again.'
+      setMergeError(errorMsg)
+      toast.show(errorMsg)
+    }
+    finally { setMergeLoading(false) }
   }
 
   // Pivot state
@@ -368,50 +407,113 @@ export default function Operations() {
             </div>
           </div>
         </div>
+
         <Section title="Compare two DataFrames">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Left</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp1} onChange={e => setCmp1(e.target.value)}>
-                <option value="">Select…</option>
-                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Right</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp2} onChange={e => setCmp2(e.target.value)}>
-                <option value="">Select…</option>
-                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            </label>
-            <button disabled={cmpLoading} onClick={onCompare} className={`px-4 py-2 text-white rounded hover:bg-indigo-700 ${cmpLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600'}`}>{cmpLoading ? 'Comparing…' : 'Compare'}</button>
-          </div>
-          {/* Loader image while waiting for compare response */}
-          {cmpLoading && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-              <img src="/loader.svg" alt="loading" className="w-6 h-6" />
-              <span>Running comparison…</span>
-            </div>
-          )}
-          {/* Previews below choices */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <DataframePreview name={cmp1} />
-            <DataframePreview name={cmp2} />
-          </div>
-          {cmpRes && !cmpLoading && (
-            <div className="mt-3 text-sm">
-              <div>Result: <span className="font-medium">{cmpRes.identical ? 'identical' : cmpRes.result_type}</span></div>
-              {(cmpRes.left_unique > 0) && (<div>Left unique rows: {cmpRes.left_unique}</div>)}
-              {(cmpRes.right_unique > 0) && (<div>Right unique rows: {cmpRes.right_unique}</div>)}
-              {(cmpRes.created || []).length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(cmpRes.created || []).map(n => (
-                    <a key={n} href={buildDownloadCsvUrl(n)} className="text-indigo-600 underline">{n}.csv</a>
-                  ))}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Left DataFrame</span>
+                  <select 
+                    className={`mt-1 border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${cmpError && !cmp1 ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    value={cmp1} 
+                    onChange={e => { setCmp1(e.target.value); setCmpError(''); }}
+                    aria-label="Select left dataframe for comparison"
+                    aria-describedby={cmpError && !cmp1 ? "cmp-error" : undefined}
+                  >
+                    <option value="">Select dataframe…</option>
+                    {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Right DataFrame</span>
+                  <select 
+                    className={`mt-1 border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${cmpError && !cmp2 ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    value={cmp2} 
+                    onChange={e => { setCmp2(e.target.value); setCmpError(''); }}
+                    aria-label="Select right dataframe for comparison"
+                    aria-describedby={cmpError && !cmp2 ? "cmp-error" : undefined}
+                  >
+                    <option value="">Select dataframe…</option>
+                    {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                  </select>
+                </label>
+                <button 
+                  disabled={cmpLoading || !cmp1 || !cmp2} 
+                  onClick={onCompare} 
+                  className={`px-6 py-2 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    cmpLoading || !cmp1 || !cmp2 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                  aria-label="Compare selected dataframes"
+                >
+                  {cmpLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Comparing…
+                    </span>
+                  ) : 'Compare'}
+                </button>
+              </div>
+              
+              {/* Error message */}
+              {cmpError && (
+                <div id="cmp-error" className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm text-red-800 dark:text-red-200">{cmpError}</span>
+                  </div>
                 </div>
               )}
             </div>
-          )}
+            
+            {/* Loading state */}
+            {cmpLoading && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center gap-3">
+                  <img src="/loader.svg" alt="" className="w-6 h-6" role="presentation" />
+                  <span className="text-sm text-blue-800 dark:text-blue-200">Running comparison analysis…</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Previews below choices */}
+            {(cmp1 || cmp2) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {cmp1 && <DataframePreview name={cmp1} />}
+                {cmp2 && <DataframePreview name={cmp2} />}
+              </div>
+            )}
+            
+            {/* Results */}
+            {cmpRes && !cmpLoading && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                <div className="text-sm space-y-2">
+                  <div className="font-medium text-green-800 dark:text-green-200">
+                    Result: <span className="font-semibold">{cmpRes.identical ? 'Identical' : cmpRes.result_type}</span>
+                  </div>
+                  {(cmpRes.left_unique > 0) && (
+                    <div className="text-green-700 dark:text-green-300">Left unique rows: {cmpRes.left_unique}</div>
+                  )}
+                  {(cmpRes.right_unique > 0) && (
+                    <div className="text-green-700 dark:text-green-300">Right unique rows: {cmpRes.right_unique}</div>
+                  )}
+                  {(cmpRes.created || []).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="text-green-700 dark:text-green-300 text-sm">Download results:</span>
+                      {(cmpRes.created || []).map(n => (
+                        <a key={n} href={buildDownloadCsvUrl(n)} className="text-indigo-600 hover:text-indigo-800 underline text-sm">{n}.csv</a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
         </Section>
 
         <Section title="Merge multiple DataFrames">
