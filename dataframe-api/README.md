@@ -4,6 +4,19 @@ Overview
 - A Flask REST API for uploading, caching, exploring, and transforming tabular datasets (CSV/Excel/JSON) using Redis for storage.
 - Provides REST API endpoints for dataframe-ui-x frontend consumption.
 - Optional Spark integration (via docker-compose) accelerates compare operations.
+- **NEW**: DataFrame lifecycle management with automatic cleanup based on configurable expiration times.
+
+DataFrame Types and Lifecycle Management
+- **Static**: Never deleted automatically, suitable for reference data
+- **Ephemeral**: Deleted after a specified duration (default: 1 hour), suitable for temporary analysis
+- **Sub**: Auto-created from pipeline operations, deleted after 10 minutes
+- Background cleanup daemon automatically removes expired dataframes
+- Manual cleanup available via API endpoints
+
+Environment Variables
+- `ENABLE_CLEANUP_DAEMON`: Enable/disable cleanup daemon (default: true)
+- `CLEANUP_INTERVAL`: Cleanup check interval in seconds (default: 60)
+- `ENABLE_API_PROTECTION`: Enable/disable API protection (default: true)
 
 Services (via docker-compose at project root)
 - Redis (port 6379)
@@ -28,7 +41,7 @@ REST API Endpoints
 - DataFrames: 
   - GET /api/dataframes - List cached dataframes
   - GET /api/dataframes/<name> - Get dataframe data
-  - POST /api/dataframes/upload - Upload new dataframe
+  - POST /api/dataframes/upload - Upload new dataframe (supports type, duration parameters)
   - DELETE /api/dataframes/<name> - Delete dataframe
 - Operations (all POST with JSON payload):
   - /api/ops/select - Select columns
@@ -43,11 +56,24 @@ REST API Endpoints
   - GET /api/pipelines - List saved pipelines
   - POST /api/pipelines - Save pipeline
   - POST /api/pipelines/<name>/run - Execute pipeline
+- **NEW** Cleanup Management:
+  - GET /api/cleanup/status - Get cleanup daemon status and expiring dataframes
+  - POST /api/cleanup/manual - Manually trigger cleanup
+
+Upload API Parameters
+- `file`: CSV/Excel/JSON file (required)
+- `name`: DataFrame name (optional, defaults to filename)
+- `description`: Description (optional)
+- `type`: DataFrame type - "static", "ephemeral", "sub" (optional, default: "ephemeral")
+- `duration`: Expiration duration in seconds (optional, only for ephemeral type, default: 3600)
 
 Notes
 - Supported formats: CSV (.csv), Excel (.xlsx/.xls), JSON (.json)
 - All operation endpoints return JSON responses
 - DataFrames are cached in Redis for fast access
+- Operations inherit type and expiration from source dataframes
+- Static dataframes never expire and are preserved across system restarts
+- Ephemeral and sub dataframes are automatically cleaned up when expired
 
 Sample data & tests
 - Sample CSVs live under data/sample.
@@ -60,10 +86,16 @@ Sample data & tests
   - make down     # tears services down
 
 Manual curl examples
-- Upload a file:
-  - curl -F "file=@data.csv" -F "name=mydata" http://localhost:4999/api/dataframes/upload
+- Upload a file with type:
+  - curl -F "file=@data.csv" -F "name=mydata" -F "type=static" http://localhost:4999/api/dataframes/upload
+- Upload ephemeral with custom duration:
+  - curl -F "file=@data.csv" -F "name=temp_data" -F "type=ephemeral" -F "duration=1800" http://localhost:4999/api/dataframes/upload
 - Select columns:
   - curl -X POST -H "Content-Type: application/json" -d '{"name":"mydata","columns":["id","name"],"target":"mydata_selected"}' http://localhost:4999/api/ops/select
+- Check cleanup status:
+  - curl http://localhost:4999/api/cleanup/status
+- Manual cleanup:
+  - curl -X POST http://localhost:4999/api/cleanup/manual
 
 Troubleshooting
 - Compare may try Spark first; if Spark isn’t reachable, it falls back to pandas automatically.
