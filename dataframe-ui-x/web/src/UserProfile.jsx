@@ -1,12 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
+import { useProcessingEngine } from './contexts/ProcessingEngineContext.jsx'
 import Header from './Header.jsx'
 import Footer from './components/Footer.jsx'
 
 export default function UserProfile() {
   const navigate = useNavigate()
   const { user, changePassword, logout } = useAuth()
+  const { processingEngine, setProcessingEngine } = useProcessingEngine()
   
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -16,6 +18,22 @@ export default function UserProfile() {
   const [error, setError] = useState('')
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+
+  const saveProcessingPreference = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      
+      // The context already handles saving to localStorage
+      setMessage('Processing preference saved successfully')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      setError('Failed to save processing preference')
+      console.error('Error saving processing preference:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handlePasswordChange = async (e) => {
     e.preventDefault()
@@ -96,6 +114,85 @@ export default function UserProfile() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Login</label>
                 <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                   {user?.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Data Processing Preferences */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Processing Settings</h2>
+            </div>
+            <div className="px-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Processing Engine
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input
+                        id="pandas-engine"
+                        name="processing-engine"
+                        type="radio"
+                        value="pandas"
+                        checked={processingEngine === 'pandas'}
+                        onChange={(e) => setProcessingEngine(e.target.value)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                      />
+                      <label htmlFor="pandas-engine" className="ml-3 block text-sm text-gray-700 dark:text-gray-300">
+                        <div className="font-medium">Pandas (Default)</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Fast in-memory processing for small to medium datasets
+                        </div>
+                      </label>
+                    </div>
+                    <div className="flex items-center">
+                      <input
+                        id="spark-engine"
+                        name="processing-engine"
+                        type="radio"
+                        value="spark"
+                        checked={processingEngine === 'spark'}
+                        onChange={(e) => setProcessingEngine(e.target.value)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                      />
+                      <label htmlFor="spark-engine" className="ml-3 block text-sm text-gray-700 dark:text-gray-300">
+                        <div className="font-medium">Apache Spark</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Distributed processing for large datasets and complex operations
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          Processing Engine Information
+                        </h3>
+                        <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                          <p>Your choice affects how operations like select, filter, groupby, merge, pivot, rename, datetime, and mutate are processed. The compare operation always uses its own optimized engine.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Show save button when preference changes */}
+                  <div className="mt-3">
+                    <button
+                      onClick={saveProcessingPreference}
+                      disabled={loading}
+                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-md"
+                    >
+                      {loading ? 'Saving...' : 'Save Preference'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

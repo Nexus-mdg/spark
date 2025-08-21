@@ -626,3 +626,198 @@ def op_mutate():
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Spark-based operations endpoints
+from operations.spark_ops import (
+    spark_select_op, spark_filter_op, spark_groupby_op, spark_merge_op,
+    spark_rename_op, spark_pivot_op, spark_datetime_op, spark_mutate_op
+)
+
+
+@operations_bp.route('/api/ops/spark/select', methods=['POST'])
+def op_spark_select():
+    """Spark-based select or exclude columns from DataFrame"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        cols = p.get('columns') or []
+        exclude = bool(p.get('exclude') or False)
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not isinstance(cols, list) or len(cols) == 0:
+            return jsonify({'success': False, 'error': 'columns (non-empty list) is required'}), 400
+        
+        result = spark_select_op(name, cols, exclude)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/filter', methods=['POST'])
+def op_spark_filter():
+    """Spark-based filter rows from DataFrame"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        filters = p.get('filters') or []
+        combine = p.get('combine', 'and')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not filters:
+            return jsonify({'success': False, 'error': 'filters are required'}), 400
+        
+        result = spark_filter_op(name, filters, combine)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/groupby', methods=['POST'])
+def op_spark_groupby():
+    """Spark-based groupby and aggregation"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        by = p.get('by') or []
+        aggs = p.get('aggs') or {}
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not by:
+            return jsonify({'success': False, 'error': 'by (groupby columns) is required'}), 400
+        if not aggs:
+            return jsonify({'success': False, 'error': 'aggs (aggregations) is required'}), 400
+        
+        result = spark_groupby_op(name, by, aggs)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/merge', methods=['POST'])
+def op_spark_merge():
+    """Spark-based merge/join DataFrames"""
+    try:
+        p = request.get_json(force=True)
+        names = p.get('names') or []
+        keys = p.get('keys') or []
+        how = p.get('how', 'inner')
+        
+        if len(names) != 2:
+            return jsonify({'success': False, 'error': 'names must contain exactly 2 dataframes'}), 400
+        if not keys:
+            return jsonify({'success': False, 'error': 'keys (join columns) are required'}), 400
+        
+        result = spark_merge_op(names, keys, how)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/rename', methods=['POST'])
+def op_spark_rename():
+    """Spark-based rename columns in DataFrame"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        rename_map = p.get('map') or p.get('rename') or p.get('columns') or {}
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not rename_map:
+            return jsonify({'success': False, 'error': 'rename mapping is required'}), 400
+        
+        result = spark_rename_op(name, rename_map)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/pivot', methods=['POST'])
+def op_spark_pivot():
+    """Spark-based pivot operation"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        
+        # Remove name from payload and pass the rest as pivot config
+        pivot_config = {k: v for k, v in p.items() if k != 'name'}
+        
+        result = spark_pivot_op(name, pivot_config)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/datetime', methods=['POST'])
+def op_spark_datetime():
+    """Spark-based datetime operations"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        column = p.get('column')
+        operation = p.get('operation') or {}
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not column:
+            return jsonify({'success': False, 'error': 'column is required'}), 400
+        
+        result = spark_datetime_op(name, column, operation)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@operations_bp.route('/api/ops/spark/mutate', methods=['POST'])
+def op_spark_mutate():
+    """Spark-based create new columns with expressions"""
+    try:
+        p = request.get_json(force=True)
+        name = p.get('name')
+        target = (p.get('target') or p.get('to') or '').strip()
+        expr = p.get('expr') or p.get('expression')
+        mode = (p.get('mode') or 'vector').lower()
+        overwrite = bool(p.get('overwrite') or False)
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'name is required'}), 400
+        if not target:
+            return jsonify({'success': False, 'error': 'target is required'}), 400
+        if not isinstance(expr, str) or not expr.strip():
+            return jsonify({'success': False, 'error': 'expr (string) is required'}), 400
+        
+        result = spark_mutate_op(name, target, expr, mode, overwrite)
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -286,3 +286,84 @@ export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
   }
   return res.json()
 }
+
+// Spark-based operations endpoints
+export const sparkOpsSelect = async ({ name, columns, exclude }) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/select`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, columns, ...(exclude ? { exclude: true } : {}) })
+  });
+  if (!res.ok) throw new Error(`Spark Select failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsFilter = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/filter`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Spark Filter failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsGroupBy = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/groupby`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Spark GroupBy failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsMerge = async ({ names, keys, how }) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/merge`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ names, keys, how })
+  });
+  if (!res.ok) throw new Error(`Spark Merge failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsRename = async ({ name, map }) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/rename`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, map })
+  });
+  if (!res.ok) throw new Error(`Spark Rename failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsPivot = async (payload) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/pivot`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Spark Pivot failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsDatetime = async ({ name, column, operation }) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/datetime`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, column, operation })
+  });
+  if (!res.ok) throw new Error(`Spark Datetime failed: ${res.status}`);
+  return res.json();
+};
+
+export const sparkOpsMutate = async ({ name, target, expr, mode, overwrite }) => {
+  const res = await fetch(`${BASE()}/api/ops/spark/mutate`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ name, target, expr, mode, overwrite })
+  });
+  if (!res.ok) throw new Error(`Spark Mutate failed: ${res.status}`);
+  return res.json();
+};
