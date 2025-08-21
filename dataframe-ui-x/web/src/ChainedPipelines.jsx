@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import { useProcessingEngine } from './contexts/ProcessingEngineContext.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -570,6 +571,7 @@ export default function ChainedPipelines() {
   
   const navigate = useNavigate()
   const toast = useToast()
+  const { processingEngine, isSparkMode } = useProcessingEngine()
 
   const dfOptions = useMemo(() => (dfs || []).map(d => ({ value: d.name, label: d.name })), [dfs])
 
@@ -750,8 +752,20 @@ export default function ChainedPipelines() {
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
       <Header title="Chained Pipelines">
-        <div className="text-sm text-gray-300 dark:text-gray-400">
-          {loading ? 'Loading…' : `${dfs.length} dataframes`}
+        <div className="text-sm text-gray-300 dark:text-gray-400 flex items-center gap-4">
+          <div>
+            {loading ? 'Loading…' : `${dfs.length} dataframes`}
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs">Engine:</span>
+            <span className={`px-2 py-1 rounded text-xs font-medium ${
+              isSparkMode 
+                ? 'bg-orange-500/20 text-orange-200 border border-orange-500/30' 
+                : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'
+            }`}>
+              {isSparkMode ? 'Apache Spark' : 'Pandas'}
+            </span>
+          </div>
         </div>
       </Header>
 

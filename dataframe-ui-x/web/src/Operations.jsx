@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Footer from './components/Footer.jsx'
+import { useProcessingEngine } from './contexts/ProcessingEngineContext.jsx'
 import {
   listDataframes,
   opsCompare,
@@ -14,7 +15,16 @@ import {
   opsSelect,
   opsRename,
   opsDatetime,
-  opsMutate
+  opsMutate,
+  // Spark operations
+  sparkOpsMerge,
+  sparkOpsPivot,
+  sparkOpsFilter,
+  sparkOpsGroupBy,
+  sparkOpsSelect,
+  sparkOpsRename,
+  sparkOpsDatetime,
+  sparkOpsMutate
 } from './api.js'
 
 function Section({ title, children }) {
@@ -114,6 +124,35 @@ export default function Operations() {
   const [loading, setLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+  const { processingEngine, isSparkMode } = useProcessingEngine()
+
+  // Helper function to route operations based on processing engine preference
+  const getOperationFunc = (operationType) => {
+    const operationMap = {
+      pandas: {
+        select: opsSelect,
+        filter: opsFilter,
+        groupby: opsGroupBy,
+        merge: opsMerge,
+        pivot: opsPivot,
+        rename: opsRename,
+        datetime: opsDatetime,
+        mutate: opsMutate
+      },
+      spark: {
+        select: sparkOpsSelect,
+        filter: sparkOpsFilter,
+        groupby: sparkOpsGroupBy,
+        merge: sparkOpsMerge,
+        pivot: sparkOpsPivot,
+        rename: sparkOpsRename,
+        datetime: sparkOpsDatetime,
+        mutate: sparkOpsMutate
+      }
+    }
+    
+    return operationMap[processingEngine]?.[operationType] || operationMap.pandas[operationType]
+  }
 
   const refresh = async () => {
     setLoading(true)
@@ -203,7 +242,7 @@ export default function Operations() {
     const names = mergeNames
     const keys = mergeSelectedKeys
     try {
-      const res = await opsMerge({ names, keys, how: mergeHow })
+      const res = await getOperationFunc('merge')({ names, keys, how: mergeHow })
       toast.show(`Successfully created merged dataframe: ${res.name}`)
       await refresh()
     } catch (e) { 
@@ -241,7 +280,7 @@ export default function Operations() {
           values_from: pvSelectedValuesFrom ? [pvSelectedValuesFrom] : [],
           aggfunc: pvAgg
         }
-        const res = await opsPivot(payload)
+        const res = await getOperationFunc('pivot')(payload)
         toast.show(`Created ${res.name}`)
       } else {
         const payload = {
@@ -252,7 +291,7 @@ export default function Operations() {
           var_name: plVarName,
           value_name: plValueName
         }
-        const res = await opsPivot(payload)
+        const res = await getOperationFunc('pivot')(payload)
         toast.show(`Created ${res.name}`)
       }
       await refresh()
@@ -269,7 +308,7 @@ export default function Operations() {
   const onFilter = async () => {
     if (!ftName) return toast.show('Pick a dataframe')
     try {
-      const res = await opsFilter({ name: ftName, filters, combine: ftCombine })
+      const res = await getOperationFunc('filter')({ name: ftName, filters, combine: ftCombine })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Filter failed') }
@@ -287,7 +326,7 @@ export default function Operations() {
       try { aggsObj = JSON.parse(gbAggs) } catch { return toast.show('Aggs must be JSON') }
     }
     try {
-      const res = await opsGroupBy({ name: gbName, by: gbSelectedBy, aggs: aggsObj })
+      const res = await getOperationFunc('groupby')({ name: gbName, by: gbSelectedBy, aggs: aggsObj })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'GroupBy failed') }
@@ -304,7 +343,7 @@ export default function Operations() {
     if (!selName) return toast.show('Pick a dataframe')
     if (selCols.length === 0) return toast.show('Pick at least one column')
     try {
-      const res = await opsSelect({ name: selName, columns: selCols, exclude: selExclude })
+      const res = await getOperationFunc('select')({ name: selName, columns: selCols, exclude: selExclude })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Select failed') }
@@ -319,7 +358,7 @@ export default function Operations() {
     try {
       const map = JSON.parse(rnMap)
       if (!map || typeof map !== 'object' || Array.isArray(map)) return toast.show('Mapping must be a JSON object')
-      const res = await opsRename({ name: rnName, map })
+      const res = await getOperationFunc('rename')({ name: rnName, map })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) {
@@ -346,7 +385,7 @@ export default function Operations() {
 
   const onDateTimeRun = async (payload) => {
     try {
-      const res = await opsDatetime(payload)
+      const res = await getOperationFunc('datetime')(payload)
       if (!res.success) throw new Error(res.error || '')
       toast.show(`Created ${res.name}`)
       await refresh()
@@ -377,8 +416,20 @@ export default function Operations() {
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
       <Header title="Operations">
-        <div className="text-sm text-slate-300">
-          {loading ? 'Loading…' : `${dfs.length} dataframes`}
+        <div className="text-sm text-slate-300 flex items-center gap-4">
+          <div>
+            {loading ? 'Loading…' : `${dfs.length} dataframes`}
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs">Engine:</span>
+            <span className={`px-2 py-1 rounded text-xs font-medium ${
+              isSparkMode 
+                ? 'bg-orange-500/20 text-orange-200 border border-orange-500/30' 
+                : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'
+            }`}>
+              {isSparkMode ? 'Apache Spark' : 'Pandas'}
+            </span>
+          </div>
         </div>
       </Header>
 
@@ -1173,12 +1224,12 @@ export default function Operations() {
 
         {/* New: Date / Time */}
         <Section title="Date / Time">
-          <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsDatetime(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
+          <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await getOperationFunc('datetime')(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
         </Section>
 
         {/* New: Mutate */}
         <Section title="Mutate (create/overwrite column via expression)">
-          <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
+          <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await getOperationFunc('mutate')(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
         </Section>
         </div>
 
