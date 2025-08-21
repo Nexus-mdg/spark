@@ -27,30 +27,14 @@ def _get_spark_session():
         elif _spark_mode == 'cluster':
             return _create_cluster_session()
         
-        # First time - try to determine which mode to use
+        # First time - try cluster mode first, then fall back to local
         master_url = os.getenv('SPARK_MASTER_URL', 'spark://localhost:7077')
         
         try:
-            # Test cluster connectivity first with a simple socket check
-            import socket
-            from urllib.parse import urlparse
-            
-            parsed = urlparse(master_url)
-            if parsed.hostname and parsed.port:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(2)  # Quick 2 second timeout
-                result = sock.connect_ex((parsed.hostname, parsed.port))
-                sock.close()
-                
-                if result != 0:
-                    raise ConnectionError(f"Cannot connect to Spark master at {master_url}")
-                
-                # If connection test passes, try to create cluster session
-                spark = _create_cluster_session()
-                _spark_mode = 'cluster'
-                return spark
-            else:
-                raise ValueError(f"Invalid Spark master URL: {master_url}")
+            # Try to create cluster session directly (same approach as comparison API)
+            spark = _create_cluster_session()
+            _spark_mode = 'cluster'
+            return spark
                 
         except Exception as cluster_error:
             # If cluster connection fails, fall back to local mode
@@ -58,18 +42,11 @@ def _get_spark_session():
             _spark_mode = 'local'
             return _create_local_session()
             
-    except ImportError as ie:
-        if "distutils" in str(ie):
-            raise Exception("PySpark requires 'distutils' which is missing in Python 3.12+. Please ensure 'setuptools' is installed: pip install setuptools")
-        else:
-            raise Exception("PySpark is not installed. Please install pyspark to use Spark operations.")
+    except ImportError:
+        raise Exception("PySpark is not installed. Please install pyspark to use Spark operations.")
     except Exception as e:
         _spark_mode = 'unavailable'
-        error_msg = str(e)
-        if "distutils" in error_msg:
-            raise Exception("PySpark requires 'distutils' which is missing in Python 3.12+. Please ensure 'setuptools' is installed: pip install setuptools")
-        else:
-            raise Exception(f"Failed to initialize Spark session: {error_msg}")
+        raise Exception(f"Failed to initialize Spark session: {str(e)}")
 
 
 def _create_cluster_session():
