@@ -55,10 +55,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /auth/login</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Authenticate and get session token</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "username": "your_username",
-  "password": "your_password"
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"username\": \"your_username\",\n  \"password\": \"your_password\"\n}"}</pre>
                     </div>
                   </div>
                   
@@ -76,10 +73,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /auth/change-password</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Change user password</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "current_password": "current_password",
-  "new_password": "new_password"
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"current_password\": \"current_password\",\n  \"new_password\": \"new_password\"\n}"}</pre>
                     </div>
                   </div>
                 </div>
@@ -98,30 +92,27 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /dataframes/upload</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Upload a new dataframe (CSV, Excel, JSON)</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`Content-Type: multipart/form-data
-- file: CSV/Excel/JSON file
-- name: DataFrame name (optional)
-- description: Description (optional)`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"Content-Type: multipart/form-data\n- file: CSV/Excel/JSON file\n- name: DataFrame name (optional)\n- description: Description (optional)"}</pre>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Get dataframe preview and metadata</p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/page/{page}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/page/{"{page}"}</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Get paginated dataframe data</p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/metadata</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/metadata</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Get dataframe metadata (columns, types, stats)</p>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">DELETE /dataframes/{name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">DELETE /dataframes/{"{name}"}</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Delete a cached dataframe</p>
                   </div>
 
@@ -140,14 +131,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /operations/preview</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Preview operation result without applying</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "dataframe_name": "my_data",
-  "operation": "filter",
-  "params": {
-    "filters": [{"column": "age", "op": ">", "value": 18}],
-    "combine": "and"
-  }
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"dataframe_name\": \"my_data\",\n  \"operation\": \"filter\",\n  \"params\": {\n    \"filters\": [{\"column\": \"age\", \"op\": \">\", \"value\": 18}],\n    \"combine\": \"and\"\n  }\n}"}</pre>
                     </div>
                   </div>
                   
@@ -155,15 +139,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /operations/apply</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Apply operation and save result</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "dataframe_name": "my_data",
-  "operation": "groupby",
-  "params": {
-    "by": ["category"],
-    "agg": {"sales": "sum", "count": "size"}
-  },
-  "result_name": "grouped_data"
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"dataframe_name\": \"my_data\",\n  \"operation\": \"groupby\",\n  \"params\": {\n    \"by\": [\"category\"],\n    \"agg\": {\"sales\": \"sum\", \"count\": \"size\"}\n  },\n  \"result_name\": \"grouped_data\"\n}"}</pre>
                     </div>
                   </div>
 
@@ -171,11 +147,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /operations/compare</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Compare two dataframes</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "left_df": "dataframe1",
-  "right_df": "dataframe2",
-  "compare_type": "differences"
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"left_df\": \"dataframe1\",\n  \"right_df\": \"dataframe2\",\n  \"compare_type\": \"differences\"\n}"}</pre>
                     </div>
                   </div>
                 </div>
@@ -194,20 +166,12 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Save a new pipeline</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "name": "data_cleaning_pipeline",
-  "description": "Basic data cleaning workflow",
-  "steps": [
-    {"op": "load", "params": {"name": "raw_data"}},
-    {"op": "filter", "params": {"filters": [...]}},
-    {"op": "groupby", "params": {"by": "category", "agg": {...}}}
-  ]
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"name\": \"data_cleaning_pipeline\",\n  \"description\": \"Basic data cleaning workflow\",\n  \"steps\": [\n    {\"op\": \"load\", \"params\": {\"name\": \"raw_data\"}},\n    {\"op\": \"filter\", \"params\": {\"filters\": [...]}},\n    {\"op\": \"groupby\", \"params\": {\"by\": \"category\", \"agg\": {...}}}\n  ]\n}"}</pre>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /pipelines/{name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /pipelines/{"{name}"}</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Get pipeline definition</p>
                   </div>
                   
@@ -215,10 +179,7 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines/preview</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Preview pipeline execution</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "steps": [...],
-  "preview_rows": 10
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"steps\": [...],\n  \"preview_rows\": 10\n}"}</pre>
                     </div>
                   </div>
 
@@ -226,20 +187,17 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines/run</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Execute pipeline steps</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`{
-  "steps": [...],
-  "result_name": "pipeline_result"
-}`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"steps\": [...],\n  \"result_name\": \"pipeline_result\"\n}"}</pre>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines/{name}/run</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines/{"{name}"}/run</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Execute a saved pipeline</p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /pipelines/{name}/export</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /pipelines/{"{name}"}/export</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Export pipeline as YAML</p>
                   </div>
 
@@ -247,13 +205,12 @@ export default function ApiDocumentation() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100">POST /pipelines/import</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Import pipeline from YAML</p>
                     <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded text-sm">
-                      <pre className="text-gray-800 dark:text-gray-200">{`Content-Type: multipart/form-data
-- file: YAML file containing pipeline definition`}</pre>
+                      <pre className="text-gray-800 dark:text-gray-200">{"Content-Type: multipart/form-data\n- file: YAML file containing pipeline definition"}</pre>
                     </div>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">DELETE /pipelines/{name}</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">DELETE /pipelines/{"{name}"}</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Delete a saved pipeline</p>
                   </div>
                 </div>
@@ -264,22 +221,22 @@ export default function ApiDocumentation() {
                 
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/export/csv</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/export/csv</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Download dataframe as CSV</p>
                   </div>
                   
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/export/json</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/export/json</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Download dataframe as JSON</p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/export/excel</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/export/excel</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Download dataframe as Excel (.xlsx)</p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{name}/export/parquet</h4>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">GET /dataframes/{"{name}"}/export/parquet</h4>
                     <p className="text-gray-600 dark:text-gray-400 text-sm">Download dataframe as Parquet</p>
                   </div>
                 </div>
@@ -336,11 +293,7 @@ export default function ApiDocumentation() {
               Successful responses typically include the following structure:
             </p>
             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm mb-6">
-              <pre className="text-gray-800 dark:text-gray-200">{`{
-  "success": true,
-  "data": { ... },
-  "message": "Operation completed successfully"
-}`}</pre>
+              <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"success\": true,\n  \"data\": { ... },\n  \"message\": \"Operation completed successfully\"\n}"}</pre>
             </div>
 
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Error Responses</h2>
@@ -348,11 +301,7 @@ export default function ApiDocumentation() {
               All errors return appropriate HTTP status codes with JSON error details:
             </p>
             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm mb-6">
-              <pre className="text-gray-800 dark:text-gray-200">{`{
-  "success": false,
-  "error": "Error description",
-  "code": "ERROR_CODE"
-}`}</pre>
+              <pre className="text-gray-800 dark:text-gray-200">{"{\n  \"success\": false,\n  \"error\": \"Error description\",\n  \"code\": \"ERROR_CODE\"\n}"}</pre>
             </div>
             
             <div className="space-y-3 mb-6">
