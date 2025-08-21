@@ -218,15 +218,15 @@ export default function Operations() {
   const [pvMode, setPvMode] = useState('wider')
   const [pvName, setPvName] = useState('')
   const [pvIndex, setPvIndex] = useState('')
-  const [pvSelectedIndex, setPvSelectedIndex] = useState([])
+  const [pvSelectedIndex, setPvSelectedIndex] = useState('')
   const [pvNamesFrom, setPvNamesFrom] = useState('')
   const [pvValuesFrom, setPvValuesFrom] = useState('')
-  const [pvSelectedValuesFrom, setPvSelectedValuesFrom] = useState([])
+  const [pvSelectedValuesFrom, setPvSelectedValuesFrom] = useState('')
   const [pvAgg, setPvAgg] = useState('first')
   const [plIdVars, setPlIdVars] = useState('')
-  const [plSelectedIdVars, setPlSelectedIdVars] = useState([])
+  const [plSelectedIdVars, setPlSelectedIdVars] = useState('')
   const [plValueVars, setPlValueVars] = useState('')
-  const [plSelectedValueVars, setPlSelectedValueVars] = useState([])
+  const [plSelectedValueVars, setPlSelectedValueVars] = useState('')
   const [plVarName, setPlVarName] = useState('variable')
   const [plValueName, setPlValueName] = useState('value')
   const onPivot = async () => {
@@ -236,9 +236,9 @@ export default function Operations() {
         const payload = {
           mode: 'wider',
           name: pvName,
-          index: pvSelectedIndex,
+          index: pvSelectedIndex ? [pvSelectedIndex] : [],
           names_from: pvNamesFrom,
-          values_from: pvSelectedValuesFrom,
+          values_from: pvSelectedValuesFrom ? [pvSelectedValuesFrom] : [],
           aggfunc: pvAgg
         }
         const res = await opsPivot(payload)
@@ -247,8 +247,8 @@ export default function Operations() {
         const payload = {
           mode: 'longer',
           name: pvName,
-          id_vars: plSelectedIdVars,
-          value_vars: plSelectedValueVars,
+          id_vars: plSelectedIdVars ? [plSelectedIdVars] : [],
+          value_vars: plSelectedValueVars ? [plSelectedValueVars] : [],
           var_name: plVarName,
           value_name: plValueName
         }
@@ -603,52 +603,55 @@ export default function Operations() {
             )}
             
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join keys</span>
-                  {getCommonColumns().length > 0 ? (
-                    <div className="space-y-2">
+              {/* Join keys section - full width for better layout */}
+              <div>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join keys</span>
+                {getCommonColumns().length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Select common columns ({getCommonColumns().length} available)
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
+                      {getCommonColumns().map(col => (
+                        <label 
+                          key={col} 
+                          className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all flex items-center ${
+                            mergeSelectedKeys.includes(col) 
+                              ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
+                              : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
+                          }`}
+                        >
+                          <input 
+                            type="checkbox" 
+                            className="mr-2 rounded text-indigo-600 focus:ring-indigo-500" 
+                            checked={mergeSelectedKeys.includes(col)} 
+                            onChange={() => {
+                              setMergeSelectedKeys(prev => 
+                                prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
+                              )
+                              setMergeError('')
+                            }}
+                            aria-label={`Select ${col} as join key`}
+                          />
+                          <span className="truncate">{col}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {mergeSelectedKeys.length > 0 && (
                       <div className="text-xs text-gray-600 dark:text-gray-400">
-                        Select common columns ({getCommonColumns().length} available)
+                        Selected: {mergeSelectedKeys.join(', ')}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2 bg-gray-50 dark:bg-gray-800">
-                        {getCommonColumns().map(col => (
-                          <label 
-                            key={col} 
-                            className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
-                              mergeSelectedKeys.includes(col) 
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
-                                : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
-                            }`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              className="mr-2" 
-                              checked={mergeSelectedKeys.includes(col)} 
-                              onChange={() => {
-                                setMergeSelectedKeys(prev => 
-                                  prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
-                                )
-                                setMergeError('')
-                              }}
-                              aria-label={`Select ${col} as join key`}
-                            />
-                            <span className="truncate">{col}</span>
-                          </label>
-                        ))}
-                      </div>
-                      {mergeSelectedKeys.length > 0 && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          Selected: {mergeSelectedKeys.join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
-                      {mergeNames.length < 2 ? 'Select at least 2 dataframes to see common columns' : 'No common columns found between selected dataframes'}
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
+                    {mergeNames.length < 2 ? 'Select at least 2 dataframes to see common columns' : 'No common columns found between selected dataframes'}
+                  </div>
+                )}
+              </div>
+              
+              {/* Join type section - separate for better layout */}
+              <div className="max-w-xs">
                 <label className="block">
                   <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join type</span>
                   <select 
@@ -713,10 +716,10 @@ export default function Operations() {
                   onChange={e => {
                     setPvName(e.target.value)
                     // Reset selections when dataframe changes
-                    setPvSelectedIndex([])
-                    setPvSelectedValuesFrom([])
-                    setPlSelectedIdVars([])
-                    setPlSelectedValueVars([])
+                    setPvSelectedIndex('')
+                    setPvSelectedValuesFrom('')
+                    setPlSelectedIdVars('')
+                    setPlSelectedValueVars('')
                   }}
                   aria-label="Select dataframe for pivoting"
                 >
@@ -742,34 +745,22 @@ export default function Operations() {
               <div className="space-y-4">
                 {pvMode === 'wider' ? (
                   <div className="space-y-4">
-                    {/* Index columns selection */}
+                    {/* Index column selection */}
                     <div>
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Index columns ({pvSelectedIndex.length} selected)
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
-                        {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
-                          <label 
-                            key={c} 
-                            className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
-                              pvSelectedIndex.includes(c) 
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
-                                : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
-                            }`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              className="mr-2" 
-                              checked={pvSelectedIndex.includes(c)} 
-                              onChange={() => setPvSelectedIndex(prev => 
-                                prev.includes(c) ? prev.filter(col => col !== c) : [...prev, c]
-                              )}
-                              aria-label={`Toggle ${c} as index column`}
-                            />
-                            <span className="truncate">{c}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Index column</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvSelectedIndex} 
+                          onChange={e => setPvSelectedIndex(e.target.value)}
+                          aria-label="Select index column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -808,96 +799,60 @@ export default function Operations() {
                       </label>
                     </div>
                     
-                    {/* Values from columns selection */}
+                    {/* Values from column selection */}
                     <div>
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Values from columns ({pvSelectedValuesFrom.length} selected)
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
-                        {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
-                          <label 
-                            key={c} 
-                            className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
-                              pvSelectedValuesFrom.includes(c) 
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
-                                : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
-                            }`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              className="mr-2" 
-                              checked={pvSelectedValuesFrom.includes(c)} 
-                              onChange={() => setPvSelectedValuesFrom(prev => 
-                                prev.includes(c) ? prev.filter(col => col !== c) : [...prev, c]
-                              )}
-                              aria-label={`Toggle ${c} as values column`}
-                            />
-                            <span className="truncate">{c}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Values from column</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvSelectedValuesFrom} 
+                          onChange={e => setPvSelectedValuesFrom(e.target.value)}
+                          aria-label="Select values from column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* ID vars selection */}
+                    {/* ID variable selection */}
                     <div>
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        ID variables ({plSelectedIdVars.length} selected)
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
-                        {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
-                          <label 
-                            key={c} 
-                            className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
-                              plSelectedIdVars.includes(c) 
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
-                                : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
-                            }`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              className="mr-2" 
-                              checked={plSelectedIdVars.includes(c)} 
-                              onChange={() => setPlSelectedIdVars(prev => 
-                                prev.includes(c) ? prev.filter(col => col !== c) : [...prev, c]
-                              )}
-                              aria-label={`Toggle ${c} as ID variable`}
-                            />
-                            <span className="truncate">{c}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">ID variable</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plSelectedIdVars} 
+                          onChange={e => setPlSelectedIdVars(e.target.value)}
+                          aria-label="Select ID variable column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
                     
-                    {/* Value vars selection */}
+                    {/* Value variable selection */}
                     <div>
-                      <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        Value variables ({plSelectedValueVars.length} selected)
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
-                        {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
-                          <label 
-                            key={c} 
-                            className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
-                              plSelectedValueVars.includes(c) 
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
-                                : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
-                            }`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              className="mr-2" 
-                              checked={plSelectedValueVars.includes(c)} 
-                              onChange={() => setPlSelectedValueVars(prev => 
-                                prev.includes(c) ? prev.filter(col => col !== c) : [...prev, c]
-                              )}
-                              aria-label={`Toggle ${c} as value variable`}
-                            />
-                            <span className="truncate">{c}</span>
-                          </label>
-                        ))}
-                      </div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Value variable</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plSelectedValueVars} 
+                          onChange={e => setPlSelectedValueVars(e.target.value)}
+                          aria-label="Select value variable column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
