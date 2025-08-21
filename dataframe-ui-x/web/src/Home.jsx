@@ -167,7 +167,7 @@ export default function Home() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')

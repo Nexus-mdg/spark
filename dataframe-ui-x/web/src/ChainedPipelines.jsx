@@ -563,7 +563,7 @@ export default function ChainedPipelines() {
   
   // Pagination state for pipelines
   const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
-  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
   
   const navigate = useNavigate()
   const toast = useToast()
