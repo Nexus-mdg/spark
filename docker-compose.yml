@@ -133,6 +133,23 @@ services:
     depends_on:
       - ntfy
 
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.40.0-focal
+    container_name: playwright-tests
+    working_dir: /app
+    environment:
+      - CI=true
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+      - TEST_BASE_URL=http://localhost:5001
+    volumes:
+      - ./playwright-tests:/app
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    network_mode: "host"
+    command: ["sleep", "infinity"]
+    profiles:
+      - testing
+
 volumes:
   spark-data:
     driver: local

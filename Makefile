@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users visual-test-setup visual-test visual-test-headed visual-test-debug visual-test-report visual-test-cleanup
 
 help:
 	@echo "Targets:"
@@ -67,6 +67,14 @@ help:
 	@echo "  flush-redis           - clear Redis cache"
 	@echo "  flush-users           - remove all users from PostgreSQL"
 	@echo "  list-users            - list all users in PostgreSQL"
+	@echo ""
+	@echo "Visual Testing (Playwright):"
+	@echo "  visual-test-setup     - setup Playwright test environment"
+	@echo "  visual-test           - run visual tests"
+	@echo "  visual-test-headed    - run visual tests in headed mode"
+	@echo "  visual-test-debug     - run visual tests in debug mode"
+	@echo "  visual-test-report    - generate visual test report"
+	@echo "  visual-test-cleanup   - cleanup visual test environment"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -232,3 +240,29 @@ flush-users:
 list-users:
 	@echo "Listing all users in PostgreSQL..."
 	docker compose -f ./docker-compose.yml exec postgres psql -U dataframe_user -d dataframe_ui -c "SELECT username, created_at FROM users ORDER BY created_at;"
+
+# Visual Testing Commands (Playwright)
+
+visual-test-setup:
+	@echo "Setting up visual test environment..."
+	./visual-tests.sh setup
+
+visual-test:
+	@echo "Running visual tests..."
+	./visual-tests.sh test
+
+visual-test-headed:
+	@echo "Running visual tests in headed mode..."
+	./visual-tests.sh test-headed
+
+visual-test-debug:
+	@echo "Running visual tests in debug mode..."
+	./visual-tests.sh test-debug
+
+visual-test-report:
+	@echo "Generating visual test report..."
+	./visual-tests.sh report
+
+visual-test-cleanup:
+	@echo "Cleaning up visual test environment..."
+	./visual-tests.sh cleanup
