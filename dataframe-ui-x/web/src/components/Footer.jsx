@@ -40,7 +40,7 @@ export default function Footer() {
               </svg>
               <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Spark Test Visualizer</span>
             </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">© 2024</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">© {new Date().getFullYear()}</span>
           </div>
           
           <div className="flex items-center gap-6">

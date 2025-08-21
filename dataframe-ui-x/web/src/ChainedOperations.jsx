@@ -49,7 +49,7 @@ function SmallTable({ columns = [], rows = [] }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-750'}>
+            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-700'}>
               {columns.map(c => (
                 <td key={c} className="px-2 py-1 border-b border-gray-200 dark:border-gray-600 max-w-[300px] truncate text-gray-900 dark:text-gray-100" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
                   {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
@@ -148,7 +148,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </label>
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Aggregations (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               const by = String(state.by||'').split(',').map(s=>s.trim()).filter(Boolean)
@@ -184,7 +184,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               try { const m = JSON.parse(state.map || '{}'); if (!m || Array.isArray(m)) return; onCreate({ op: 'rename', params: { map: m } }) } catch { return }
@@ -315,7 +315,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </div>
             <label className="block">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+              <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
             </label>
             <div className="text-xs text-gray-600 dark:text-gray-300">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
           </div>
@@ -355,13 +355,13 @@ function FilterBuilder({ onCreate }) {
               <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
               <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
             </select>
-            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
-            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
+            <input className="border border-gray-300 dark:border-gray-600 rounded p-2 md:col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
+            <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => remove(idx)}>Remove</button>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
+        <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={add}>Add condition</button>
         <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
       </div>
     </div>
@@ -463,7 +463,7 @@ export default function ChainedOperations() {
   
   // Pagination state for pipelines
   const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
-  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
   
   const navigate = useNavigate()
   const toast = useToast()
@@ -650,7 +650,7 @@ export default function ChainedOperations() {
                 <option value="">Select…</option>
                 {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
               </select>
-              <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+              <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
             </div>
           </div>
         </Section>
@@ -661,27 +661,27 @@ export default function ChainedOperations() {
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
             <>
-              <div className="overflow-auto border rounded">
+              <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100 text-left">
+                  <thead className="bg-slate-100 dark:bg-gray-700 text-left">
                     <tr>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Steps</th>
-                      <th className="px-3 py-2">Description</th>
-                      <th className="px-3 py-2">Actions</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Name</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Steps</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Description</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedPipelines.map(p => (
-                      <tr key={p.name} className="border-t">
-                        <td className="px-3 py-2 font-medium">{p.name}</td>
-                        <td className="px-3 py-2">{p.steps}</td>
+                      <tr key={p.name} className="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                        <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{p.name}</td>
+                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{p.steps}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{p.description || '-'}</td>
                         <td className="px-3 py-2 flex flex-wrap gap-2">
-                          <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
-                          <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
-                          <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
-                          <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
+                          <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -702,9 +702,9 @@ export default function ChainedOperations() {
           )}
           <div className="mt-4">
             <div className="text-sm mb-1">Import from YML</div>
-            <textarea className="w-full border rounded p-2 font-mono text-xs h-32" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
+            <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded p-2 font-mono text-xs h-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
             <div className="mt-2 flex items-center gap-2">
-              <button className="px-3 py-1.5 rounded border" onClick={onImportYaml}>Import</button>
+              <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={onImportYaml}>Import</button>
               <label className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
                 <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} /> Overwrite existing
               </label>
@@ -717,23 +717,23 @@ export default function ChainedOperations() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-900 dark:text-gray-100">Auto preview</span>
             <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
-            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
-            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear steps</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={triggerPreview}>Preview now</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={clearSteps}>Clear steps</button>
           </div>
           <div className="mt-4 space-y-4">
-            <div className="bg-slate-50 border rounded p-3">
-              <div className="text-sm font-medium mb-2">Add step</div>
+            <div className="bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+              <div className="text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Add step</div>
               <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
             {steps.length > 0 && (
-              <div className="bg-white border rounded">
-                <div className="px-4 py-2 text-sm border-b">Steps</div>
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">
+                <div className="px-4 py-2 text-sm border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">Steps</div>
                 <ol className="list-decimal pl-6 py-2 space-y-2">
                   {steps.map((s, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <code className="text-xs bg-slate-100 rounded px-1 py-0.5 flex-shrink-0">{s.op}</code>
+                      <code className="text-xs bg-slate-100 dark:bg-gray-600 rounded px-1 py-0.5 flex-shrink-0 text-gray-900 dark:text-gray-100">{s.op}</code>
                       <span className="text-xs text-gray-700 dark:text-gray-300 break-words flex-1 min-w-0">{JSON.stringify(s.params)}</span>
-                      <button className="text-red-600 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
+                      <button className="text-red-600 dark:text-red-400 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
                     </li>
                   ))}
                 </ol>
@@ -760,7 +760,7 @@ export default function ChainedOperations() {
           )}
           <div className="space-y-4">
             {preview.steps.map((st, i) => (
-              <div key={i} className="border rounded">
+              <div key={i} className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <span className="font-medium">Step {i+1}:</span>
                   <span>{st.desc || st.op}</span>
@@ -769,7 +769,7 @@ export default function ChainedOperations() {
               </div>
             ))}
             {preview.final && (
-              <div className="border rounded">
+              <div className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">Final ({preview.final.rows} rows)</div>
                 <SmallTable columns={preview.final.columns || []} rows={preview.final.preview || []} />
               </div>

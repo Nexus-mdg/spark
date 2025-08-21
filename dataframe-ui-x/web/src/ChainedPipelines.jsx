@@ -48,7 +48,7 @@ function SmallTable({ columns = [], rows = [] }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-750'}>
+            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-700'}>
               {columns.map(c => (
                 <td key={c} className="px-2 py-1 border-b border-gray-200 dark:border-gray-600 max-w-[300px] truncate text-gray-900 dark:text-gray-100" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
                   {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
@@ -88,13 +88,13 @@ function FilterBuilder({ onCreate }) {
               <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
               <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
             </select>
-            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
-            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
+            <input className="border border-gray-300 dark:border-gray-600 rounded p-2 md:col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
+            <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => remove(idx)}>Remove</button>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
+        <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={add}>Add condition</button>
         <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
       </div>
     </div>
@@ -180,35 +180,47 @@ function PivotBuilder({ dfOptions, onCreate }) {
   )
 }
 
-function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChainPipeline }) {
+function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChainPipeline, maxChainedPipelines = 10 }) {
   const [showChainOptions, setShowChainOptions] = useState(false)
   const [selectedPipeline, setSelectedPipeline] = useState('')
 
   const handleChainPipeline = () => {
     if (selectedPipeline) {
+      // Check if we've reached the limit of chained pipelines
+      if (step.chainedPipelines && step.chainedPipelines.length >= maxChainedPipelines) {
+        alert(`Maximum of ${maxChainedPipelines} pipelines can be chained to a single step`)
+        return
+      }
       onChainPipeline(index, selectedPipeline)
       setSelectedPipeline('')
       setShowChainOptions(false)
     }
   }
 
+  const currentChainedCount = step.chainedPipelines ? step.chainedPipelines.length : 0
+  const canAddMore = currentChainedCount < maxChainedPipelines
+
   return (
-    <div className="border rounded p-3 bg-slate-50">
+    <div className="border border-gray-200 dark:border-gray-600 rounded p-3 bg-slate-50 dark:bg-gray-700">
       <div className="flex items-start justify-between mb-2 gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="font-medium text-sm flex-shrink-0">Step {index + 1}:</span>
-          <code className="text-xs bg-slate-200 rounded px-1 py-0.5 flex-shrink-0">{step.op}</code>
+          <span className="font-medium text-sm flex-shrink-0 text-gray-900 dark:text-gray-100">Step {index + 1}:</span>
+          <code className="text-xs bg-slate-200 dark:bg-gray-600 rounded px-1 py-0.5 flex-shrink-0 text-gray-900 dark:text-gray-100">{step.op}</code>
           <span className="text-xs text-gray-600 dark:text-gray-300 break-words min-w-0">{JSON.stringify(step.params)}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button 
-            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-            onClick={() => setShowChainOptions(!showChainOptions)}
+            className={`text-xs px-2 py-1 rounded ${canAddMore 
+              ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800' 
+              : 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}
+            onClick={() => canAddMore && setShowChainOptions(!showChainOptions)}
+            disabled={!canAddMore}
+            title={!canAddMore ? `Maximum of ${maxChainedPipelines} pipelines per step` : 'Chain another pipeline'}
           >
-            Chain Pipeline
+            Chain Pipeline {currentChainedCount > 0 && `(${currentChainedCount}/${maxChainedPipelines})`}
           </button>
           <button 
-            className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+            className="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 rounded"
             onClick={() => onRemove(index)}
           >
             Remove
@@ -217,13 +229,13 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
       </div>
       
       {step.chainedPipelines && step.chainedPipelines.length > 0 && (
-        <div className="mt-2 pl-4 border-l-2 border-blue-300">
-          <div className="text-xs text-blue-700 mb-1">Chained pipelines:</div>
+        <div className="mt-2 pl-4 border-l-2 border-blue-300 dark:border-blue-600">
+          <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">Chained pipelines ({step.chainedPipelines.length}/{maxChainedPipelines}):</div>
           {step.chainedPipelines.map((chainedName, idx) => (
-            <div key={idx} className="text-xs bg-blue-50 rounded px-2 py-1 mb-1 flex items-center justify-between">
-              <span>{chainedName}</span>
+            <div key={idx} className="text-xs bg-blue-50 dark:bg-blue-900 rounded px-2 py-1 mb-1 flex items-center justify-between">
+              <span className="text-gray-900 dark:text-gray-100">{chainedName}</span>
               <button 
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 onClick={() => {
                   const updated = step.chainedPipelines.filter((_, i) => i !== idx)
                   onChainPipeline(index, null, updated)
@@ -237,11 +249,11 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
       )}
 
       {showChainOptions && (
-        <div className="mt-2 p-2 bg-white border rounded">
-          <div className="text-xs mb-2">Attach pipeline to run at this point:</div>
+        <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">
+          <div className="text-xs mb-2 text-gray-900 dark:text-gray-100">Attach pipeline to run at this point:</div>
           <div className="flex items-center gap-2">
             <select 
-              className="text-xs border rounded p-1 flex-1"
+              className="text-xs border border-gray-300 dark:border-gray-600 rounded p-1 flex-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               value={selectedPipeline}
               onChange={e => setSelectedPipeline(e.target.value)}
             >
@@ -251,14 +263,14 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
               ))}
             </select>
             <button 
-              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleChainPipeline}
               disabled={!selectedPipeline}
             >
               Attach
             </button>
             <button 
-              className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+              className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"
               onClick={() => setShowChainOptions(false)}
             >
               Cancel
@@ -352,7 +364,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </label>
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Aggregations (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               const by = String(state.by||'').split(',').map(s=>s.trim()).filter(Boolean)
@@ -388,7 +400,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               try { const m = JSON.parse(state.map || '{}'); if (!m || Array.isArray(m)) return; onCreate({ op: 'rename', params: { map: m } }) } catch { return }
@@ -519,7 +531,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </div>
             <label className="block">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+              <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
             </label>
             <div className="text-xs text-gray-600 dark:text-gray-300">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
           </div>
@@ -551,7 +563,10 @@ export default function ChainedPipelines() {
   
   // Pagination state for pipelines
   const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
-  const itemsPerPage = parseInt(process.env.MAX_ITEMS_PER_PAGE || '15', 10)
+  const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
+  
+  // Maximum number of chained pipelines per step (configurable via environment variable)
+  const maxChainedPipelines = parseInt(import.meta.env.VITE_MAX_CHAINED_PIPELINES || '10', 10)
   
   const navigate = useNavigate()
   const toast = useToast()
@@ -614,7 +629,12 @@ export default function ChainedPipelines() {
         if (updatedChained !== null) {
           return { ...step, chainedPipelines: updatedChained }
         } else if (pipelineName) {
-          return { ...step, chainedPipelines: [...(step.chainedPipelines || []), pipelineName] }
+          const currentChained = step.chainedPipelines || []
+          if (currentChained.length >= maxChainedPipelines) {
+            // This shouldn't happen with UI guards, but add safety check
+            return step
+          }
+          return { ...step, chainedPipelines: [...currentChained, pipelineName] }
         }
       }
       return step
@@ -824,32 +844,32 @@ export default function ChainedPipelines() {
               <option value="">Select…</option>
               {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
             </select>
-            <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
           </div>
           {pipelinesLoading && (<div className="text-sm text-gray-600 dark:text-gray-300">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
-            <div className="overflow-auto border rounded">
+            <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-left">
+                <thead className="bg-slate-100 dark:bg-gray-700 text-left">
                   <tr>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Steps</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2">Actions</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Name</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Steps</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Description</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pipelines.map(p => (
-                    <tr key={p.name} className="border-t">
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2">{p.steps}</td>
+                    <tr key={p.name} className="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                      <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{p.name}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{p.steps}</td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{p.description || '-'}</td>
                       <td className="px-3 py-2 flex flex-wrap gap-2">
-                        <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
-                        <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
-                        <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
-                        <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
+                        <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -864,14 +884,14 @@ export default function ChainedPipelines() {
           <div className="flex items-center gap-3 mb-4">
             <span className="text-sm text-gray-900 dark:text-gray-100">Auto preview</span>
             <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
-            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
-            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear all steps</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={triggerPreview}>Preview now</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={clearSteps}>Clear all steps</button>
             <span className="text-sm text-gray-600 dark:text-gray-300">{steps.length} steps</span>
           </div>
           
           <div className="space-y-4">
-            <div className="bg-slate-50 border rounded p-3">
-              <div className="text-sm font-medium mb-2">Add step</div>
+            <div className="bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+              <div className="text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Add step</div>
               <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
             
@@ -885,6 +905,7 @@ export default function ChainedPipelines() {
                     availablePipelines={pipelines}
                     onRemove={removeStep}
                     onChainPipeline={handleChainPipeline}
+                    maxChainedPipelines={maxChainedPipelines}
                   />
                 ))}
               </div>
@@ -915,7 +936,7 @@ export default function ChainedPipelines() {
           )}
           <div className="space-y-4">
             {preview.steps.map((st, i) => (
-              <div key={i} className="border rounded">
+              <div key={i} className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <span className="font-medium">Step {i+1}:</span>
                   <span>{st.desc || st.op}</span>
@@ -924,7 +945,7 @@ export default function ChainedPipelines() {
               </div>
             ))}
             {preview.final && (
-              <div className="border rounded">
+              <div className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">Final ({preview.final.rows} rows)</div>
                 <SmallTable columns={preview.final.columns || []} rows={preview.final.preview || []} />
               </div>
@@ -938,20 +959,20 @@ export default function ChainedPipelines() {
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
             <>
-              <div className="overflow-auto border rounded">
+              <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100 text-left">
+                  <thead className="bg-slate-100 dark:bg-gray-700 text-left">
                     <tr>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Steps</th>
-                      <th className="px-3 py-2">Description</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Name</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Steps</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Description</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedPipelines.map(p => (
-                      <tr key={p.name} className="border-t">
-                        <td className="px-3 py-2 font-medium">{p.name}</td>
-                        <td className="px-3 py-2">{p.steps}</td>
+                      <tr key={p.name} className="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                        <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{p.name}</td>
+                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{p.steps}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{p.description || '-'}</td>
                       </tr>
                     ))}

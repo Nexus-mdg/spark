@@ -61,7 +61,7 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth()
 
   // Get gradient theme from environment variable, default to forest (greenish)
-  const gradientTheme = gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'] || gradientThemes.forest
+  const gradientTheme = gradientThemes[import.meta.env.VITE_LOGIN_GRADIENT_THEME || 'forest'] || gradientThemes.forest
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function Login() {
     <div className={`min-h-screen bg-gradient-to-br ${gradientTheme.background} relative overflow-hidden`}>
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
-        {gradientThemes[process.env.LOGIN_GRADIENT_THEME || 'forest'].blobs.map((blob, index) => (
+        {gradientThemes[import.meta.env.VITE_LOGIN_GRADIENT_THEME || 'forest'].blobs.map((blob, index) => (
           <div 
             key={index}
             className={`absolute w-72 h-72 ${blob.color} rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob ${blob.position}`}
@@ -117,8 +117,27 @@ export default function Login() {
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
             <div className="flex items-center space-x-3 backdrop-blur-sm bg-white/10 rounded-2xl px-6 py-3 shadow-2xl border border-white/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" viewBox="0 0 100 100" fill="none">
+                <defs>
+                  <linearGradient id="duckGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#10b981"/>
+                    <stop offset="50%" stopColor="#059669"/>
+                    <stop offset="100%" stopColor="#047857"/>
+                  </linearGradient>
+                </defs>
+                {/* Duck body */}
+                <ellipse cx="50" cy="65" rx="25" ry="18" fill="url(#duckGradient)" stroke="currentColor" strokeWidth="1"/>
+                {/* Duck head */}
+                <circle cx="35" cy="35" r="15" fill="url(#duckGradient)" stroke="currentColor" strokeWidth="1"/>
+                {/* Duck bill */}
+                <path d="M20 35 Q15 37 18 40 Q22 38 25 35" fill="#f59e0b" stroke="currentColor" strokeWidth="0.5"/>
+                {/* Duck eye */}
+                <circle cx="32" cy="32" r="2" fill="currentColor"/>
+                {/* Wing detail */}
+                <path d="M40 55 Q55 50 65 60 Q55 65 45 62" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.7"/>
+                {/* Water ripples */}
+                <path d="M25 80 Q50 75 75 80" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.5"/>
+                <path d="M30 85 Q50 82 70 85" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
               </svg>
               <span className="text-2xl font-bold text-white">DataFrame UI</span>
             </div>

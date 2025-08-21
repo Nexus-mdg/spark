@@ -10,8 +10,14 @@ from operations.dataframe_ops import _load_df_from_cache, _save_df_to_cache, _un
 from utils.helpers import df_to_records_json_safe
 
 
-def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, str]:
-    """Apply a single pipeline operation step"""
+def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = False) -> tuple[pd.DataFrame, str]:
+    """Apply a single pipeline operation step
+    
+    Args:
+        df_curr: Current dataframe
+        step: Operation step to apply
+        preview_mode: If True, don't save intermediate results to cache
+    """
     op = (step.get('op') or step.get('type') or '').lower()
     params = step.get('params') or {}
 
@@ -454,21 +460,24 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict) -> tuple[pd.DataFrame, s
         current = df_curr.copy()  # Make a copy to avoid modifying original
         for i, chained_step in enumerate(chained_steps):
             print(f"[DEBUG] chain_pipeline: executing step {i+1}: {chained_step.get('op', 'unknown')}")
-            current, step_desc = _apply_op(current, chained_step)
+            current, step_desc = _apply_op(current, chained_step, preview_mode)
             print(f"[DEBUG] chain_pipeline: step {i+1} result: {step_desc}, shape={current.shape}")
         
-        # Save the chained pipeline result as a named dataframe
-        # This allows subsequent steps to access it via merge operations
+        # Save the chained pipeline result as a named dataframe (only if not in preview mode)
         result_name = f'chained_{pipeline_name}'
-        print(f"[DEBUG] chain_pipeline: saving result as '{result_name}' with shape={current.shape}")
-        try:
-            _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name}')
-            print(f"[DEBUG] chain_pipeline: successfully saved '{result_name}' to cache")
-        except Exception as e:
-            raise ValueError(f'chain_pipeline: failed to save result "{result_name}": {str(e)}')
-        
-        # Return the original dataframe to preserve the main pipeline flow
-        # The chained result is now available as a named dataframe for merge operations
-        return df_curr, f'chain_pipeline: {pipeline_name} (saved as {result_name}, applied {len(chained_steps)} steps)'
+        if preview_mode:
+            print(f"[DEBUG] chain_pipeline: preview mode - skipping save of '{result_name}'")
+            return df_curr, f'chain_pipeline: {pipeline_name} (preview: applied {len(chained_steps)} steps, result shape: {current.shape})'
+        else:
+            print(f"[DEBUG] chain_pipeline: saving result as '{result_name}' with shape={current.shape}")
+            try:
+                _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name}')
+                print(f"[DEBUG] chain_pipeline: successfully saved '{result_name}' to cache")
+            except Exception as e:
+                raise ValueError(f'chain_pipeline: failed to save result "{result_name}": {str(e)}')
+            
+            # Return the original dataframe to preserve the main pipeline flow
+            # The chained result is now available as a named dataframe for merge operations
+            return df_curr, f'chain_pipeline: {pipeline_name} (saved as {result_name}, applied {len(chained_steps)} steps)'
 
     raise ValueError(f'Unsupported op: {op}')
