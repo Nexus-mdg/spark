@@ -694,8 +694,7 @@ def op_spark_groupby():
             return jsonify({'success': False, 'error': 'name is required'}), 400
         if not by:
             return jsonify({'success': False, 'error': 'by (groupby columns) is required'}), 400
-        if not aggs:
-            return jsonify({'success': False, 'error': 'aggs (aggregations) is required'}), 400
+        # Note: aggs can be empty - will default to count like pandas version
         
         result = spark_groupby_op(name, by, aggs)
         if result['success']:

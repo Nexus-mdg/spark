@@ -10,34 +10,106 @@ from datetime import datetime
 from utils.redis_client import redis_client
 from operations.dataframe_ops import _save_df_to_cache, _unique_name
 
+# Global variable to track Spark session mode to avoid repeated warnings
+_spark_mode = None  # Will be 'cluster', 'local', or 'unavailable'
+
 
 def _get_spark_session():
-    """Get or create Spark session"""
+    """Get or create Spark session with fallback to local mode"""
+    global _spark_mode
+    
     try:
         from pyspark.sql import SparkSession
         
+        # If we already determined the mode, use it directly
+        if _spark_mode == 'local':
+            return _create_local_session()
+        elif _spark_mode == 'cluster':
+            return _create_cluster_session()
+        
+        # First time - try to determine which mode to use
         master_url = os.getenv('SPARK_MASTER_URL', 'spark://localhost:7077')
-        builder = (SparkSession.builder
-                   .appName('DataFrame-Operations')
-                   .master(master_url)
-                   .config('spark.sql.adaptive.enabled', 'true')
-                   .config('spark.executor.memory', os.getenv('SPARK_EXECUTOR_MEMORY', '4g'))
-                   .config('spark.driver.memory', os.getenv('SPARK_DRIVER_MEMORY', '4g'))
-                   .config('spark.network.timeout', os.getenv('SPARK_NETWORK_TIMEOUT', '120s'))
-                   .config('spark.pyspark.python', os.getenv('PYSPARK_PYTHON', 'python3'))
-                   .config('spark.pyspark.driver.python', os.getenv('PYSPARK_DRIVER_PYTHON', 'python3')))
         
-        driver_host = os.getenv('SPARK_DRIVER_HOST')
-        if driver_host:
-            builder = builder.config('spark.driver.host', driver_host)
-        
-        driver_bind = os.getenv('SPARK_DRIVER_BIND_ADDRESS')
-        if driver_bind:
-            builder = builder.config('spark.driver.bindAddress', driver_bind)
-        
-        return builder.getOrCreate()
+        try:
+            # Test cluster connectivity first with a simple socket check
+            import socket
+            from urllib.parse import urlparse
+            
+            parsed = urlparse(master_url)
+            if parsed.hostname and parsed.port:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)  # Quick 2 second timeout
+                result = sock.connect_ex((parsed.hostname, parsed.port))
+                sock.close()
+                
+                if result != 0:
+                    raise ConnectionError(f"Cannot connect to Spark master at {master_url}")
+                
+                # If connection test passes, try to create cluster session
+                spark = _create_cluster_session()
+                _spark_mode = 'cluster'
+                return spark
+            else:
+                raise ValueError(f"Invalid Spark master URL: {master_url}")
+                
+        except Exception as cluster_error:
+            # If cluster connection fails, fall back to local mode
+            print(f"INFO: Spark cluster not available, using local mode for better performance. ({cluster_error})")
+            _spark_mode = 'local'
+            return _create_local_session()
+            
+    except ImportError:
+        raise Exception("PySpark is not installed. Please install pyspark to use Spark operations.")
     except Exception as e:
+        _spark_mode = 'unavailable'
         raise Exception(f"Failed to initialize Spark session: {str(e)}")
+
+
+def _create_cluster_session():
+    """Create Spark session for cluster mode"""
+    from pyspark.sql import SparkSession
+    
+    master_url = os.getenv('SPARK_MASTER_URL', 'spark://localhost:7077')
+    builder = (SparkSession.builder
+               .appName('DataFrame-Operations')
+               .master(master_url)
+               .config('spark.sql.adaptive.enabled', 'true')
+               .config('spark.executor.memory', os.getenv('SPARK_EXECUTOR_MEMORY', '4g'))
+               .config('spark.driver.memory', os.getenv('SPARK_DRIVER_MEMORY', '4g'))
+               .config('spark.pyspark.python', os.getenv('PYSPARK_PYTHON', 'python3'))
+               .config('spark.pyspark.driver.python', os.getenv('PYSPARK_DRIVER_PYTHON', 'python3')))
+    
+    driver_host = os.getenv('SPARK_DRIVER_HOST')
+    if driver_host:
+        builder = builder.config('spark.driver.host', driver_host)
+    
+    driver_bind = os.getenv('SPARK_DRIVER_BIND_ADDRESS')
+    if driver_bind:
+        builder = builder.config('spark.driver.bindAddress', driver_bind)
+    
+    return builder.getOrCreate()
+
+
+def _create_local_session():
+    """Create Spark session for local mode"""
+    from pyspark.sql import SparkSession
+    
+    # Stop any existing session first
+    try:
+        spark = SparkSession.getActiveSession()
+        if spark:
+            spark.stop()
+    except:
+        pass
+    
+    # Create local session with minimal configuration
+    local_builder = (SparkSession.builder
+                   .appName('DataFrame-Operations-Local')
+                   .master('local[*]')  # Use all available cores locally
+                   .config('spark.sql.adaptive.enabled', 'true')
+                   .config('spark.driver.memory', '1g'))  # Minimal memory for local mode
+    
+    return local_builder.getOrCreate()
 
 
 def _load_df_to_spark(name: str):
@@ -174,31 +246,38 @@ def spark_groupby_op(name: str, by: list, aggs: dict) -> dict:
         
         # Build aggregation expressions
         agg_exprs = []
-        for col_name, agg_func in aggs.items():
-            if col_name not in spark_df.columns:
-                raise ValueError(f'Aggregation column not found: {col_name}')
-            
-            if agg_func == 'count':
-                agg_exprs.append(F.count(col_name).alias(f"{col_name}_{agg_func}"))
-            elif agg_func == 'sum':
-                agg_exprs.append(F.sum(col_name).alias(f"{col_name}_{agg_func}"))
-            elif agg_func == 'mean':
-                agg_exprs.append(F.mean(col_name).alias(f"{col_name}_{agg_func}"))
-            elif agg_func == 'min':
-                agg_exprs.append(F.min(col_name).alias(f"{col_name}_{agg_func}"))
-            elif agg_func == 'max':
-                agg_exprs.append(F.max(col_name).alias(f"{col_name}_{agg_func}"))
-            elif agg_func == 'std':
-                agg_exprs.append(F.stddev(col_name).alias(f"{col_name}_{agg_func}"))
-            else:
-                raise ValueError(f"Unsupported aggregation function: {agg_func}")
         
-        result_df = spark_df.groupBy(*by).agg(*agg_exprs)
+        # If no aggregations provided, default to count like pandas version
+        if not aggs:
+            result_df = spark_df.groupBy(*by).count()
+            desc = f"Spark: GroupBy {','.join(by)} (count)"
+        else:
+            for col_name, agg_func in aggs.items():
+                if col_name not in spark_df.columns:
+                    raise ValueError(f'Aggregation column not found: {col_name}')
+                
+                if agg_func == 'count':
+                    agg_exprs.append(F.count(col_name).alias(f"{col_name}_{agg_func}"))
+                elif agg_func == 'sum':
+                    agg_exprs.append(F.sum(col_name).alias(f"{col_name}_{agg_func}"))
+                elif agg_func == 'mean':
+                    agg_exprs.append(F.mean(col_name).alias(f"{col_name}_{agg_func}"))
+                elif agg_func == 'min':
+                    agg_exprs.append(F.min(col_name).alias(f"{col_name}_{agg_func}"))
+                elif agg_func == 'max':
+                    agg_exprs.append(F.max(col_name).alias(f"{col_name}_{agg_func}"))
+                elif agg_func == 'std':
+                    agg_exprs.append(F.stddev(col_name).alias(f"{col_name}_{agg_func}"))
+                else:
+                    raise ValueError(f"Unsupported aggregation function: {agg_func}")
+            
+            result_df = spark_df.groupBy(*by).agg(*agg_exprs)
+            aggs_str = ', '.join([f"{k}:{v}" for k, v in aggs.items()])
+            desc = f"Spark: GroupBy {','.join(by)} ({aggs_str})"
         
         # Convert back to pandas for storage
         pandas_result = _spark_df_to_pandas(result_df)
         base = f"{name}__spark_groupby_{'-'.join(by)}"
-        desc = f"Spark: GroupBy {','.join(by)}"
         out_name = _unique_name(base)
         meta = _save_df_to_cache(out_name, pandas_result, description=desc, source='spark:groupby')
         
