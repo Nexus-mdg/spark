@@ -169,6 +169,11 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
 
+  // Filter and sort state
+  const [nameFilter, setNameFilter] = useState('')
+  const [sortColumn, setSortColumn] = useState('timestamp') // name, timestamp, size_mb
+  const [sortDirection, setSortDirection] = useState('desc') // asc, desc
+
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState(null)
@@ -206,7 +211,7 @@ export default function Home() {
     try {
       const res = await listDataframes()
       if (res.success) {
-        setRows((res.dataframes || []).sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')))
+        setRows(res.dataframes || [])
         setCurrentPage(1) // Reset to first page when data changes
       }
     } finally {
@@ -214,14 +219,62 @@ export default function Home() {
     }
   }
 
+  // Filter and sort data
+  const filteredAndSortedRows = React.useMemo(() => {
+    let filtered = rows
+    
+    // Apply name filter
+    if (nameFilter.trim()) {
+      filtered = filtered.filter(row => 
+        row.name.toLowerCase().includes(nameFilter.toLowerCase())
+      )
+    }
+    
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal
+      
+      if (sortColumn === 'name') {
+        aVal = (a.name || '').toLowerCase()
+        bVal = (b.name || '').toLowerCase()
+      } else if (sortColumn === 'timestamp') {
+        aVal = a.timestamp || ''
+        bVal = b.timestamp || ''
+      } else if (sortColumn === 'size_mb') {
+        aVal = a.size_mb || 0
+        bVal = b.size_mb || 0
+      }
+      
+      if (sortDirection === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+    
+    return sorted
+  }, [rows, nameFilter, sortColumn, sortDirection])
+
   // Pagination calculations
-  const totalItems = rows.length
+  const totalItems = filteredAndSortedRows.length
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedRows = rows.slice(startIndex, endIndex)
+  const paginatedRows = filteredAndSortedRows.slice(startIndex, endIndex)
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
+  }
+
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      // If clicking the same column, toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // If clicking a new column, set it and default to desc
+      setSortColumn(column)
+      setSortDirection('desc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting changes
   }
 
   // Chart data calculations
@@ -558,7 +611,7 @@ export default function Home() {
           <div className="p-6 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Cached DataFrames</h2>
             <div className="flex items-center gap-2">
-              <button onClick={refreshStats} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Refresh list">
+              <button onClick={() => { refreshStats(); refreshList(); }} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Refresh list">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
@@ -571,15 +624,89 @@ export default function Home() {
               </button>
             </div>
           </div>
+          
+          {/* Filter and Search Controls */}
+          <div className="p-6 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by name</label>
+                <input
+                  type="text"
+                  value={nameFilter}
+                  onChange={(e) => {
+                    setNameFilter(e.target.value)
+                    setCurrentPage(1) // Reset to first page when filter changes
+                  }}
+                  placeholder="Search dataframes..."
+                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 text-sm px-3 py-2"
+                />
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 pb-2">
+                {totalItems === 1 ? '1 dataframe' : `${totalItems} dataframes`}
+                {nameFilter && ` (filtered from ${rows.length})`}
+              </div>
+            </div>
+          </div>
           <div className="p-6 overflow-x-auto">
             <table className="min-w-full text-sm table-fixed">
               <thead className="text-left text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="py-2 pr-4 w-[28ch]">Name</th>
+                  <th className="py-2 pr-4 w-[28ch]">
+                    <button
+                      onClick={() => handleSort('name')}
+                      className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      title="Sort by name"
+                    >
+                      Name
+                      {sortColumn === 'name' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          {sortDirection === 'asc' ? (
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                          ) : (
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      )}
+                    </button>
+                  </th>
                   <th className="py-2 pr-4 w-[40ch]">Description</th>
                   <th className="py-2 pr-4">Dimensions</th>
-                  <th className="py-2 pr-4">Size</th>
-                  <th className="py-2 pr-4">Created</th>
+                  <th className="py-2 pr-4">
+                    <button
+                      onClick={() => handleSort('size_mb')}
+                      className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      title="Sort by size"
+                    >
+                      Size
+                      {sortColumn === 'size_mb' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          {sortDirection === 'asc' ? (
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                          ) : (
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-2 pr-4">
+                    <button
+                      onClick={() => handleSort('timestamp')}
+                      className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      title="Sort by creation date"
+                    >
+                      Created
+                      {sortColumn === 'timestamp' && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          {sortDirection === 'asc' ? (
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                          ) : (
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      )}
+                    </button>
+                  </th>
                   <th className="py-2">Actions</th>
                 </tr>
               </thead>
