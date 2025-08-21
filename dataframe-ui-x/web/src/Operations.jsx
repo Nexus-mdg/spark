@@ -90,7 +90,7 @@ function DataframePreview({ name, columnsFilter, excludeSelected }) {
             </thead>
             <tbody>
               {state.rows.map((r, i) => (
-                <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-750'}>
+                <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700'}>
                   {state.columns.map(c => (
                     <td key={c} className="px-3 py-1 align-top border-b border-gray-200 dark:border-gray-600 max-w-[300px] truncate text-gray-900 dark:text-gray-100" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
                       {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
@@ -519,7 +519,7 @@ export default function Operations() {
           <div className="space-y-3">
             <label className="block">
               <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-              <select className="mt-1 border rounded w-full p-2 max-w-sm" value={ftName} onChange={e => setFtName(e.target.value)}>
+              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 max-w-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={ftName} onChange={e => setFtName(e.target.value)}>
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
@@ -527,8 +527,8 @@ export default function Operations() {
             {/* Preview below df choice */}
             {ftName && (<DataframePreview name={ftName} />)}
             <div className="flex items-center gap-3">
-              <span className="text-sm">Combine</span>
-              <select className="border rounded p-2" value={ftCombine} onChange={e => setFtCombine(e.target.value)}>
+              <span className="text-sm text-gray-900 dark:text-gray-100">Combine</span>
+              <select className="border border-gray-300 dark:border-gray-600 rounded p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={ftCombine} onChange={e => setFtCombine(e.target.value)}>
                 <option>and</option>
                 <option>or</option>
               </select>
@@ -551,11 +551,11 @@ export default function Operations() {
                   <span className="block text-sm text-gray-900 dark:text-gray-100">Value</span>
                   <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={f.value} onChange={e => updateFilter(idx, { value: e.target.value })} placeholder="value or [v1,v2] for in" />
                 </label>
-                <button className="px-3 py-2 border rounded" onClick={() => removeFilter(idx)}>Remove</button>
+                <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => removeFilter(idx)}>Remove</button>
               </div>
             ))}
             <div className="flex items-center gap-2">
-              <button className="px-3 py-2 border rounded" onClick={addFilter}>Add filter</button>
+              <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={addFilter}>Add filter</button>
               <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" onClick={onFilter}>Run Filter</button>
             </div>
           </div>
@@ -599,7 +599,7 @@ export default function Operations() {
                 <div className="text-sm mb-1">Pick columns</div>
                 <div className="flex flex-wrap gap-2">
                   {(selectedDfMeta?.columns || []).map(c => (
-                    <label key={c} className={`px-2 py-1 rounded border cursor-pointer ${selCols.includes(c) ? 'bg-indigo-50 border-indigo-400' : 'bg-white'}`}>
+                    <label key={c} className={`px-2 py-1 rounded border cursor-pointer text-gray-900 dark:text-gray-100 ${selCols.includes(c) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
                       <input type="checkbox" className="mr-1" checked={selCols.includes(c)} onChange={() => toggleSelCol(c)} />
                       {c}
                     </label>
@@ -607,7 +607,7 @@ export default function Operations() {
                 </div>
                 <label className="inline-flex items-center gap-2 mt-2">
                   <input type="checkbox" checked={selExclude} onChange={e => setSelExclude(e.target.checked)} />
-                  <span className="text-sm">Exclude selected</span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">Exclude selected</span>
                 </label>
               </div>
             )}
@@ -632,7 +632,7 @@ export default function Operations() {
             {rnName && (<DataframePreview name={rnName} />)}
             <label className="block">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping JSON (old→new)</span>
-              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-24" placeholder='{"old_col":"new_col", "age":"age_years"}' value={rnMap} onChange={e => setRnMap(e.target.value)} />
+              <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-24 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder='{"old_col":"new_col", "age":"age_years"}' value={rnMap} onChange={e => setRnMap(e.target.value)} />
             </label>
             <div>
               <button onClick={onRename} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Rename</button>
@@ -729,7 +729,7 @@ function DateTimeSection({ dfOptions, onRun }) {
           </label>
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
-            <span className="text-sm">Overwrite if exists</span>
+            <span className="text-sm text-gray-900 dark:text-gray-100">Overwrite if exists</span>
           </label>
           <div className="md:col-span-6">
             <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Parse</button>
@@ -749,19 +749,19 @@ function DateTimeSection({ dfOptions, onRun }) {
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="checkbox" checked={outYear} onChange={e => setOutYear(e.target.checked)} />
-              <span className="text-sm">year</span>
+              <span className="text-sm text-gray-900 dark:text-gray-100">year</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="checkbox" checked={outMonth} onChange={e => setOutMonth(e.target.checked)} />
-              <span className="text-sm">month</span>
+              <span className="text-sm text-gray-900 dark:text-gray-100">month</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="checkbox" checked={outDay} onChange={e => setOutDay(e.target.checked)} />
-              <span className="text-sm">day</span>
+              <span className="text-sm text-gray-900 dark:text-gray-100">day</span>
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="checkbox" checked={outYearMonth} onChange={e => setOutYearMonth(e.target.checked)} />
-              <span className="text-sm">year_month</span>
+              <span className="text-sm text-gray-900 dark:text-gray-100">year_month</span>
             </label>
             <div className="md:col-span-6">
               <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Derive</button>
@@ -811,13 +811,13 @@ function MutateSection({ dfOptions, onRun }) {
         </label>
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
-          <span className="text-sm">Overwrite if exists</span>
+          <span className="text-sm text-gray-900 dark:text-gray-100">Overwrite if exists</span>
         </label>
       </div>
       {name && (<DataframePreview name={name} />)}
       <label className="block">
         <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-        <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
+        <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
       </label>
       <div>
         <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Mutate</button>
