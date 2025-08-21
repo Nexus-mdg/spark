@@ -106,6 +106,8 @@ services:
       # UI settings
       - MAX_ITEMS_PER_PAGE=15
       - LOGIN_GRADIENT_THEME=forest
+      # Chained pipeline settings
+      - MAX_CHAINED_PIPELINES=10
     depends_on:
       - dataframe-api
       - postgres

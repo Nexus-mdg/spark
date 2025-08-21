@@ -148,7 +148,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </label>
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Aggregations (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.aggs || ''} onChange={e => update({ aggs: e.target.value })} placeholder='{"sales":"sum"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               const by = String(state.by||'').split(',').map(s=>s.trim()).filter(Boolean)
@@ -184,7 +184,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <label className="block md:col-span-2">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Mapping (JSON)</span>
-              <input className="mt-1 border rounded w-full p-2 font-mono" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
+              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.map || ''} onChange={e => update({ map: e.target.value })} placeholder='{"old":"new"}' />
             </label>
             <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
               try { const m = JSON.parse(state.map || '{}'); if (!m || Array.isArray(m)) return; onCreate({ op: 'rename', params: { map: m } }) } catch { return }
@@ -315,7 +315,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
             </div>
             <label className="block">
               <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-              <textarea className="mt-1 border rounded w-full p-2 font-mono text-xs h-28" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
+              <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
             </label>
             <div className="text-xs text-gray-600 dark:text-gray-300">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
           </div>
@@ -355,13 +355,13 @@ function FilterBuilder({ onCreate }) {
               <option>eq</option><option>ne</option><option>lt</option><option>lte</option><option>gt</option><option>gte</option>
               <option>in</option><option>nin</option><option>contains</option><option>startswith</option><option>endswith</option><option>isnull</option><option>notnull</option>
             </select>
-            <input className="border rounded p-2 md:col-span-3" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
-            <button className="px-3 py-2 rounded border" onClick={() => remove(idx)}>Remove</button>
+            <input className="border border-gray-300 dark:border-gray-600 rounded p-2 md:col-span-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="value (JSON list for in/nin)" value={f.value} onChange={e => update(idx, { value: e.target.value })} />
+            <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => remove(idx)}>Remove</button>
           </div>
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <button className="px-3 py-2 rounded border" onClick={add}>Add condition</button>
+        <button className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={add}>Add condition</button>
         <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => onCreate(filters, combine)}>Add step</button>
       </div>
     </div>
@@ -760,7 +760,7 @@ export default function ChainedOperations() {
           )}
           <div className="space-y-4">
             {preview.steps.map((st, i) => (
-              <div key={i} className="border rounded">
+              <div key={i} className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <span className="font-medium">Step {i+1}:</span>
                   <span>{st.desc || st.op}</span>
@@ -769,7 +769,7 @@ export default function ChainedOperations() {
               </div>
             ))}
             {preview.final && (
-              <div className="border rounded">
+              <div className="border border-gray-200 dark:border-gray-600 rounded">
                 <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">Final ({preview.final.rows} rows)</div>
                 <SmallTable columns={preview.final.columns || []} rows={preview.final.preview || []} />
               </div>
