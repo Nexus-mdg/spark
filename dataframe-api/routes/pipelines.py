@@ -36,7 +36,7 @@ def pipeline_preview():
             current = _load_df_from_cache(start)
             msgs.append({'op': 'load', 'desc': f"load {start}", 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         for step in steps:
-            current, desc = _apply_op(current, step)
+            current, desc = _apply_op(current, step, preview_mode=True)
             msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         final = None
         if current is not None:
