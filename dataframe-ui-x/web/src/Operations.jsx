@@ -374,34 +374,26 @@ export default function Operations() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">DataFrame Operations</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-3">
-                Perform single operations on your DataFrames. Each operation creates a new DataFrame with the results, 
-                preserving your original data. Perfect for quick transformations and data exploration.
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Perform operations on your DataFrames with enhanced validation, accessibility, and user feedback. 
+                Each operation creates a new DataFrame, preserving your original data.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Compare DataFrames</span>
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Analysis & Comparison</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Merge & Join operations</span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Transformation & Reshaping</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Pivot & Reshape data</span>
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Filtering & Grouping</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Filter & Group operations</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Column selection & renaming</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Date/time & expression handling</span>
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Column Operations & Expressions</span>
                 </div>
               </div>
             </div>
@@ -817,36 +809,89 @@ export default function Operations() {
           </div>
 
         <Section title="Select columns">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <label className="block max-w-sm">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={selName} onChange={e => setSelName(e.target.value)}>
-                <option value="">Select…</option>
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">DataFrame</span>
+              <select 
+                className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                value={selName} 
+                onChange={e => setSelName(e.target.value)}
+                aria-label="Select dataframe for column selection"
+              >
+                <option value="">Select dataframe…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
+            
             {/* Columns chooser */}
             {selName && (
-              <div>
-                <div className="text-sm mb-1">Pick columns</div>
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Select columns ({selCols.length} selected)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelCols(selectedDfMeta?.columns || [])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setSelCols([])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
                   {(selectedDfMeta?.columns || []).map(c => (
-                    <label key={c} className={`px-2 py-1 rounded border cursor-pointer text-gray-900 dark:text-gray-100 ${selCols.includes(c) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
-                      <input type="checkbox" className="mr-1" checked={selCols.includes(c)} onChange={() => toggleSelCol(c)} />
-                      {c}
+                    <label 
+                      key={c} 
+                      className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
+                        selCols.includes(c) 
+                          ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
+                          : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
+                      }`}
+                    >
+                      <input 
+                        type="checkbox" 
+                        className="mr-2" 
+                        checked={selCols.includes(c)} 
+                        onChange={() => toggleSelCol(c)}
+                        aria-label={`Toggle column ${c}`}
+                      />
+                      <span className="truncate">{c}</span>
                     </label>
                   ))}
                 </div>
-                <label className="inline-flex items-center gap-2 mt-2">
-                  <input type="checkbox" checked={selExclude} onChange={e => setSelExclude(e.target.checked)} />
-                  <span className="text-sm text-gray-900 dark:text-gray-100">Exclude selected</span>
+                <label className="inline-flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    checked={selExclude} 
+                    onChange={e => setSelExclude(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    Exclude selected columns (keep the rest)
+                  </span>
                 </label>
               </div>
             )}
+            
             {/* Preview filtered to selected columns (or remaining if exclude) */}
             {selName && (<DataframePreview name={selName} columnsFilter={selCols} excludeSelected={selExclude} />)}
+            
             <div>
-              <button onClick={onSelectCols} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create selection</button>
+              <button 
+                onClick={onSelectCols} 
+                disabled={!selName || selCols.length === 0}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                aria-label="Create new dataframe with selected columns"
+              >
+                Create Selection
+              </button>
             </div>
           </div>
         </Section>
