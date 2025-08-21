@@ -408,6 +408,14 @@ export default function Operations() {
           </div>
         </div>
 
+        {/* Data Analysis Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Analysis & Comparison</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
+
         <Section title="Compare two DataFrames">
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -515,42 +523,134 @@ export default function Operations() {
               </div>
             )}
         </Section>
+        </div>
+
+        {/* Data Transformation Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-green-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Transformation & Reshaping</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Merge multiple DataFrames">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <div className="text-sm mb-2 text-gray-900 dark:text-gray-100">Pick 2+ dataframes</div>
+              <div className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">
+                Select DataFrames to merge
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(minimum 2 required)</span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {dfOptions.map(o => (
-                  <label key={o.value} className={`px-3 py-2 rounded border cursor-pointer flex items-center gap-2 transition-colors ${mergeNames.includes(o.value) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650'}`}>
-                    <input type="checkbox" className="rounded text-indigo-600 focus:ring-indigo-500" checked={mergeNames.includes(o.value)} onChange={e => setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))} />
+                  <label 
+                    key={o.value} 
+                    className={`px-3 py-2 rounded-md border cursor-pointer flex items-center gap-2 transition-all duration-200 ${
+                      mergeNames.includes(o.value) 
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800' 
+                        : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650 hover:border-gray-400 dark:hover:border-gray-500'
+                    }`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="rounded text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2" 
+                      checked={mergeNames.includes(o.value)} 
+                      onChange={e => {
+                        setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))
+                        setMergeError('')
+                      }}
+                      aria-label={`Select ${o.label} for merging`}
+                    />
                     <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{o.label}</span>
                   </label>
                 ))}
               </div>
             </div>
-            {/* Previews for selected */}
-            {mergeNames.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {mergeNames.map(n => (<DataframePreview key={n} name={n} />))}
+            
+            {/* Error message */}
+            {mergeError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm text-red-800 dark:text-red-200">{mergeError}</span>
+                </div>
               </div>
             )}
+            
+            {/* Previews for selected */}
+            {mergeNames.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Selected DataFrames ({mergeNames.length})
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {mergeNames.map(n => (<DataframePreview key={n} name={n} />))}
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
-                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={mergeKeys} onChange={e => setMergeKeys(e.target.value)} placeholder="id" />
+              <label className="block md:col-span-1">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join keys</span>
+                <input 
+                  className={`mt-1 border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    mergeError && !mergeKeys.trim() ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  value={mergeKeys} 
+                  onChange={e => { setMergeKeys(e.target.value); setMergeError(''); }}
+                  placeholder="e.g., id, user_id, name"
+                  aria-label="Enter comma-separated join keys"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Comma-separated column names</p>
               </label>
               <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Join type</span>
-                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={mergeHow} onChange={e => setMergeHow(e.target.value)}>
-                  <option>inner</option>
-                  <option>left</option>
-                  <option>right</option>
-                  <option>outer</option>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join type</span>
+                <select 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={mergeHow} 
+                  onChange={e => setMergeHow(e.target.value)}
+                  aria-label="Select join type"
+                >
+                  <option value="inner">Inner join</option>
+                  <option value="left">Left join</option>
+                  <option value="right">Right join</option>
+                  <option value="outer">Outer join</option>
                 </select>
               </label>
-              <button onClick={onMerge} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Merge</button>
+              <button 
+                disabled={mergeLoading || mergeNames.length < 2 || !mergeKeys.trim()} 
+                onClick={onMerge} 
+                className={`px-6 py-2 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                  mergeLoading || mergeNames.length < 2 || !mergeKeys.trim()
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
+                aria-label="Merge selected dataframes"
+              >
+                {mergeLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Merging…
+                  </span>
+                ) : 'Merge DataFrames'}
+              </button>
             </div>
+            
+            {/* Loading state */}
+            {mergeLoading && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center gap-3">
+                  <img src="/loader.svg" alt="" className="w-6 h-6" role="presentation" />
+                  <span className="text-sm text-blue-800 dark:text-blue-200">
+                    Merging {mergeNames.length} dataframes using {mergeHow} join...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 
@@ -610,12 +710,27 @@ export default function Operations() {
               </>
             )}
             <div className="md:col-span-6">
-              <button onClick={onPivot} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Pivot</button>
+              <button 
+                onClick={onPivot} 
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={!pvName}
+              >
+                Run Pivot
+              </button>
             </div>
           </div>
           {/* Preview below df choice */}
           {pvName && (<DataframePreview name={pvName} />)}
         </Section>
+        </div>
+
+        {/* Data Filtering & Grouping Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-orange-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Filtering & Grouping</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Filter">
           <div className="space-y-3">
@@ -658,7 +773,13 @@ export default function Operations() {
             ))}
             <div className="flex items-center gap-2">
               <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={addFilter}>Add filter</button>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" onClick={onFilter}>Run Filter</button>
+              <button 
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" 
+                onClick={onFilter}
+                disabled={!ftName}
+              >
+                Run Filter
+              </button>
             </div>
           </div>
         </Section>
@@ -685,6 +806,15 @@ export default function Operations() {
           {/* Preview below df choice */}
           {gbName && (<DataframePreview name={gbName} />)}
         </Section>
+        </div>
+
+        {/* Column Operations Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Column Operations</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Select columns">
           <div className="space-y-3">
@@ -751,6 +881,8 @@ export default function Operations() {
         <Section title="Mutate (create/overwrite column via expression)">
           <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
         </Section>
+        </div>
+
       </main>
 
       <Footer />
