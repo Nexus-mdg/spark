@@ -148,6 +148,8 @@ def upload_dataframe():
         file = request.files['file']
         name = request.form.get('name', '')
         description = request.form.get('description', '')
+        df_type = request.form.get('type', 'ephemeral').lower()
+        duration = request.form.get('duration', '')
 
         if file.filename == '':
             return jsonify({'success': False, 'error': 'No file selected'}), 400
@@ -155,6 +157,27 @@ def upload_dataframe():
         if not name:
             # Use filename without extension as default name
             name = os.path.splitext(file.filename)[0]
+
+        # Validate dataframe type
+        valid_types = ['static', 'ephemeral', 'sub']
+        if df_type not in valid_types:
+            return jsonify({'success': False, 'error': f'Invalid type. Must be one of: {", ".join(valid_types)}'}), 400
+
+        # Handle duration based on type
+        if df_type == 'static':
+            duration_seconds = None
+            expires_at = None
+        elif df_type == 'sub':
+            duration_seconds = 600  # 10 minutes for sub type
+            expires_at = (datetime.now().timestamp() + duration_seconds)
+        else:  # ephemeral
+            try:
+                duration_seconds = int(duration) if duration else 3600  # Default 1 hour
+                if duration_seconds <= 0:
+                    return jsonify({'success': False, 'error': 'Duration must be a positive integer (seconds)'}), 400
+            except ValueError:
+                return jsonify({'success': False, 'error': 'Duration must be a valid integer (seconds)'}), 400
+            expires_at = (datetime.now().timestamp() + duration_seconds)
 
         # Check if name already exists
         if redis_client.exists(f"df:{name}"):
@@ -189,7 +212,10 @@ def upload_dataframe():
             'timestamp': datetime.now().isoformat(),
             'size_mb': round(size_mb, 2),
             'format': 'csv',
-            'original_filename': file.filename
+            'original_filename': file.filename,
+            'type': df_type,
+            'duration_seconds': duration_seconds,
+            'expires_at': expires_at
         }
 
         # Store metadata

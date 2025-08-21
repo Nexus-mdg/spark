@@ -15,6 +15,9 @@ from routes.dataframes import dataframes_bp
 from routes.operations import operations_bp
 from routes.pipelines import pipelines_bp
 
+# Import cleanup daemon
+from cleanup_daemon import start_cleanup_daemon, stop_cleanup_daemon, manual_cleanup, cleanup_daemon
+
 app = Flask(__name__, static_folder=None)
 CORS(app)
 
@@ -27,6 +30,10 @@ ENABLE_API_PROTECTION = os.getenv('ENABLE_API_PROTECTION', 'true').lower() == 't
 ALLOWED_USER_AGENTS = os.getenv('ALLOWED_USER_AGENTS', 'python-requests,curl,wget,httpie,postman,insomnia').split(',')
 API_KEY_HEADER = 'X-API-Key'
 INTERNAL_API_KEY = os.getenv('INTERNAL_API_KEY', 'dataframe-api-internal-key')
+
+# Cleanup daemon configuration
+CLEANUP_INTERVAL = int(os.getenv('CLEANUP_INTERVAL', '60'))  # Default 60 seconds
+ENABLE_CLEANUP_DAEMON = os.getenv('ENABLE_CLEANUP_DAEMON', 'true').lower() == 'true'
 
 # Browser User-Agent patterns to block
 BROWSER_PATTERNS = [
@@ -121,7 +128,9 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'service': 'dataframe-api',
-        'protection_enabled': ENABLE_API_PROTECTION
+        'protection_enabled': ENABLE_API_PROTECTION,
+        'cleanup_daemon_enabled': ENABLE_CLEANUP_DAEMON,
+        'cleanup_daemon_running': cleanup_daemon.running if cleanup_daemon else False
     })
 
 # API info endpoint (always accessible)
@@ -132,12 +141,14 @@ def api_info():
         'service': 'DataFrame API',
         'version': '1.0.0',
         'protection_enabled': ENABLE_API_PROTECTION,
+        'cleanup_daemon_enabled': ENABLE_CLEANUP_DAEMON,
         'endpoints': [
             '/api/stats',
             '/api/dataframes',
             '/api/ops/*',
             '/api/pipeline/*',
-            '/api/pipelines'
+            '/api/pipelines',
+            '/api/cleanup/*'
         ],
         'authentication': {
             'required': ENABLE_API_PROTECTION,
@@ -147,6 +158,37 @@ def api_info():
             'required': False
         }
     })
+
+# Cleanup management endpoints
+@app.route('/api/cleanup/manual', methods=['POST'])
+def manual_cleanup_endpoint():
+    """Manually trigger dataframe cleanup"""
+    try:
+        deleted_count, deleted_names = manual_cleanup()
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'deleted_dataframes': deleted_names,
+            'message': f'Manual cleanup completed. Deleted {deleted_count} expired dataframes.'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cleanup/status', methods=['GET'])
+def cleanup_status():
+    """Get cleanup daemon status"""
+    try:
+        expiring_soon = cleanup_daemon.get_expiring_dataframes(300) if cleanup_daemon else []
+        return jsonify({
+            'success': True,
+            'daemon_running': cleanup_daemon.running if cleanup_daemon else False,
+            'daemon_enabled': ENABLE_CLEANUP_DAEMON,
+            'check_interval': CLEANUP_INTERVAL,
+            'expiring_soon_count': len(expiring_soon),
+            'expiring_soon': expiring_soon
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Ensure upload directory exists
 UPLOAD_FOLDER = 'uploads'
@@ -158,5 +200,23 @@ app.register_blueprint(operations_bp)
 app.register_blueprint(pipelines_bp)
 
 if __name__ == '__main__':
+    # Start cleanup daemon if enabled
+    if ENABLE_CLEANUP_DAEMON:
+        try:
+            start_cleanup_daemon(CLEANUP_INTERVAL)
+            print(f"Cleanup daemon started with {CLEANUP_INTERVAL}s interval")
+        except Exception as e:
+            print(f"Failed to start cleanup daemon: {e}")
+    
     PORT = int(os.getenv('PORT', '4999'))
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    
+    try:
+        app.run(host='0.0.0.0', port=PORT, debug=True)
+    finally:
+        # Stop cleanup daemon on app shutdown
+        if ENABLE_CLEANUP_DAEMON:
+            try:
+                stop_cleanup_daemon()
+                print("Cleanup daemon stopped")
+            except Exception as e:
+                print(f"Error stopping cleanup daemon: {e}")

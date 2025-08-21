@@ -380,7 +380,7 @@ def op_filter():
         filtered = df[mask] if mask is not None else df.copy()
         out_name = _unique_name(f"{name}__filter")
         detail = (' ' + combine + ' ').join(desc_parts) if desc_parts else 'no conditions'
-        meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {detail}", source='ops:filter')
+        meta = _save_df_to_cache(out_name, filtered, description=f"Filter: {detail}", source='ops:filter', inherit_from=name)
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -412,7 +412,7 @@ def op_groupby():
         out_name = _unique_name(base)
         by_str = ','.join(by)
         aggs_str = aggs if aggs else 'count'
-        meta = _save_df_to_cache(out_name, grouped, description=f"Group-by columns={by_str}; aggs={aggs_str}", source='ops:groupby')
+        meta = _save_df_to_cache(out_name, grouped, description=f"Group-by columns={by_str}; aggs={aggs_str}", source='ops:groupby', inherit_from=name)
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -444,7 +444,7 @@ def op_select():
             base = f"{name}__select_{'-'.join(cols)}"
             desc = f"Select columns={','.join(cols)}"
         out_name = _unique_name(base)
-        meta = _save_df_to_cache(out_name, projected, description=desc, source='ops:select')
+        meta = _save_df_to_cache(out_name, projected, description=desc, source='ops:select', inherit_from=name)
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -18,13 +18,65 @@ def _load_df_from_cache(name: str) -> pd.DataFrame:
     return pd.read_csv(io.StringIO(csv_string))
 
 
-def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source: str = '') -> dict:
+def _get_source_dataframe_type_info(name: str) -> tuple:
+    """
+    Get type and duration info from source dataframe for inheritance
+    
+    Returns:
+        Tuple of (type, duration_seconds) for creating derived dataframes
+    """
+    try:
+        meta_key = f"meta:{name}"
+        if not redis_client.exists(meta_key):
+            return 'ephemeral', 3600  # Default fallback
+        
+        meta_json = redis_client.get(meta_key)
+        if not meta_json:
+            return 'ephemeral', 3600
+            
+        metadata = json.loads(meta_json)
+        source_type = metadata.get('type', 'ephemeral')
+        source_duration = metadata.get('duration_seconds', 3600)
+        
+        # For derived dataframes, inherit type but adjust duration for sub types
+        if source_type == 'static':
+            return 'static', None
+        elif source_type == 'sub':
+            return 'sub', 600  # Sub type always has 10 minute duration
+        else:  # ephemeral
+            return 'ephemeral', source_duration or 3600
+            
+    except Exception:
+        return 'ephemeral', 3600  # Safe fallback
+
+
+def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source: str = '', 
+                      df_type: str = 'ephemeral', duration_seconds: int = None, 
+                      inherit_from: str = None) -> dict:
     """Save a DataFrame to Redis cache and return metadata"""
+    
+    # If inherit_from is specified, get type info from source dataframe
+    if inherit_from:
+        df_type, duration_seconds = _get_source_dataframe_type_info(inherit_from)
+    
     csv_string = df.to_csv(index=False)
     df_key = f"df:{name}"
     meta_key = f"meta:{name}"
     redis_client.set(df_key, csv_string)
     size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
+    
+    # Handle expiration based on type
+    if df_type == 'static':
+        duration_seconds = None
+        expires_at = None
+    elif df_type == 'sub':
+        duration_seconds = 600  # 10 minutes for sub type
+        expires_at = (datetime.now().timestamp() + duration_seconds)
+    else:  # ephemeral (default)
+        if duration_seconds is None:
+            duration_seconds = 3600  # Default 1 hour
+        expires_at = (datetime.now().timestamp() + duration_seconds)
+    
     metadata = {
         'name': name,
         'rows': int(len(df)),
@@ -34,7 +86,10 @@ def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source
         'timestamp': datetime.now().isoformat(),
         'size_mb': round(size_mb, 2),
         'format': 'csv',
-        'source': source or 'operation'
+        'source': source or 'operation',
+        'type': df_type,
+        'duration_seconds': duration_seconds,
+        'expires_at': expires_at
     }
     redis_client.set(meta_key, json.dumps(metadata))
     redis_client.sadd("dataframe_index", name)
