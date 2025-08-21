@@ -58,11 +58,18 @@ def _get_spark_session():
             _spark_mode = 'local'
             return _create_local_session()
             
-    except ImportError:
-        raise Exception("PySpark is not installed. Please install pyspark to use Spark operations.")
+    except ImportError as ie:
+        if "distutils" in str(ie):
+            raise Exception("PySpark requires 'distutils' which is missing in Python 3.12+. Please ensure 'setuptools' is installed: pip install setuptools")
+        else:
+            raise Exception("PySpark is not installed. Please install pyspark to use Spark operations.")
     except Exception as e:
         _spark_mode = 'unavailable'
-        raise Exception(f"Failed to initialize Spark session: {str(e)}")
+        error_msg = str(e)
+        if "distutils" in error_msg:
+            raise Exception("PySpark requires 'distutils' which is missing in Python 3.12+. Please ensure 'setuptools' is installed: pip install setuptools")
+        else:
+            raise Exception(f"Failed to initialize Spark session: {error_msg}")
 
 
 def _create_cluster_session():
