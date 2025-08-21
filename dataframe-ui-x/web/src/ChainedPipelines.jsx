@@ -186,29 +186,41 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
 
   const handleChainPipeline = () => {
     if (selectedPipeline) {
+      // Check if we've reached the limit of 5 chained pipelines
+      if (step.chainedPipelines && step.chainedPipelines.length >= 5) {
+        alert('Maximum of 5 pipelines can be chained to a single step')
+        return
+      }
       onChainPipeline(index, selectedPipeline)
       setSelectedPipeline('')
       setShowChainOptions(false)
     }
   }
 
+  const currentChainedCount = step.chainedPipelines ? step.chainedPipelines.length : 0
+  const canAddMore = currentChainedCount < 5
+
   return (
-    <div className="border rounded p-3 bg-slate-50">
+    <div className="border border-gray-200 dark:border-gray-600 rounded p-3 bg-slate-50 dark:bg-gray-700">
       <div className="flex items-start justify-between mb-2 gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="font-medium text-sm flex-shrink-0">Step {index + 1}:</span>
-          <code className="text-xs bg-slate-200 rounded px-1 py-0.5 flex-shrink-0">{step.op}</code>
+          <span className="font-medium text-sm flex-shrink-0 text-gray-900 dark:text-gray-100">Step {index + 1}:</span>
+          <code className="text-xs bg-slate-200 dark:bg-gray-600 rounded px-1 py-0.5 flex-shrink-0 text-gray-900 dark:text-gray-100">{step.op}</code>
           <span className="text-xs text-gray-600 dark:text-gray-300 break-words min-w-0">{JSON.stringify(step.params)}</span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button 
-            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-            onClick={() => setShowChainOptions(!showChainOptions)}
+            className={`text-xs px-2 py-1 rounded ${canAddMore 
+              ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800' 
+              : 'bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}
+            onClick={() => canAddMore && setShowChainOptions(!showChainOptions)}
+            disabled={!canAddMore}
+            title={!canAddMore ? 'Maximum of 5 pipelines per step' : 'Chain another pipeline'}
           >
-            Chain Pipeline
+            Chain Pipeline {currentChainedCount > 0 && `(${currentChainedCount}/5)`}
           </button>
           <button 
-            className="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+            className="text-xs px-2 py-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 rounded"
             onClick={() => onRemove(index)}
           >
             Remove
@@ -217,13 +229,13 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
       </div>
       
       {step.chainedPipelines && step.chainedPipelines.length > 0 && (
-        <div className="mt-2 pl-4 border-l-2 border-blue-300">
-          <div className="text-xs text-blue-700 mb-1">Chained pipelines:</div>
+        <div className="mt-2 pl-4 border-l-2 border-blue-300 dark:border-blue-600">
+          <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">Chained pipelines ({step.chainedPipelines.length}/5):</div>
           {step.chainedPipelines.map((chainedName, idx) => (
-            <div key={idx} className="text-xs bg-blue-50 rounded px-2 py-1 mb-1 flex items-center justify-between">
-              <span>{chainedName}</span>
+            <div key={idx} className="text-xs bg-blue-50 dark:bg-blue-900 rounded px-2 py-1 mb-1 flex items-center justify-between">
+              <span className="text-gray-900 dark:text-gray-100">{chainedName}</span>
               <button 
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 onClick={() => {
                   const updated = step.chainedPipelines.filter((_, i) => i !== idx)
                   onChainPipeline(index, null, updated)
@@ -237,11 +249,11 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
       )}
 
       {showChainOptions && (
-        <div className="mt-2 p-2 bg-white border rounded">
-          <div className="text-xs mb-2">Attach pipeline to run at this point:</div>
+        <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">
+          <div className="text-xs mb-2 text-gray-900 dark:text-gray-100">Attach pipeline to run at this point:</div>
           <div className="flex items-center gap-2">
             <select 
-              className="text-xs border rounded p-1 flex-1"
+              className="text-xs border border-gray-300 dark:border-gray-600 rounded p-1 flex-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               value={selectedPipeline}
               onChange={e => setSelectedPipeline(e.target.value)}
             >
@@ -251,14 +263,14 @@ function ChainedPipelineStep({ step, index, availablePipelines, onRemove, onChai
               ))}
             </select>
             <button 
-              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleChainPipeline}
               disabled={!selectedPipeline}
             >
               Attach
             </button>
             <button 
-              className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+              className="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"
               onClick={() => setShowChainOptions(false)}
             >
               Cancel
@@ -614,7 +626,12 @@ export default function ChainedPipelines() {
         if (updatedChained !== null) {
           return { ...step, chainedPipelines: updatedChained }
         } else if (pipelineName) {
-          return { ...step, chainedPipelines: [...(step.chainedPipelines || []), pipelineName] }
+          const currentChained = step.chainedPipelines || []
+          if (currentChained.length >= 5) {
+            // This shouldn't happen with UI guards, but add safety check
+            return step
+          }
+          return { ...step, chainedPipelines: [...currentChained, pipelineName] }
         }
       }
       return step
@@ -824,32 +841,32 @@ export default function ChainedPipelines() {
               <option value="">Select…</option>
               {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
             </select>
-            <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
           </div>
           {pipelinesLoading && (<div className="text-sm text-gray-600 dark:text-gray-300">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
-            <div className="overflow-auto border rounded">
+            <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-left">
+                <thead className="bg-slate-100 dark:bg-gray-700 text-left">
                   <tr>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Steps</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2">Actions</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Name</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Steps</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Description</th>
+                    <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pipelines.map(p => (
-                    <tr key={p.name} className="border-t">
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2">{p.steps}</td>
+                    <tr key={p.name} className="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                      <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{p.name}</td>
+                      <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{p.steps}</td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{p.description || '-'}</td>
                       <td className="px-3 py-2 flex flex-wrap gap-2">
-                        <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
-                        <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
-                        <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
-                        <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
+                        <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                       </td>
                     </tr>
                   ))}
@@ -864,14 +881,14 @@ export default function ChainedPipelines() {
           <div className="flex items-center gap-3 mb-4">
             <span className="text-sm text-gray-900 dark:text-gray-100">Auto preview</span>
             <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
-            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
-            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear all steps</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={triggerPreview}>Preview now</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={clearSteps}>Clear all steps</button>
             <span className="text-sm text-gray-600 dark:text-gray-300">{steps.length} steps</span>
           </div>
           
           <div className="space-y-4">
-            <div className="bg-slate-50 border rounded p-3">
-              <div className="text-sm font-medium mb-2">Add step</div>
+            <div className="bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+              <div className="text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Add step</div>
               <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
             

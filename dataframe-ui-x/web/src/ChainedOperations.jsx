@@ -650,7 +650,7 @@ export default function ChainedOperations() {
                 <option value="">Select…</option>
                 {pipelines.map(p => (<option key={p.name} value={p.name}>{p.name}</option>))}
               </select>
-              <button className="px-3 py-1.5 rounded border" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
+              <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
             </div>
           </div>
         </Section>
@@ -661,27 +661,27 @@ export default function ChainedOperations() {
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
             <>
-              <div className="overflow-auto border rounded">
+              <div className="overflow-auto border border-gray-200 dark:border-gray-600 rounded">
                 <table className="min-w-full text-sm">
-                  <thead className="bg-slate-100 text-left">
+                  <thead className="bg-slate-100 dark:bg-gray-700 text-left">
                     <tr>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Steps</th>
-                      <th className="px-3 py-2">Description</th>
-                      <th className="px-3 py-2">Actions</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Name</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Steps</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Description</th>
+                      <th className="px-3 py-2 text-gray-900 dark:text-gray-100">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedPipelines.map(p => (
-                      <tr key={p.name} className="border-t">
-                        <td className="px-3 py-2 font-medium">{p.name}</td>
-                        <td className="px-3 py-2">{p.steps}</td>
+                      <tr key={p.name} className="border-t border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+                        <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{p.name}</td>
+                        <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{p.steps}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{p.description || '-'}</td>
                         <td className="px-3 py-2 flex flex-wrap gap-2">
-                          <button className="px-2 py-1 rounded border" onClick={() => onLoadPipeline(p.name)}>Load</button>
-                          <button className="px-2 py-1 rounded border" onClick={() => onRunByName(p.name)}>Run</button>
-                          <a className="px-2 py-1 rounded border text-indigo-700" href={buildPipelineExportUrl(p.name)}>Export YML</a>
-                          <button className="px-2 py-1 rounded border text-red-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onLoadPipeline(p.name)}>Load</button>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
+                          <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                          <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                         </td>
                       </tr>
                     ))}
@@ -702,9 +702,9 @@ export default function ChainedOperations() {
           )}
           <div className="mt-4">
             <div className="text-sm mb-1">Import from YML</div>
-            <textarea className="w-full border rounded p-2 font-mono text-xs h-32" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
+            <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded p-2 font-mono text-xs h-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={importText} onChange={e => setImportText(e.target.value)} placeholder="# paste YAML here" />
             <div className="mt-2 flex items-center gap-2">
-              <button className="px-3 py-1.5 rounded border" onClick={onImportYaml}>Import</button>
+              <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={onImportYaml}>Import</button>
               <label className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-2">
                 <input type="checkbox" checked={plOverwrite} onChange={e => setPlOverwrite(e.target.checked)} /> Overwrite existing
               </label>
@@ -717,23 +717,23 @@ export default function ChainedOperations() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-900 dark:text-gray-100">Auto preview</span>
             <input type="checkbox" checked={autoPreview} onChange={e => setAutoPreview(e.target.checked)} />
-            <button className="px-3 py-1.5 rounded border" onClick={triggerPreview}>Preview now</button>
-            <button className="px-3 py-1.5 rounded border" onClick={clearSteps}>Clear steps</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={triggerPreview}>Preview now</button>
+            <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={clearSteps}>Clear steps</button>
           </div>
           <div className="mt-4 space-y-4">
-            <div className="bg-slate-50 border rounded p-3">
-              <div className="text-sm font-medium mb-2">Add step</div>
+            <div className="bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3">
+              <div className="text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">Add step</div>
               <AddStep dfOptions={dfOptions} onAdd={addStep} stepCount={steps.length} />
             </div>
             {steps.length > 0 && (
-              <div className="bg-white border rounded">
-                <div className="px-4 py-2 text-sm border-b">Steps</div>
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">
+                <div className="px-4 py-2 text-sm border-b border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-100">Steps</div>
                 <ol className="list-decimal pl-6 py-2 space-y-2">
                   {steps.map((s, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <code className="text-xs bg-slate-100 rounded px-1 py-0.5 flex-shrink-0">{s.op}</code>
+                      <code className="text-xs bg-slate-100 dark:bg-gray-600 rounded px-1 py-0.5 flex-shrink-0 text-gray-900 dark:text-gray-100">{s.op}</code>
                       <span className="text-xs text-gray-700 dark:text-gray-300 break-words flex-1 min-w-0">{JSON.stringify(s.params)}</span>
-                      <button className="text-red-600 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
+                      <button className="text-red-600 dark:text-red-400 text-xs underline flex-shrink-0" onClick={() => removeStep(i)}>Remove</button>
                     </li>
                   ))}
                 </ol>
