@@ -19,8 +19,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-      <h2 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h2>
+    <section className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+      <h3 className="text-base font-semibold mb-4 text-gray-900 dark:text-gray-100">{title}</h3>
       {children}
     </section>
   )
@@ -132,9 +132,22 @@ export default function Operations() {
   const [cmp2, setCmp2] = useState('')
   const [cmpRes, setCmpRes] = useState(null)
   const [cmpLoading, setCmpLoading] = useState(false)
+  const [cmpError, setCmpError] = useState('')
+
+  const validateCompare = () => {
+    if (!cmp1) return 'Please select the first dataframe'
+    if (!cmp2) return 'Please select the second dataframe'
+    if (cmp1 === cmp2) return 'Please select two different dataframes'
+    return ''
+  }
 
   const onCompare = async () => {
-    if (!cmp1 || !cmp2) return toast.show('Pick two dataframes')
+    const error = validateCompare()
+    if (error) {
+      setCmpError(error)
+      return toast.show(error)
+    }
+    setCmpError('')
     setCmpLoading(true)
     setCmpRes(null)
     try {
@@ -142,34 +155,78 @@ export default function Operations() {
       setCmpRes(res)
       toast.show(res.identical ? 'DataFrames are identical' : `Compared: ${res.result_type}`)
       if (res.created && res.created.length) await refresh()
-    } catch (e) { toast.show(e.message || 'Compare failed') }
+    } catch (e) { 
+      const errorMsg = e.message || 'Comparison failed. Please try again.'
+      setCmpError(errorMsg)
+      toast.show(errorMsg)
+    }
     finally { setCmpLoading(false) }
   }
 
   // Merge state
   const [mergeNames, setMergeNames] = useState([])
   const [mergeKeys, setMergeKeys] = useState('')
+  const [mergeSelectedKeys, setMergeSelectedKeys] = useState([])
   const [mergeHow, setMergeHow] = useState('inner')
+  const [mergeLoading, setMergeLoading] = useState(false)
+  const [mergeError, setMergeError] = useState('')
+
+  // Get common columns between selected dataframes
+  const getCommonColumns = () => {
+    if (mergeNames.length < 2) return []
+    const selectedDfs = mergeNames.map(name => dfOptions.find(df => df.value === name)).filter(Boolean)
+    if (selectedDfs.length < 2) return []
+    
+    let commonCols = selectedDfs[0].columns || []
+    for (let i = 1; i < selectedDfs.length; i++) {
+      const dfCols = selectedDfs[i].columns || []
+      commonCols = commonCols.filter(col => dfCols.includes(col))
+    }
+    return commonCols
+  }
+
+  const validateMerge = () => {
+    if (mergeNames.length < 2) return 'Please select at least 2 dataframes to merge'
+    if (mergeSelectedKeys.length < 1) return 'Please select at least one join key'
+    return ''
+  }
+
   const onMerge = async () => {
+    const error = validateMerge()
+    if (error) {
+      setMergeError(error)
+      return toast.show(error)
+    }
+    setMergeError('')
+    setMergeLoading(true)
+    
     const names = mergeNames
-    const keys = mergeKeys.split(',').map(s => s.trim()).filter(Boolean)
-    if (names.length < 2 || keys.length < 1) return toast.show('Pick 2+ dataframes and at least 1 key')
+    const keys = mergeSelectedKeys
     try {
       const res = await opsMerge({ names, keys, how: mergeHow })
-      toast.show(`Created ${res.name}`)
+      toast.show(`Successfully created merged dataframe: ${res.name}`)
       await refresh()
-    } catch (e) { toast.show(e.message || 'Merge failed') }
+    } catch (e) { 
+      const errorMsg = e.message || 'Merge operation failed. Please check your join keys and try again.'
+      setMergeError(errorMsg)
+      toast.show(errorMsg)
+    }
+    finally { setMergeLoading(false) }
   }
 
   // Pivot state
   const [pvMode, setPvMode] = useState('wider')
   const [pvName, setPvName] = useState('')
   const [pvIndex, setPvIndex] = useState('')
+  const [pvSelectedIndex, setPvSelectedIndex] = useState('')
   const [pvNamesFrom, setPvNamesFrom] = useState('')
   const [pvValuesFrom, setPvValuesFrom] = useState('')
+  const [pvSelectedValuesFrom, setPvSelectedValuesFrom] = useState('')
   const [pvAgg, setPvAgg] = useState('first')
   const [plIdVars, setPlIdVars] = useState('')
+  const [plSelectedIdVars, setPlSelectedIdVars] = useState('')
   const [plValueVars, setPlValueVars] = useState('')
+  const [plSelectedValueVars, setPlSelectedValueVars] = useState('')
   const [plVarName, setPlVarName] = useState('variable')
   const [plValueName, setPlValueName] = useState('value')
   const onPivot = async () => {
@@ -179,9 +236,9 @@ export default function Operations() {
         const payload = {
           mode: 'wider',
           name: pvName,
-          index: pvIndex.split(',').map(s => s.trim()).filter(Boolean),
+          index: pvSelectedIndex ? [pvSelectedIndex] : [],
           names_from: pvNamesFrom,
-          values_from: pvValuesFrom.split(',').map(s => s.trim()).filter(Boolean),
+          values_from: pvSelectedValuesFrom ? [pvSelectedValuesFrom] : [],
           aggfunc: pvAgg
         }
         const res = await opsPivot(payload)
@@ -190,8 +247,8 @@ export default function Operations() {
         const payload = {
           mode: 'longer',
           name: pvName,
-          id_vars: plIdVars.split(',').map(s => s.trim()).filter(Boolean),
-          value_vars: plValueVars.split(',').map(s => s.trim()).filter(Boolean),
+          id_vars: plSelectedIdVars ? [plSelectedIdVars] : [],
+          value_vars: plSelectedValueVars ? [plSelectedValueVars] : [],
           var_name: plVarName,
           value_name: plValueName
         }
@@ -221,6 +278,7 @@ export default function Operations() {
   // Group by
   const [gbName, setGbName] = useState('')
   const [gbBy, setGbBy] = useState('')
+  const [gbSelectedBy, setGbSelectedBy] = useState([])
   const [gbAggs, setGbAggs] = useState('')
   const onGroupBy = async () => {
     if (!gbName) return toast.show('Pick a dataframe')
@@ -229,7 +287,7 @@ export default function Operations() {
       try { aggsObj = JSON.parse(gbAggs) } catch { return toast.show('Aggs must be JSON') }
     }
     try {
-      const res = await opsGroupBy({ name: gbName, by: gbBy.split(',').map(s => s.trim()).filter(Boolean), aggs: aggsObj })
+      const res = await opsGroupBy({ name: gbName, by: gbSelectedBy, aggs: aggsObj })
       toast.show(`Created ${res.name}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'GroupBy failed') }
@@ -335,185 +393,518 @@ export default function Operations() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">DataFrame Operations</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-3">
-                Perform single operations on your DataFrames. Each operation creates a new DataFrame with the results, 
-                preserving your original data. Perfect for quick transformations and data exploration.
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Perform operations on your DataFrames with enhanced validation, accessibility, and user feedback. 
+                Each operation creates a new DataFrame, preserving your original data.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Compare DataFrames</span>
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Analysis & Comparison</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Merge & Join operations</span>
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Transformation & Reshaping</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Pivot & Reshape data</span>
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Data Filtering & Grouping</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Filter & Group operations</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Column selection & renaming</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                  <span className="text-gray-700 dark:text-gray-300">Date/time & expression handling</span>
+                  <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                  <span className="text-gray-700 dark:text-gray-300">Column Operations & Expressions</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Data Analysis Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Analysis & Comparison</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
+
         <Section title="Compare two DataFrames">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Left</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp1} onChange={e => setCmp1(e.target.value)}>
-                <option value="">Select…</option>
-                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Right</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={cmp2} onChange={e => setCmp2(e.target.value)}>
-                <option value="">Select…</option>
-                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            </label>
-            <button disabled={cmpLoading} onClick={onCompare} className={`px-4 py-2 text-white rounded hover:bg-indigo-700 ${cmpLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600'}`}>{cmpLoading ? 'Comparing…' : 'Compare'}</button>
-          </div>
-          {/* Loader image while waiting for compare response */}
-          {cmpLoading && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-              <img src="/loader.svg" alt="loading" className="w-6 h-6" />
-              <span>Running comparison…</span>
-            </div>
-          )}
-          {/* Previews below choices */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <DataframePreview name={cmp1} />
-            <DataframePreview name={cmp2} />
-          </div>
-          {cmpRes && !cmpLoading && (
-            <div className="mt-3 text-sm">
-              <div>Result: <span className="font-medium">{cmpRes.identical ? 'identical' : cmpRes.result_type}</span></div>
-              {(cmpRes.left_unique > 0) && (<div>Left unique rows: {cmpRes.left_unique}</div>)}
-              {(cmpRes.right_unique > 0) && (<div>Right unique rows: {cmpRes.right_unique}</div>)}
-              {(cmpRes.created || []).length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(cmpRes.created || []).map(n => (
-                    <a key={n} href={buildDownloadCsvUrl(n)} className="text-indigo-600 underline">{n}.csv</a>
-                  ))}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Left DataFrame</span>
+                  <select 
+                    className={`mt-1 border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${cmpError && !cmp1 ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    value={cmp1} 
+                    onChange={e => { setCmp1(e.target.value); setCmpError(''); }}
+                    aria-label="Select left dataframe for comparison"
+                    aria-describedby={cmpError && !cmp1 ? "cmp-error" : undefined}
+                  >
+                    <option value="">Select dataframe…</option>
+                    {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Right DataFrame</span>
+                  <select 
+                    className={`mt-1 border rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${cmpError && !cmp2 ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    value={cmp2} 
+                    onChange={e => { setCmp2(e.target.value); setCmpError(''); }}
+                    aria-label="Select right dataframe for comparison"
+                    aria-describedby={cmpError && !cmp2 ? "cmp-error" : undefined}
+                  >
+                    <option value="">Select dataframe…</option>
+                    {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                  </select>
+                </label>
+                <button 
+                  disabled={cmpLoading || !cmp1 || !cmp2} 
+                  onClick={onCompare} 
+                  className={`px-6 py-2 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    cmpLoading || !cmp1 || !cmp2 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                  aria-label="Compare selected dataframes"
+                >
+                  {cmpLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Comparing…
+                    </span>
+                  ) : 'Compare'}
+                </button>
+              </div>
+              
+              {/* Error message */}
+              {cmpError && (
+                <div id="cmp-error" className="mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm text-red-800 dark:text-red-200">{cmpError}</span>
+                  </div>
                 </div>
               )}
             </div>
-          )}
+            
+            {/* Loading state */}
+            {cmpLoading && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center gap-3">
+                  <img src="/loader.svg" alt="" className="w-6 h-6" role="presentation" />
+                  <span className="text-sm text-blue-800 dark:text-blue-200">Running comparison analysis…</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Previews below choices */}
+            {(cmp1 || cmp2) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {cmp1 && <DataframePreview name={cmp1} />}
+                {cmp2 && <DataframePreview name={cmp2} />}
+              </div>
+            )}
+            
+            {/* Results */}
+            {cmpRes && !cmpLoading && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                <div className="text-sm space-y-2">
+                  <div className="font-medium text-green-800 dark:text-green-200">
+                    Result: <span className="font-semibold">{cmpRes.identical ? 'Identical' : cmpRes.result_type}</span>
+                  </div>
+                  {(cmpRes.left_unique > 0) && (
+                    <div className="text-green-700 dark:text-green-300">Left unique rows: {cmpRes.left_unique}</div>
+                  )}
+                  {(cmpRes.right_unique > 0) && (
+                    <div className="text-green-700 dark:text-green-300">Right unique rows: {cmpRes.right_unique}</div>
+                  )}
+                  {(cmpRes.created || []).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="text-green-700 dark:text-green-300 text-sm">Download results:</span>
+                      {(cmpRes.created || []).map(n => (
+                        <a key={n} href={buildDownloadCsvUrl(n)} className="text-indigo-600 hover:text-indigo-800 underline text-sm">{n}.csv</a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
         </Section>
+        </div>
+
+        {/* Data Transformation Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-green-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Transformation & Reshaping</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Merge multiple DataFrames">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <div className="text-sm mb-2 text-gray-900 dark:text-gray-100">Pick 2+ dataframes</div>
+              <div className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">
+                Select DataFrames to merge
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(minimum 2 required)</span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {dfOptions.map(o => (
-                  <label key={o.value} className={`px-3 py-2 rounded border cursor-pointer flex items-center gap-2 transition-colors ${mergeNames.includes(o.value) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650'}`}>
-                    <input type="checkbox" className="rounded text-indigo-600 focus:ring-indigo-500" checked={mergeNames.includes(o.value)} onChange={e => setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))} />
+                  <label 
+                    key={o.value} 
+                    className={`px-3 py-2 rounded-md border cursor-pointer flex items-center gap-2 transition-all duration-200 ${
+                      mergeNames.includes(o.value) 
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800' 
+                        : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-650 hover:border-gray-400 dark:hover:border-gray-500'
+                    }`}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="rounded text-indigo-600 focus:ring-indigo-500 focus:ring-offset-2" 
+                      checked={mergeNames.includes(o.value)} 
+                      onChange={e => {
+                        setMergeNames(e.target.checked ? [...mergeNames, o.value] : mergeNames.filter(n => n !== o.value))
+                        setMergeError('')
+                        setMergeSelectedKeys([]) // Reset join keys when selection changes
+                      }}
+                      aria-label={`Select ${o.label} for merging`}
+                    />
                     <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{o.label}</span>
                   </label>
                 ))}
               </div>
             </div>
-            {/* Previews for selected */}
-            {mergeNames.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {mergeNames.map(n => (<DataframePreview key={n} name={n} />))}
+            
+            {/* Error message */}
+            {mergeError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm text-red-800 dark:text-red-200">{mergeError}</span>
+                </div>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
-                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={mergeKeys} onChange={e => setMergeKeys(e.target.value)} placeholder="id" />
-              </label>
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Join type</span>
-                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={mergeHow} onChange={e => setMergeHow(e.target.value)}>
-                  <option>inner</option>
-                  <option>left</option>
-                  <option>right</option>
-                  <option>outer</option>
-                </select>
-              </label>
-              <button onClick={onMerge} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Merge</button>
+            
+            {/* Previews for selected */}
+            {mergeNames.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Selected DataFrames ({mergeNames.length})
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {mergeNames.map(n => (<DataframePreview key={n} name={n} />))}
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              {/* Join keys section - full width for better layout */}
+              <div>
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join keys</span>
+                {getCommonColumns().length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Select common columns ({getCommonColumns().length} available)
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
+                      {getCommonColumns().map(col => (
+                        <label 
+                          key={col} 
+                          className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all flex items-center ${
+                            mergeSelectedKeys.includes(col) 
+                              ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
+                              : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
+                          }`}
+                        >
+                          <input 
+                            type="checkbox" 
+                            className="mr-2 rounded text-indigo-600 focus:ring-indigo-500" 
+                            checked={mergeSelectedKeys.includes(col)} 
+                            onChange={() => {
+                              setMergeSelectedKeys(prev => 
+                                prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
+                              )
+                              setMergeError('')
+                            }}
+                            aria-label={`Select ${col} as join key`}
+                          />
+                          <span className="truncate">{col}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {mergeSelectedKeys.length > 0 && (
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Selected: {mergeSelectedKeys.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 p-3 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
+                    {mergeNames.length < 2 ? 'Select at least 2 dataframes to see common columns' : 'No common columns found between selected dataframes'}
+                  </div>
+                )}
+              </div>
+              
+              {/* Join type section - separate for better layout */}
+              <div className="max-w-xs">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Join type</span>
+                  <select 
+                    className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                    value={mergeHow} 
+                    onChange={e => setMergeHow(e.target.value)}
+                    aria-label="Select join type"
+                  >
+                    <option value="inner">Inner join</option>
+                    <option value="left">Left join</option>
+                    <option value="right">Right join</option>
+                    <option value="outer">Outer join</option>
+                  </select>
+                </label>
+              </div>
+              <div className="flex justify-end">
+                <button 
+                  disabled={mergeLoading || mergeNames.length < 2 || mergeSelectedKeys.length === 0} 
+                  onClick={onMerge} 
+                  className={`px-6 py-2 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    mergeLoading || mergeNames.length < 2 || mergeSelectedKeys.length === 0
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                  aria-label="Merge selected dataframes"
+                >
+                  {mergeLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Merging…
+                    </span>
+                  ) : 'Merge DataFrames'}
+                </button>
+              </div>
             </div>
+            
+            {/* Loading state */}
+            {mergeLoading && (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-center gap-3">
+                  <img src="/loader.svg" alt="" className="w-6 h-6" role="presentation" />
+                  <span className="text-sm text-blue-800 dark:text-blue-200">
+                    Merging {mergeNames.length} dataframes using {mergeHow} join...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 
         <Section title="Pivot">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-            <label className="block md:col-span-2">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvName} onChange={e => setPvName(e.target.value)}>
-                <option value="">Select…</option>
-                {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvMode} onChange={e => setPvMode(e.target.value)}>
-                <option value="wider">wider</option>
-                <option value="longer">longer</option>
-              </select>
-            </label>
-            {pvMode === 'wider' ? (
-              <>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">Index cols (comma)</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvIndex} onChange={e => setPvIndex(e.target.value)} placeholder="id" />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">names_from</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvNamesFrom} onChange={e => setPvNamesFrom(e.target.value)} placeholder="category" />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">values_from (comma)</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvValuesFrom} onChange={e => setPvValuesFrom(e.target.value)} placeholder="value" />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">aggfunc</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={pvAgg} onChange={e => setPvAgg(e.target.value)} placeholder="first" />
-                </label>
-              </>
-            ) : (
-              <>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">id_vars (comma)</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plIdVars} onChange={e => setPlIdVars(e.target.value)} placeholder="id" />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">value_vars (comma)</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plValueVars} onChange={e => setPlValueVars(e.target.value)} placeholder="col1,col2" />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">var_name</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plVarName} onChange={e => setPlVarName(e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="block text-sm text-gray-900 dark:text-gray-100">value_name</span>
-                  <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={plValueName} onChange={e => setPlValueName(e.target.value)} />
-                </label>
-              </>
-            )}
-            <div className="md:col-span-6">
-              <button onClick={onPivot} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Pivot</button>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">DataFrame</span>
+                <select 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={pvName} 
+                  onChange={e => {
+                    setPvName(e.target.value)
+                    // Reset selections when dataframe changes
+                    setPvSelectedIndex('')
+                    setPvSelectedValuesFrom('')
+                    setPlSelectedIdVars('')
+                    setPlSelectedValueVars('')
+                  }}
+                  aria-label="Select dataframe for pivoting"
+                >
+                  <option value="">Select…</option>
+                  {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Mode</span>
+                <select 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={pvMode} 
+                  onChange={e => setPvMode(e.target.value)}
+                  aria-label="Select pivot mode"
+                >
+                  <option value="wider">Wider (pivot table)</option>
+                  <option value="longer">Longer (melt)</option>
+                </select>
+              </label>
             </div>
+            
+            {pvName && (
+              <div className="space-y-4">
+                {pvMode === 'wider' ? (
+                  <div className="space-y-4">
+                    {/* Index column selection */}
+                    <div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Index column</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvSelectedIndex} 
+                          onChange={e => setPvSelectedIndex(e.target.value)}
+                          aria-label="Select index column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Names from column</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvNamesFrom} 
+                          onChange={e => setPvNamesFrom(e.target.value)}
+                          aria-label="Select column for pivot names"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
+                      
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Aggregation function</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvAgg} 
+                          onChange={e => setPvAgg(e.target.value)}
+                          aria-label="Select aggregation function"
+                        >
+                          <option value="first">first</option>
+                          <option value="mean">mean</option>
+                          <option value="sum">sum</option>
+                          <option value="count">count</option>
+                          <option value="min">min</option>
+                          <option value="max">max</option>
+                          <option value="std">std</option>
+                          <option value="var">var</option>
+                        </select>
+                      </label>
+                    </div>
+                    
+                    {/* Values from column selection */}
+                    <div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Values from column</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={pvSelectedValuesFrom} 
+                          onChange={e => setPvSelectedValuesFrom(e.target.value)}
+                          aria-label="Select values from column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* ID variable selection */}
+                    <div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">ID variable</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plSelectedIdVars} 
+                          onChange={e => setPlSelectedIdVars(e.target.value)}
+                          aria-label="Select ID variable column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    
+                    {/* Value variable selection */}
+                    <div>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Value variable</span>
+                        <select 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plSelectedValueVars} 
+                          onChange={e => setPlSelectedValueVars(e.target.value)}
+                          aria-label="Select value variable column"
+                        >
+                          <option value="">Select column…</option>
+                          {(dfOptions.find(o => o.value === pvName)?.columns || []).map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Variable name</span>
+                        <input 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plVarName} 
+                          onChange={e => setPlVarName(e.target.value)}
+                          placeholder="variable"
+                          aria-label="Enter variable column name"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Value name</span>
+                        <input 
+                          className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                          value={plValueName} 
+                          onChange={e => setPlValueName(e.target.value)}
+                          placeholder="value"
+                          aria-label="Enter value column name"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end">
+                  <button 
+                    onClick={onPivot} 
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={!pvName}
+                    aria-label="Run pivot operation"
+                  >
+                    Run Pivot
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           {/* Preview below df choice */}
           {pvName && (<DataframePreview name={pvName} />)}
         </Section>
+        </div>
+
+        {/* Data Filtering & Grouping Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-orange-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Filtering & Grouping</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Filter">
           <div className="space-y-3">
@@ -556,65 +947,205 @@ export default function Operations() {
             ))}
             <div className="flex items-center gap-2">
               <button className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={addFilter}>Add filter</button>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" onClick={onFilter}>Run Filter</button>
+              <button 
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" 
+                onClick={onFilter}
+                disabled={!ftName}
+              >
+                Run Filter
+              </button>
             </div>
           </div>
         </Section>
 
         <Section title="Group by">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbName} onChange={e => setGbName(e.target.value)}>
+          <div className="space-y-4">
+            <label className="block max-w-sm">
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">DataFrame</span>
+              <select 
+                className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                value={gbName} 
+                onChange={e => {
+                  setGbName(e.target.value)
+                  setGbSelectedBy([]) // Reset when dataframe changes
+                }}
+                aria-label="Select dataframe for grouping"
+              >
                 <option value="">Select…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
+            
+            {/* Column selection for grouping */}
+            {gbName && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Group by columns ({gbSelectedBy.length} selected)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setGbSelectedBy(dfOptions.find(o => o.value === gbName)?.columns || [])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setGbSelectedBy([])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
+                  {(dfOptions.find(o => o.value === gbName)?.columns || []).map(c => (
+                    <label 
+                      key={c} 
+                      className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
+                        gbSelectedBy.includes(c) 
+                          ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
+                          : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
+                      }`}
+                    >
+                      <input 
+                        type="checkbox" 
+                        className="mr-2" 
+                        checked={gbSelectedBy.includes(c)} 
+                        onChange={() => setGbSelectedBy(prev => 
+                          prev.includes(c) ? prev.filter(col => col !== c) : [...prev, c]
+                        )}
+                        aria-label={`Toggle column ${c} for grouping`}
+                      />
+                      <span className="truncate">{c}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Group by (comma)</span>
-              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbBy} onChange={e => setGbBy(e.target.value)} placeholder="col1,col2" />
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Aggregations JSON (optional)</span>
+              <textarea 
+                className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-20 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" 
+                value={gbAggs} 
+                onChange={e => setGbAggs(e.target.value)} 
+                placeholder='{"column_name": "sum", "other_col": ["mean", "max"]}'
+                aria-label="Enter aggregation functions as JSON"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Example: {"{"}"col":"sum","col2":["mean","max"]{"}"}
+              </p>
             </label>
-            <label className="block md:col-span-2">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Aggs JSON (optional)</span>
-              <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={gbAggs} onChange={e => setGbAggs(e.target.value)} placeholder='{"col":"sum","col2":["mean","max"]}' />
-            </label>
-            <button onClick={onGroupBy} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run GroupBy</button>
+            
+            <div>
+              <button 
+                onClick={onGroupBy} 
+                disabled={!gbName || gbSelectedBy.length === 0}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                aria-label="Create grouped dataframe"
+              >
+                Run GroupBy
+              </button>
+            </div>
           </div>
           {/* Preview below df choice */}
           {gbName && (<DataframePreview name={gbName} />)}
         </Section>
+        </div>
+
+        {/* Column Operations Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 py-2">
+            <div className="w-1 h-6 bg-purple-500 rounded-full"></div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Column Operations</h2>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          </div>
 
         <Section title="Select columns">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <label className="block max-w-sm">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-              <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={selName} onChange={e => setSelName(e.target.value)}>
-                <option value="">Select…</option>
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">DataFrame</span>
+              <select 
+                className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                value={selName} 
+                onChange={e => setSelName(e.target.value)}
+                aria-label="Select dataframe for column selection"
+              >
+                <option value="">Select dataframe…</option>
                 {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
               </select>
             </label>
+            
             {/* Columns chooser */}
             {selName && (
-              <div>
-                <div className="text-sm mb-1">Pick columns</div>
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    Select columns ({selCols.length} selected)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelCols(selectedDfMeta?.columns || [])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setSelCols([])}
+                      className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800">
                   {(selectedDfMeta?.columns || []).map(c => (
-                    <label key={c} className={`px-2 py-1 rounded border cursor-pointer text-gray-900 dark:text-gray-100 ${selCols.includes(c) ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
-                      <input type="checkbox" className="mr-1" checked={selCols.includes(c)} onChange={() => toggleSelCol(c)} />
-                      {c}
+                    <label 
+                      key={c} 
+                      className={`px-2 py-1 rounded-md border cursor-pointer text-sm transition-all ${
+                        selCols.includes(c) 
+                          ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500 text-indigo-900 dark:text-indigo-100' 
+                          : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-650'
+                      }`}
+                    >
+                      <input 
+                        type="checkbox" 
+                        className="mr-2" 
+                        checked={selCols.includes(c)} 
+                        onChange={() => toggleSelCol(c)}
+                        aria-label={`Toggle column ${c}`}
+                      />
+                      <span className="truncate">{c}</span>
                     </label>
                   ))}
                 </div>
-                <label className="inline-flex items-center gap-2 mt-2">
-                  <input type="checkbox" checked={selExclude} onChange={e => setSelExclude(e.target.checked)} />
-                  <span className="text-sm text-gray-900 dark:text-gray-100">Exclude selected</span>
+                <label className="inline-flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    checked={selExclude} 
+                    onChange={e => setSelExclude(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    Exclude selected columns (keep the rest)
+                  </span>
                 </label>
               </div>
             )}
+            
             {/* Preview filtered to selected columns (or remaining if exclude) */}
             {selName && (<DataframePreview name={selName} columnsFilter={selCols} excludeSelected={selExclude} />)}
+            
             <div>
-              <button onClick={onSelectCols} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Create selection</button>
+              <button 
+                onClick={onSelectCols} 
+                disabled={!selName || selCols.length === 0}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                aria-label="Create new dataframe with selected columns"
+              >
+                Create Selection
+              </button>
             </div>
           </div>
         </Section>
@@ -649,6 +1180,8 @@ export default function Operations() {
         <Section title="Mutate (create/overwrite column via expression)">
           <MutateSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsMutate(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Mutate failed') } }} />
         </Section>
+        </div>
+
       </main>
 
       <Footer />
@@ -779,8 +1312,41 @@ function MutateSection({ dfOptions, onRun }) {
   const [expr, setExpr] = useState('')
   const [mode, setMode] = useState('vector')
   const [overwrite, setOverwrite] = useState(false)
+  const [usePredefined, setUsePredefined] = useState(false)
+  const [predefinedOp, setPredefinedOp] = useState('')
+  const [sourceCol, setSourceCol] = useState('')
 
   const selectedDf = dfOptions.find(o => o.value === name)
+
+  // Predefined mutations
+  const predefinedMutations = [
+    { value: 'uppercase', label: 'Convert to uppercase', expr: "col('{source}').astype(str).str.upper()" },
+    { value: 'lowercase', label: 'Convert to lowercase', expr: "col('{source}').astype(str).str.lower()" },
+    { value: 'string_length', label: 'String length', expr: "col('{source}').astype(str).str.len()" },
+    { value: 'absolute', label: 'Absolute value', expr: "col('{source}').abs()" },
+    { value: 'round_2', label: 'Round to 2 decimals', expr: "col('{source}').round(2)" },
+    { value: 'is_null', label: 'Check if null', expr: "col('{source}').isnull()" },
+    { value: 'fill_zero', label: 'Fill null with 0', expr: "col('{source}').fillna(0)" },
+    { value: 'year_from_date', label: 'Extract year from date', expr: "pd.to_datetime(col('{source}')).dt.year" },
+    { value: 'month_from_date', label: 'Extract month from date', expr: "pd.to_datetime(col('{source}')).dt.month" },
+    { value: 'log', label: 'Natural logarithm', expr: "np.log(col('{source}'))" },
+    { value: 'sqrt', label: 'Square root', expr: "np.sqrt(col('{source}'))" },
+    { value: 'first_3_chars', label: 'First 3 characters', expr: "col('{source}').astype(str).str[:3]" }
+  ]
+
+  // Generate expression from predefined operation
+  const generatePredefinedExpr = () => {
+    if (!predefinedOp || !sourceCol) return ''
+    const mutation = predefinedMutations.find(m => m.value === predefinedOp)
+    return mutation ? mutation.expr.replace('{source}', sourceCol) : ''
+  }
+
+  // Update expression when predefined selections change
+  useEffect(() => {
+    if (usePredefined && predefinedOp && sourceCol) {
+      setExpr(generatePredefinedExpr())
+    }
+  }, [usePredefined, predefinedOp, sourceCol])
 
   const run = () => {
     if (!name || !target || !expr.trim()) return
@@ -789,38 +1355,168 @@ function MutateSection({ dfOptions, onRun }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-        <label className="block md:col-span-2">
-          <span className="block text-sm text-gray-900 dark:text-gray-100">DataFrame</span>
-          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={name} onChange={e => setName(e.target.value)}>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">DataFrame</span>
+          <select 
+            className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+            value={name} 
+            onChange={e => {
+              setName(e.target.value)
+              setSourceCol('') // Reset source column when dataframe changes
+            }}
+            aria-label="Select dataframe for mutation"
+          >
             <option value="">Select…</option>
             {dfOptions.map(o => (<option key={o.value} value={o.value}>{o.label}</option>))}
           </select>
         </label>
         <label className="block">
-          <span className="block text-sm text-gray-900 dark:text-gray-100">Target column</span>
-          <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={target} onChange={e => setTarget(e.target.value)} placeholder="new_col" />
+          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Target column</span>
+          <input 
+            className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+            value={target} 
+            onChange={e => setTarget(e.target.value)} 
+            placeholder="new_column_name"
+            aria-label="Enter target column name"
+          />
         </label>
         <label className="block">
-          <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
-          <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={mode} onChange={e => setMode(e.target.value)}>
-            <option value="vector">vector (Series/scalar)</option>
-            <option value="row">row (use r[\"col\"]) </option>
+          <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Mode</span>
+          <select 
+            className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+            value={mode} 
+            onChange={e => setMode(e.target.value)}
+            aria-label="Select mutation mode"
+          >
+            <option value="vector">Vector (Series/scalar)</option>
+            <option value="row">Row (use r["col"])</option>
           </select>
         </label>
-        <label className="inline-flex items-center gap-2">
-          <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)} />
-          <span className="text-sm text-gray-900 dark:text-gray-100">Overwrite if exists</span>
-        </label>
       </div>
+      
       {name && (<DataframePreview name={name} />)}
-      <label className="block">
-        <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-        <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" value={expr} onChange={e => setExpr(e.target.value)} placeholder="Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year" />
-      </label>
-      <div>
-        <button onClick={run} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Run Mutate</button>
+      
+      {/* Expression input method selector */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          <label className="inline-flex items-center gap-2">
+            <input 
+              type="radio" 
+              name="expr-method" 
+              checked={!usePredefined} 
+              onChange={() => setUsePredefined(false)}
+              className="text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Custom expression</span>
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input 
+              type="radio" 
+              name="expr-method" 
+              checked={usePredefined} 
+              onChange={() => setUsePredefined(true)}
+              className="text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Predefined operations</span>
+          </label>
+        </div>
+        
+        {usePredefined ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Source column</span>
+                <select 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={sourceCol} 
+                  onChange={e => setSourceCol(e.target.value)}
+                  aria-label="Select source column for operation"
+                >
+                  <option value="">Select column…</option>
+                  {(selectedDf?.columns || []).map(c => (<option key={c} value={c}>{c}</option>))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Operation</span>
+                <select 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                  value={predefinedOp} 
+                  onChange={e => setPredefinedOp(e.target.value)}
+                  aria-label="Select predefined operation"
+                >
+                  <option value="">Select operation…</option>
+                  {predefinedMutations.map(op => (<option key={op.value} value={op.value}>{op.label}</option>))}
+                </select>
+              </label>
+            </div>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Generated expression (read-only)</span>
+                <textarea 
+                  className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-20 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300" 
+                  value={generatePredefinedExpr()} 
+                  readOnly
+                  aria-label="Generated expression preview"
+                />
+              </label>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Expression syntax help */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+              <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Expression Syntax Guide</h4>
+              <div className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                <div><strong>Vector mode examples:</strong></div>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Basic operations: <code>col('price') * col('quantity')</code></li>
+                  <li>String operations: <code>col('name').astype(str).str.upper()</code></li>
+                  <li>Conditional: <code>np.where(col('age') &gt;= 18, 'Adult', 'Minor')</code></li>
+                  <li>Date operations: <code>pd.to_datetime(col('date')).dt.year</code></li>
+                  <li>Math functions: <code>np.sqrt(col('value'))</code></li>
+                </ul>
+                <div className="mt-2"><strong>Row mode examples:</strong></div>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Row operations: <code>r['price'] * r['quantity']</code></li>
+                  <li>Complex logic: <code>'High' if r['score'] &gt; 80 else 'Low'</code></li>
+                </ul>
+              </div>
+            </div>
+            
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Expression</span>
+              <textarea 
+                className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-sm h-24 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                value={expr} 
+                onChange={e => setExpr(e.target.value)} 
+                placeholder="Enter your pandas expression..."
+                aria-label="Enter custom expression"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <label className="inline-flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            checked={overwrite} 
+            onChange={e => setOverwrite(e.target.checked)}
+            className="rounded text-indigo-600 focus:ring-indigo-500" 
+          />
+          <span className="text-sm text-gray-900 dark:text-gray-100">Overwrite if column exists</span>
+        </label>
+        <button 
+          onClick={run} 
+          disabled={!name || !target || !expr.trim()}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          aria-label="Run mutation operation"
+        >
+          Run Mutate
+        </button>
       </div>
     </div>
   )
