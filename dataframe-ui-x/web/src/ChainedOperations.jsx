@@ -49,7 +49,7 @@ function SmallTable({ columns = [], rows = [] }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-750'}>
+            <tr key={i} className={i % 2 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50 dark:bg-gray-700'}>
               {columns.map(c => (
                 <td key={c} className="px-2 py-1 border-b border-gray-200 dark:border-gray-600 max-w-[300px] truncate text-gray-900 dark:text-gray-100" title={r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}>
                   {r[c] !== null && r[c] !== undefined ? String(r[c]) : ''}
