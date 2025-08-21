@@ -58,6 +58,22 @@ Access the feature through the "Chained Pipes" button in the navigation bar.
 - **Authentication Required**: All features require login
 - **Session Management**: Automatic logout after inactivity
 
+### ⚡ Dual Processing Engines
+- **Pandas Engine**: Fast in-memory processing for small to medium datasets (default)
+- **Apache Spark Engine**: Distributed processing for large datasets and complex operations
+- **User Choice**: Switch between engines in User Profile settings
+- **Visual Indicators**: Engine status shown in page headers with color coding
+- **Operation Coverage**: All operations except "compare" support both engines
+  - Select, Filter, GroupBy, Merge, Pivot, Rename, DateTime, Mutate
+
+### 🧪 Visual Testing Framework
+- **Playwright Integration**: Comprehensive visual testing for UI components
+- **Multi-Browser Support**: Chrome, Firefox, Safari, Mobile viewports
+- **Docker Containerized**: Isolated test environment with consistent results
+- **Shell Script Automation**: Easy test execution with `visual-tests.sh`
+- **Make Commands**: Integration with existing build system
+- **Test Coverage**: Login, Operations, Chained Operations, Chained Pipelines, User Profile
+
 ## Components
 
 ### Backend Services
@@ -191,6 +207,16 @@ Common helpers are provided via the root Makefile:
 - make down     # stop all services
 - Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
 
+### New Testing & Visual Testing Commands
+- make visual-test-setup     # setup Playwright test environment
+- make visual-test           # run visual tests
+- make visual-test-headed    # run visual tests in headed mode  
+- make visual-test-debug     # run visual tests in debug mode
+- make visual-test-report    # generate visual test report
+- make visual-test-cleanup   # cleanup visual test environment
+- make test-spark-integration    # test Spark operations endpoints
+- make test-frontend-integration # test frontend processing engine integration
+
 ## Jenkins pipeline
 A Kotlin-based Jenkins pipeline script is provided at `jenkins.kt`.
 - In your Jenkins instance, create a new Pipeline job.
@@ -205,6 +231,47 @@ At minimum, ensure the pipeline stages cover:
 - Run tests (if present)
 - Build and push container (optional)
 - Deploy (optional)
+
+## Processing Engine Selection
+
+The application supports two processing engines that can be selected per user:
+
+### Pandas Engine (Default)
+- Fast in-memory processing
+- Ideal for small to medium datasets
+- Lower resource requirements
+- Immediate results
+
+### Apache Spark Engine  
+- Distributed processing capabilities
+- Handles large datasets efficiently
+- Scalable across cluster nodes
+- Advanced optimization features
+
+### How to Switch Engines
+1. Navigate to **User Profile** (click your username in the header)
+2. Scroll to **Data Processing Settings** section
+3. Select either **Pandas** or **Apache Spark** 
+4. Click **Save Preference**
+5. Your choice is automatically applied to all operations
+
+### Visual Indicators
+- Engine status is displayed in page headers with color coding:
+  - 🟦 **Blue badge**: Pandas engine active
+  - 🟧 **Orange badge**: Spark engine active
+
+### Supported Operations
+All operations except "compare" support both engines:
+- Select (column selection/exclusion)
+- Filter (row filtering with conditions)
+- GroupBy (aggregation operations)  
+- Merge (DataFrame joins)
+- Pivot (reshape operations)
+- Rename (column renaming)
+- DateTime (date/time parsing and extraction)
+- Mutate (create new columns with expressions)
+
+The compare operation uses its own optimized engine regardless of user preference.
 
 ## Configuration
 

@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users visual-test-setup visual-test visual-test-headed visual-test-debug visual-test-report visual-test-cleanup
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users visual-test-setup visual-test visual-test-headed visual-test-debug visual-test-report visual-test-cleanup test-spark-integration test-frontend-integration
 
 help:
 	@echo "Targets:"
@@ -75,6 +75,10 @@ help:
 	@echo "  visual-test-debug     - run visual tests in debug mode"
 	@echo "  visual-test-report    - generate visual test report"
 	@echo "  visual-test-cleanup   - cleanup visual test environment"
+	@echo ""
+	@echo "Integration Testing:"
+	@echo "  test-spark-integration - test Spark operations endpoints"
+	@echo "  test-frontend-integration - test frontend processing engine integration"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -266,3 +270,13 @@ visual-test-report:
 visual-test-cleanup:
 	@echo "Cleaning up visual test environment..."
 	./visual-tests.sh cleanup
+
+# Integration Testing
+
+test-spark-integration:
+	@echo "Testing Spark operations integration..."
+	./test-spark-integration.sh
+
+test-frontend-integration:
+	@echo "Testing frontend processing engine integration..."
+	./test-frontend-integration.sh
