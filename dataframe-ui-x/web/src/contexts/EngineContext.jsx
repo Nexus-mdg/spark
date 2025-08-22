@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const EngineContext = createContext();
+export { EngineContext };
 
 // Engine preference storage key
 const ENGINE_STORAGE_KEY = 'dataframe_engine_preference';
