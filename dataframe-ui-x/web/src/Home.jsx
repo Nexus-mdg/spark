@@ -238,8 +238,11 @@ export default function Home() {
         aVal = (a.name || '').toLowerCase()
         bVal = (b.name || '').toLowerCase()
       } else if (sortColumn === 'timestamp') {
-        aVal = a.timestamp || ''
-        bVal = b.timestamp || ''
+        // Handle invalid timestamps by treating them as very old dates
+        const aDate = a.timestamp && !isNaN(new Date(a.timestamp).getTime()) ? new Date(a.timestamp) : new Date(0)
+        const bDate = b.timestamp && !isNaN(new Date(b.timestamp).getTime()) ? new Date(b.timestamp) : new Date(0)
+        aVal = aDate.getTime()
+        bVal = bDate.getTime()
       } else if (sortColumn === 'size_mb') {
         aVal = a.size_mb || 0
         bVal = b.size_mb || 0
@@ -315,9 +318,12 @@ export default function Home() {
     }
 
     rows.forEach(df => {
-      const dfDate = new Date(df.timestamp).toISOString().split('T')[0]
-      const dayEntry = last7Days.find(d => d.date === dfDate)
-      if (dayEntry) dayEntry.count++
+      // Validate timestamp before creating Date object
+      if (df.timestamp && !isNaN(new Date(df.timestamp).getTime())) {
+        const dfDate = new Date(df.timestamp).toISOString().split('T')[0]
+        const dayEntry = last7Days.find(d => d.date === dfDate)
+        if (dayEntry) dayEntry.count++
+      }
     })
 
     return {
@@ -739,7 +745,11 @@ export default function Home() {
                     </td>
                     <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.rows} x {r.cols}</td>
                     <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.size_mb} MB</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{new Date(r.timestamp).toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
+                      {r.timestamp && !isNaN(new Date(r.timestamp).getTime()) 
+                        ? new Date(r.timestamp).toLocaleString() 
+                        : '-'}
+                    </td>
                     <td className="py-2">
                       <div className="flex items-center gap-1">
                         <button onClick={() => openViewer(r.name)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Preview">
@@ -788,7 +798,7 @@ export default function Home() {
               <span><span className="font-medium">Rows:</span> {viewerMeta.rows}</span>
               <span><span className="font-medium">Cols:</span> {viewerMeta.cols}</span>
               <span><span className="font-medium">Size:</span> {viewerMeta.size_mb} MB</span>
-              <span><span className="font-medium">Created:</span> {new Date(viewerMeta.timestamp).toLocaleString()}</span>
+              <span><span className="font-medium">Created:</span> {viewerMeta.timestamp && !isNaN(new Date(viewerMeta.timestamp).getTime()) ? new Date(viewerMeta.timestamp).toLocaleString() : '-'}</span>
             </div>
             {viewerMeta.description && (<div className="text-gray-600 dark:text-gray-400 mt-1">{viewerMeta.description}</div>)}
           </div>

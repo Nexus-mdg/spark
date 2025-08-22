@@ -127,7 +127,7 @@ export default function Analysis() {
                     <span><span className="font-medium">Rows:</span> {dfMeta.rows}</span>
                     <span><span className="font-medium">Cols:</span> {dfMeta.cols}</span>
                     <span><span className="font-medium">Size:</span> {dfMeta.size_mb} MB</span>
-                    <span><span className="font-medium">Created:</span> {new Date(dfMeta.timestamp).toLocaleString()}</span>
+                    <span><span className="font-medium">Created:</span> {dfMeta.timestamp && !isNaN(new Date(dfMeta.timestamp).getTime()) ? new Date(dfMeta.timestamp).toLocaleString() : '-'}</span>
                   </div>
                   {dfMeta.description && (<div className="text-gray-600 dark:text-gray-400 mt-1">{dfMeta.description}</div>)}
                 </div>
