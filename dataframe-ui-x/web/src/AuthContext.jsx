@@ -14,10 +14,41 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
+  const [authDisabled, setAuthDisabled] = useState(false)
+
+  // Check if authentication is disabled
+  const checkAuthConfig = async () => {
+    try {
+      const response = await fetch('/api/auth/config')
+      if (response.ok) {
+        const data = await response.json()
+        setAuthDisabled(data.authentication_disabled)
+        return data.authentication_disabled
+      }
+    } catch (error) {
+      console.error('Auth config check failed:', error)
+    }
+    return false
+  }
 
   // Check authentication status
   const checkAuth = async () => {
     try {
+      // First check if auth is disabled
+      const isDisabled = await checkAuthConfig()
+      
+      if (isDisabled) {
+        // Set a mock user when authentication is disabled
+        setUser({
+          username: 'developer',
+          created_at: null,
+          last_login: null
+        })
+        setLoading(false)
+        setInitialized(true)
+        return
+      }
+
       const response = await fetch('/api/auth/me')
       if (response.ok) {
         const data = await response.json()
@@ -36,6 +67,16 @@ export const AuthProvider = ({ children }) => {
 
   // Login function
   const login = async (username, password) => {
+    // If authentication is disabled, simulate successful login
+    if (authDisabled) {
+      setUser({
+        username: 'developer',
+        created_at: null,
+        last_login: null
+      })
+      return { success: true, message: 'Authentication disabled - logged in as developer' }
+    }
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -108,6 +149,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     initialized,
+    authDisabled,
     login,
     logout,
     changePassword,

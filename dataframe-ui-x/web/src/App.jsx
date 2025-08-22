@@ -14,7 +14,12 @@ import ApiDocumentation from './ApiDocumentation.jsx'
 
 // Component to handle authentication requirement
 function AuthenticatedRoute({ children }) {
-  const { isAuthenticated, loading, initialized } = useAuth()
+  const { isAuthenticated, loading, initialized, authDisabled } = useAuth()
+
+  // If authentication is disabled, render children directly
+  if (authDisabled) {
+    return children
+  }
 
   // Show loading while checking authentication
   if (!initialized || loading) {
