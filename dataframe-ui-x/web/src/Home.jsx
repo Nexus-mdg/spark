@@ -200,6 +200,13 @@ export default function Home() {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [dataframeType, setDataframeType] = useState('static')
+  const [autoDeleteHours, setAutoDeleteHours] = useState(10)
+
+  // Auto-refresh state
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(30) // seconds
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState(null)
 
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerTitle, setViewerTitle] = useState('DataFrame Viewer')
@@ -223,6 +230,47 @@ export default function Home() {
   const toast = useToast()
   const navigate = useNavigate()
 
+  // Helper functions for dataframe types and expiration
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'static': return '📌'
+      case 'ephemeral': return '⏰'
+      case 'temporary': return '💨'
+      default: return '📌'
+    }
+  }
+
+  const getTypeBadgeClass = (type) => {
+    switch (type) {
+      case 'static': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'ephemeral': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'temporary': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      default: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    }
+  }
+
+  const formatTimeRemaining = (expiresAt) => {
+    if (!expiresAt) return null
+    const now = new Date()
+    const expiry = new Date(expiresAt)
+    const diffMs = expiry.getTime() - now.getTime()
+    
+    if (diffMs <= 0) return 'Expired'
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    
+    if (diffHours > 0) {
+      return `${diffHours}h ${diffMinutes}m`
+    } else {
+      return `${diffMinutes}m`
+    }
+  }
+
+  const hasExpiringDataframes = () => {
+    return rows.some(df => df.type === 'ephemeral' || df.type === 'temporary')
+  }
+
   const refreshStats = async () => {
     const res = await getStats()
     if (res.success) setStats(res.stats)
@@ -235,11 +283,32 @@ export default function Home() {
       if (res.success) {
         setRows(res.dataframes || [])
         setCurrentPage(1) // Reset to first page when data changes
+        setLastRefresh(new Date())
       }
     } finally {
       setLoadingList(false)
     }
   }
+
+  // Auto-refresh effect
+  useEffect(() => {
+    let interval
+    if (isAutoRefreshEnabled && hasExpiringDataframes()) {
+      interval = setInterval(() => {
+        refreshList()
+      }, autoRefreshInterval * 1000)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isAutoRefreshEnabled, autoRefreshInterval, rows])
+
+  // Enable auto-refresh when there are expiring dataframes
+  useEffect(() => {
+    if (hasExpiringDataframes() && !isAutoRefreshEnabled) {
+      setIsAutoRefreshEnabled(true)
+    }
+  }, [rows])
 
   // Filter and sort data
   const filteredAndSortedRows = React.useMemo(() => {
@@ -394,7 +463,13 @@ export default function Home() {
     if (!file) return toast.show('Please choose a file to upload')
     setUploading(true)
     try {
-      await uploadDataframe({ file, name: name.trim(), description: description.trim() })
+      await uploadDataframe({ 
+        file, 
+        name: name.trim(), 
+        description: description.trim(),
+        type: dataframeType,
+        auto_delete_hours: autoDeleteHours
+      })
       setName(''); setDescription(''); setFile(null)
       toast.show('Upload successful')
       await refreshStats(); await refreshList()
@@ -620,6 +695,69 @@ export default function Home() {
               </label>
             </div>
 
+            {/* Dataframe Type Selection */}
+            <div className="space-y-3">
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">DataFrame Type</span>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="dataframeType"
+                    value="static"
+                    checked={dataframeType === 'static'}
+                    onChange={(e) => setDataframeType(e.target.value)}
+                    className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    📌 <span className="font-medium">Static</span> - Never expires, manually deleted only
+                  </span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="dataframeType"
+                    value="ephemeral"
+                    checked={dataframeType === 'ephemeral'}
+                    onChange={(e) => setDataframeType(e.target.value)}
+                    className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    ⏰ <span className="font-medium">Ephemeral</span> - Auto-deletes after specified hours
+                  </span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="dataframeType"
+                    value="temporary"
+                    checked={dataframeType === 'temporary'}
+                    onChange={(e) => setDataframeType(e.target.value)}
+                    className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    💨 <span className="font-medium">Temporary</span> - Auto-deletes after 1 hour
+                  </span>
+                </label>
+              </div>
+              
+              {/* Auto-delete hours input for ephemeral type */}
+              {dataframeType === 'ephemeral' && (
+                <div className="ml-6">
+                  <label className="block">
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-delete after (hours)</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="168"
+                      value={autoDeleteHours}
+                      onChange={(e) => setAutoDeleteHours(parseInt(e.target.value) || 10)}
+                      className="mt-1 block w-32 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
             <div onDragOver={(e) => e.preventDefault()} onDrop={onDrop} onClick={() => document.getElementById('file-input').click()} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition cursor-pointer bg-gray-50 dark:bg-gray-700">
               <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a2 2 0 00-2 2v3h2V5h12v3h2V5a2 2 0 00-2-2H3z"/><path d="M3 9h14v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm7 1a1 1 0 00-1 1v2H8l3 3 3-3h-1v-2a1 1 0 00-1-1h-2z"/></svg>
               <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Drop files here or click to browse</div>
@@ -639,6 +777,37 @@ export default function Home() {
           <div className="p-6 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Cached DataFrames</h2>
             <div className="flex items-center gap-2">
+              {/* Auto-refresh controls - only show when there are expiring dataframes */}
+              {hasExpiringDataframes() && (
+                <div className="flex items-center gap-2 mr-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <label className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={isAutoRefreshEnabled}
+                      onChange={(e) => setIsAutoRefreshEnabled(e.target.checked)}
+                      className="mr-2 rounded border-gray-300 dark:border-gray-600"
+                    />
+                    Auto-refresh
+                  </label>
+                  {isAutoRefreshEnabled && (
+                    <select
+                      value={autoRefreshInterval}
+                      onChange={(e) => setAutoRefreshInterval(parseInt(e.target.value))}
+                      className="text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    >
+                      <option value={15}>15s</option>
+                      <option value={30}>30s</option>
+                      <option value={60}>1m</option>
+                      <option value={300}>5m</option>
+                    </select>
+                  )}
+                  {lastRefresh && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                      Last: {lastRefresh.toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+              )}
               <button onClick={() => { refreshStats(); refreshList(); }} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Refresh list">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
@@ -735,12 +904,13 @@ export default function Home() {
                       )}
                     </button>
                   </th>
+                  <th className="py-2 pr-4">Type</th>
                   <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                {loadingList && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>Loading…</td></tr>)}
-                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>No cached DataFrames</td></tr>)}
+                {loadingList && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={7}>Loading…</td></tr>)}
+                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={7}>No cached DataFrames</td></tr>)}
                 {paginatedRows.map((r) => (
                   <tr key={r.name}>
                     <td className="py-2 pr-4 font-medium align-top">
@@ -771,6 +941,24 @@ export default function Home() {
                       {r.timestamp && !isNaN(new Date(r.timestamp).getTime()) 
                         ? new Date(r.timestamp).toLocaleString() 
                         : '-'}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getTypeIcon(r.type || 'static')}</span>
+                        <div className="space-y-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeClass(r.type || 'static')}`}>
+                            {(r.type || 'static').charAt(0).toUpperCase() + (r.type || 'static').slice(1)}
+                          </span>
+                          {(r.type === 'ephemeral' || r.type === 'temporary') && r.expires_at && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              <div>Expires: {formatTimeRemaining(r.expires_at)}</div>
+                              <div className="text-xs opacity-75">
+                                {new Date(r.expires_at).toLocaleString()}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-2">
                       <div className="flex items-center gap-1">
@@ -808,6 +996,34 @@ export default function Home() {
               />
             </div>
           )}
+          
+          {/* DataFrame Type Legend */}
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">DataFrame Types:</h3>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📌</span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  Static
+                </span>
+                <span>Never expires, manually deleted only</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⏰</span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Ephemeral
+                </span>
+                <span>Auto-deletes after user-specified hours (default 10)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">💨</span>
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                  Temporary
+                </span>
+                <span>Auto-deletes after 1 hour</span>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
 

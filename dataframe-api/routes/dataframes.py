@@ -5,7 +5,7 @@ import json
 import os
 import io
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 
 from utils.redis_client import redis_client
@@ -14,19 +14,62 @@ from utils.helpers import df_to_records_json_safe
 dataframes_bp = Blueprint('dataframes', __name__)
 
 
+def calculate_expiration(df_type, auto_delete_hours=None):
+    """Calculate expiration datetime and TTL for a dataframe based on its type"""
+    if df_type == 'static':
+        return None, None
+    elif df_type == 'temporary':
+        expires_at = datetime.now() + timedelta(hours=1)
+        ttl_seconds = 3600  # 1 hour in seconds
+    elif df_type == 'ephemeral':
+        hours = auto_delete_hours if auto_delete_hours and auto_delete_hours > 0 else 10
+        expires_at = datetime.now() + timedelta(hours=hours)
+        ttl_seconds = hours * 3600
+    else:
+        return None, None
+    
+    return expires_at.isoformat(), ttl_seconds
+
+
+def set_dataframe_with_ttl(df_key, meta_key, csv_string, metadata, ttl_seconds=None):
+    """Store dataframe with optional TTL"""
+    # Store the dataframe data
+    if ttl_seconds:
+        redis_client.setex(df_key, ttl_seconds, csv_string)
+        redis_client.setex(meta_key, ttl_seconds, json.dumps(metadata))
+    else:
+        redis_client.set(df_key, csv_string)
+        redis_client.set(meta_key, json.dumps(metadata))
+    
+    # Add to index (note: index itself doesn't expire)
+    redis_client.sadd("dataframe_index", metadata['name'])
+
+
 @dataframes_bp.route('/api/dataframes', methods=['GET'])
 def list_dataframes():
     """Get list of all cached DataFrames"""
     try:
         names = redis_client.smembers("dataframe_index")
         dataframes = []
+        expired_names = []
 
         for name in names:
             meta_key = f"meta:{name}"
-            if redis_client.exists(meta_key):
+            df_key = f"df:{name}"
+            
+            # Check if dataframe still exists (not expired)
+            if redis_client.exists(meta_key) and redis_client.exists(df_key):
                 meta_json = redis_client.get(meta_key)
                 metadata = json.loads(meta_json)
                 dataframes.append(metadata)
+            else:
+                # Mark for cleanup from index
+                expired_names.append(name)
+
+        # Clean up expired dataframes from index
+        if expired_names:
+            for name in expired_names:
+                redis_client.srem("dataframe_index", name)
 
         return jsonify({
             'success': True,
@@ -51,7 +94,9 @@ def get_dataframe(name):
         meta_key = f"meta:{name}"
 
         if not redis_client.exists(df_key):
-            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+            # Remove from index if it was there but dataframe is gone (expired)
+            redis_client.srem("dataframe_index", name)
+            return jsonify({'success': False, 'error': 'DataFrame not found or has expired'}), 404
 
         # Load metadata first (lightweight)
         meta_json = redis_client.get(meta_key)
@@ -148,6 +193,8 @@ def upload_dataframe():
         file = request.files['file']
         name = request.form.get('name', '')
         description = request.form.get('description', '')
+        df_type = request.form.get('type', 'static')  # Default to static
+        auto_delete_hours = request.form.get('auto_delete_hours', '10')
 
         if file.filename == '':
             return jsonify({'success': False, 'error': 'No file selected'}), 400
@@ -155,6 +202,18 @@ def upload_dataframe():
         if not name:
             # Use filename without extension as default name
             name = os.path.splitext(file.filename)[0]
+
+        # Validate type
+        if df_type not in ['static', 'ephemeral', 'temporary']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+
+        # Validate auto_delete_hours for ephemeral type
+        try:
+            auto_delete_hours = int(auto_delete_hours) if auto_delete_hours else 10
+            if df_type == 'ephemeral' and auto_delete_hours <= 0:
+                return jsonify({'success': False, 'error': 'auto_delete_hours must be a positive integer for ephemeral type'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'auto_delete_hours must be a valid integer'}), 400
 
         # Check if name already exists
         if redis_client.exists(f"df:{name}"):
@@ -175,8 +234,8 @@ def upload_dataframe():
         # Convert DataFrame to CSV string for storage
         csv_string = df.to_csv(index=False)
 
-        # Store in Redis
-        redis_client.set(f"df:{name}", csv_string)
+        # Calculate expiration
+        expires_at, ttl_seconds = calculate_expiration(df_type, auto_delete_hours if df_type == 'ephemeral' else None)
 
         # Create metadata
         size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
@@ -189,12 +248,16 @@ def upload_dataframe():
             'timestamp': datetime.now().isoformat(),
             'size_mb': round(size_mb, 2),
             'format': 'csv',
-            'original_filename': file.filename
+            'original_filename': file.filename,
+            'type': df_type,
+            'expires_at': expires_at,
+            'auto_delete_hours': auto_delete_hours if df_type == 'ephemeral' else None
         }
 
-        # Store metadata
-        redis_client.set(f"meta:{name}", json.dumps(metadata))
-        redis_client.sadd("dataframe_index", name)
+        # Store with TTL if applicable
+        df_key = f"df:{name}"
+        meta_key = f"meta:{name}"
+        set_dataframe_with_ttl(df_key, meta_key, csv_string, metadata, ttl_seconds)
 
         return jsonify({
             'success': True,

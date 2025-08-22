@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
+const getBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) {
+    return window.APP_CONFIG.API_BASE_URL;
+  }
+  return 'http://localhost:4999';
+};
+
 const AuthContext = createContext()
 
 export const useAuth = () => {
@@ -19,7 +26,7 @@ export const AuthProvider = ({ children }) => {
   // Check if authentication is disabled
   const checkAuthConfig = async () => {
     try {
-      const response = await fetch('/api/auth/config')
+      const response = await fetch(`${getBaseUrl()}/api/auth/config`)
       if (response.ok) {
         const data = await response.json()
         setAuthDisabled(data.authentication_disabled)
@@ -49,7 +56,7 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      const response = await fetch('/api/auth/me')
+      const response = await fetch(`${getBaseUrl()}/api/auth/me`)
       if (response.ok) {
         const data = await response.json()
         setUser(data.user)
@@ -78,7 +85,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${getBaseUrl()}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Only make logout API call if authentication is enabled
       if (!authDisabled) {
-        await fetch('/api/auth/logout', { method: 'POST' })
+        await fetch(`${getBaseUrl()}/api/auth/logout`, { method: 'POST' })
       }
     } catch (error) {
       console.error('Logout request failed:', error)
@@ -127,7 +134,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetch(`${getBaseUrl()}/api/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

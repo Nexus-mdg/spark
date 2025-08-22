@@ -148,6 +148,14 @@ def api_info():
         }
     })
 
+# Auth config endpoint for frontend
+@app.route('/api/auth/config')
+def auth_config():
+    """Authentication configuration endpoint for frontend"""
+    return jsonify({
+        'authentication_disabled': True  # Disable auth for development/testing
+    })
+
 # Ensure upload directory exists
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
