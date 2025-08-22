@@ -15,6 +15,43 @@ import {
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
+// Helper functions for dataframe types and expiration
+const getTypeIcon = (type) => {
+  switch (type) {
+    case 'static': return '📌'
+    case 'ephemeral': return '⏰'
+    case 'temporary': return '💨'
+    default: return '📌'
+  }
+}
+
+const getTypeBadgeClass = (type) => {
+  switch (type) {
+    case 'static': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    case 'ephemeral': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+    case 'temporary': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    default: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+  }
+}
+
+const formatTimeRemaining = (expiresAt) => {
+  if (!expiresAt) return null
+  const now = new Date()
+  const expiry = new Date(expiresAt)
+  const diffMs = expiry.getTime() - now.getTime()
+  
+  if (diffMs <= 0) return 'Expired'
+  
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+  
+  if (diffHours > 0) {
+    return `${diffHours}h ${diffMinutes}m`
+  } else {
+    return `${diffMinutes}m`
+  }
+}
+
 export default function Analysis() {
   const { name } = useParams()
   const navigate = useNavigate()
@@ -129,7 +166,30 @@ export default function Analysis() {
                     <span><span className="font-medium">Size:</span> {dfMeta.size_mb} MB</span>
                     <span><span className="font-medium">Created:</span> {dfMeta.timestamp && !isNaN(new Date(dfMeta.timestamp).getTime()) ? new Date(dfMeta.timestamp).toLocaleString() : '-'}</span>
                   </div>
-                  {dfMeta.description && (<div className="text-gray-600 dark:text-gray-400 mt-1">{dfMeta.description}</div>)}
+                  
+                  {/* DataFrame Type and Expiration Info */}
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Type:</span>
+                      <span className="text-lg">{getTypeIcon(dfMeta.type || 'static')}</span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeClass(dfMeta.type || 'static')}`}>
+                        {(dfMeta.type || 'static').charAt(0).toUpperCase() + (dfMeta.type || 'static').slice(1)}
+                      </span>
+                    </div>
+                    {(dfMeta.type === 'ephemeral' || dfMeta.type === 'temporary') && dfMeta.expires_at && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Expires:</span>
+                        <span className="text-orange-600 dark:text-orange-400 font-medium">
+                          {formatTimeRemaining(dfMeta.expires_at)}
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">
+                          ({new Date(dfMeta.expires_at).toLocaleString()})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {dfMeta.description && (<div className="text-gray-600 dark:text-gray-400 mt-2">{dfMeta.description}</div>)}
                 </div>
               )}
               <div className="overflow-auto border dark:border-gray-600 rounded">

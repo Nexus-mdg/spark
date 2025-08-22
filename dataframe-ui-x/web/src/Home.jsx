@@ -913,7 +913,7 @@ export default function Home() {
                 {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={7}>No cached DataFrames</td></tr>)}
                 {paginatedRows.map((r) => (
                   <tr key={r.name}>
-                    <td className="py-2 pr-4 font-medium align-top">
+                    <td className="py-3 pr-4 font-medium align-top">
                       <div className="max-w-[28ch]">
                         <button
                           className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:underline"
@@ -925,7 +925,7 @@ export default function Home() {
                         </button>
                       </div>
                     </td>
-                    <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">
+                    <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">
                       <div className="max-w-[40ch]">
                         <span
                           className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap"
@@ -935,47 +935,37 @@ export default function Home() {
                         </span>
                       </div>
                     </td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.rows} x {r.cols}</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">{r.size_mb} MB</td>
-                    <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
+                    <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">{r.rows} x {r.cols}</td>
+                    <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">{r.size_mb} MB</td>
+                    <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                       {r.timestamp && !isNaN(new Date(r.timestamp).getTime()) 
                         ? new Date(r.timestamp).toLocaleString() 
                         : '-'}
                     </td>
-                    <td className="py-2 pr-4">
+                    <td className="py-3 pr-4">
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{getTypeIcon(r.type || 'static')}</span>
-                        <div className="space-y-1">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeClass(r.type || 'static')}`}>
-                            {(r.type || 'static').charAt(0).toUpperCase() + (r.type || 'static').slice(1)}
-                          </span>
-                          {(r.type === 'ephemeral' || r.type === 'temporary') && r.expires_at && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              <div>Expires: {formatTimeRemaining(r.expires_at)}</div>
-                              <div className="text-xs opacity-75">
-                                {new Date(r.expires_at).toLocaleString()}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeClass(r.type || 'static')}`}>
+                          {(r.type || 'static').charAt(0).toUpperCase() + (r.type || 'static').slice(1)}
+                        </span>
                       </div>
                     </td>
-                    <td className="py-2">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openViewer(r.name)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Preview">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
+                    <td className="py-3">
+                      <div className="flex items-center gap-0.5">
+                        <button onClick={() => openViewer(r.name)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Preview">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
                         </button>
-                        <a href={buildDownloadCsvUrl(r.name)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Download CSV">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4.007 4.007a1.25 1.25 0 01-1.772 0L6.92 12.707a1 1 0 011.414-1.414L10.5 13.46V4a1 1 0 011-1z"/><path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-2a1 1 0 112 0v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2a1 1 0 112 0v2z"/></svg>
+                        <a href={buildDownloadCsvUrl(r.name)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Download CSV">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4.007 4.007a1.25 1.25 0 01-1.772 0L6.92 12.707a1 1 0 011.414-1.414L10.5 13.46V4a1 1 0 011-1z"/><path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-2a1 1 0 112 0v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2a1 1 0 112 0v2z"/></svg>
                         </a>
-                        <button onClick={() => copyLink(buildDownloadJsonUrl(r.name))} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Copy JSON link">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 7a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3h-2v-2h2a1 1 0 001-1V7a1 1 0 00-1-1h-7a1 1 0 00-1 1v2H8V7z"/><path d="M3 10a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3H6a3 3 0 01-3-3v-7zm3-1a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1v-7a1 1 0 00-1-1H6z"/></svg>
+                        <button onClick={() => copyLink(buildDownloadJsonUrl(r.name))} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Copy JSON link">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 7a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3h-2v-2h2a1 1 0 001-1V7a1 1 0 00-1-1h-7a1 1 0 00-1 1v2H8V7z"/><path d="M3 10a3 3 0 013-3h7a3 3 0 013 3v7a3 3 0 01-3 3H6a3 3 0 01-3-3v-7zm3-1a1 1 0 00-1 1v7a1 1 0 001 1h7a1 1 0 001-1v-7a1 1 0 00-1-1H6z"/></svg>
                         </button>
-                        <button onClick={() => openEdit(r)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Edit name/description" aria-label="Edit">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                        <button onClick={() => openEdit(r)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Edit name/description" aria-label="Edit">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
                         </button>
-                        <button onClick={() => onDelete(r.name)} className="p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" title="Delete">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a1 1 0 00-1 1v1H5.5a1 1 0 100 2H6v12a3 3 0 003 3h6a3 3 0 003-3V7h.5a1 1 0 100-2H16V4a1 1 0 00-1-1H9zm2 4a1 1 0 012 0v10a1 1 0 11-2 0V7zm5 0a1 1 0 10-2 0v10a1 1 0 102 0V7zM10 4h4v1h-4V4z"/></svg>
+                        <button onClick={() => onDelete(r.name)} className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400" title="Delete">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3a1 1 0 00-1 1v1H5.5a1 1 0 100 2H6v12a3 3 0 003 3h6a3 3 0 003-3V7h.5a1 1 0 100-2H16V4a1 1 0 00-1-1H9zm2 4a1 1 0 012 0v10a1 1 0 11-2 0V7zm5 0a1 1 0 10-2 0v10a1 1 0 102 0V7zM10 4h4v1h-4V4z"/></svg>
                         </button>
                       </div>
                     </td>
