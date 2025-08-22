@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Footer from './components/Footer.jsx'
+import { useEngineAwareAPI } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
   opsCompare,
@@ -114,6 +115,7 @@ export default function Operations() {
   const [loading, setLoading] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+  const { withEngine, currentEngine } = useEngineAwareAPI()
 
   const refresh = async () => {
     setLoading(true)
@@ -151,9 +153,10 @@ export default function Operations() {
     setCmpLoading(true)
     setCmpRes(null)
     try {
-      const res = await opsCompare({ name1: cmp1, name2: cmp2 })
+      const res = await opsCompare(withEngine({ name1: cmp1, name2: cmp2 }))
       setCmpRes(res)
-      toast.show(res.identical ? 'DataFrames are identical' : `Compared: ${res.result_type}`)
+      const engineInfo = res.engine ? ` (${res.engine} engine)` : ''
+      toast.show(res.identical ? `DataFrames are identical${engineInfo}` : `Compared: ${res.result_type}${engineInfo}`)
       if (res.created && res.created.length) await refresh()
     } catch (e) { 
       const errorMsg = e.message || 'Comparison failed. Please try again.'
@@ -203,8 +206,9 @@ export default function Operations() {
     const names = mergeNames
     const keys = mergeSelectedKeys
     try {
-      const res = await opsMerge({ names, keys, how: mergeHow })
-      toast.show(`Successfully created merged dataframe: ${res.name}`)
+      const res = await opsMerge(withEngine({ names, keys, how: mergeHow }))
+      const engineInfo = res.engine ? ` (${res.engine} engine)` : ''
+      toast.show(`Successfully created merged dataframe: ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) { 
       const errorMsg = e.message || 'Merge operation failed. Please check your join keys and try again.'
@@ -269,8 +273,9 @@ export default function Operations() {
   const onFilter = async () => {
     if (!ftName) return toast.show('Pick a dataframe')
     try {
-      const res = await opsFilter({ name: ftName, filters, combine: ftCombine })
-      toast.show(`Created ${res.name}`)
+      const res = await opsFilter(withEngine({ name: ftName, filters, combine: ftCombine }))
+      const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+      toast.show(`Created ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Filter failed') }
   }

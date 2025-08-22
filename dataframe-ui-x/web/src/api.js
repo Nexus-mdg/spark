@@ -115,72 +115,78 @@ export const getProfile = async (name) => {
 };
 
 // --- New: Ops endpoints ---
-export const opsCompare = async ({ name1, name2 }) => {
+export const opsCompare = async ({ name1, name2, engine = 'pandas' }) => {
   const res = await fetch(`${BASE()}/api/ops/compare`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ name1, name2 })
+    body: JSON.stringify({ name1, name2, engine })
   });
   if (!res.ok) throw new Error(`Compare failed: ${res.status}`);
   return res.json();
 };
 
-export const opsMerge = async ({ names, keys, how }) => {
+export const opsMerge = async ({ names, keys, how, engine = 'pandas', left_on, right_on }) => {
   const res = await fetch(`${BASE()}/api/ops/merge`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ names, keys, how })
+    body: JSON.stringify({ names, keys, how, engine, left_on, right_on })
   });
   if (!res.ok) throw new Error(`Merge failed: ${res.status}`);
   return res.json();
 };
 
 export const opsPivot = async (payload) => {
+  // Add default engine if not specified
+  const payloadWithEngine = { engine: 'pandas', ...payload };
   const res = await fetch(`${BASE()}/api/ops/pivot`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payloadWithEngine)
   });
   if (!res.ok) throw new Error(`Pivot failed: ${res.status}`);
   return res.json();
 };
 
 export const opsFilter = async (payload) => {
+  // Add default engine if not specified
+  const payloadWithEngine = { engine: 'pandas', ...payload };
   const res = await fetch(`${BASE()}/api/ops/filter`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payloadWithEngine)
   });
   if (!res.ok) throw new Error(`Filter failed: ${res.status}`);
   return res.json();
 };
 
 export const opsGroupBy = async (payload) => {
+  // Add default engine if not specified
+  const payloadWithEngine = { engine: 'pandas', ...payload };
   const res = await fetch(`${BASE()}/api/ops/groupby`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payloadWithEngine)
   });
   if (!res.ok) throw new Error(`GroupBy failed: ${res.status}`);
   return res.json();
 };
 
-export const opsSelect = async ({ name, columns, exclude }) => {
+export const opsSelect = async ({ name, columns, exclude, engine = 'pandas' }) => {
   const res = await fetch(`${BASE()}/api/ops/select`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ name, columns, ...(exclude ? { exclude: true } : {}) })
+    body: JSON.stringify({ name, columns, engine, ...(exclude ? { exclude: true } : {}) })
   });
   if (!res.ok) throw new Error(`Select failed: ${res.status}`);
   return res.json();
 };
 
 // New: Rename columns
-export const opsRename = async ({ name, map }) => {
+export const opsRename = async ({ name, map, engine = 'pandas' }) => {
   const res = await fetch(`${BASE()}/api/ops/rename`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ name, map })
+    body: JSON.stringify({ name, map, engine })
   });
   if (!res.ok) throw new Error(`Rename failed: ${res.status}`);
   return res.json();
@@ -188,10 +194,12 @@ export const opsRename = async ({ name, map }) => {
 
 // New: DateTime operation (parse/derive)
 export const opsDatetime = async (payload) => {
+  // Add default engine if not specified
+  const payloadWithEngine = { engine: 'pandas', ...payload };
   const res = await fetch(`${BASE()}/api/ops/datetime`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payloadWithEngine)
   })
   if (!res.ok) {
     const t = await res.text();
@@ -202,8 +210,10 @@ export const opsDatetime = async (payload) => {
 
 // New: Mutate operation (create/overwrite a column via expression)
 export const opsMutate = async (payload) => {
+  // Add default engine if not specified
+  const payloadWithEngine = { engine: 'pandas', ...payload };
   const res = await fetch(`${BASE()}/api/ops/mutate`, {
-    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload)
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payloadWithEngine)
   })
   if (!res.ok) {
     const t = await res.text(); throw new Error(`Mutate failed: ${res.status} ${t}`)
