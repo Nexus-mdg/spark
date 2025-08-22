@@ -64,10 +64,12 @@ export const clearCache = async () => {
   return res.json();
 };
 
-export const uploadDataframe = async ({ file, name, description }) => {
+export const uploadDataframe = async ({ file, name, description, type = 'static', auto_delete_hours = 10 }) => {
   const form = new FormData();
   if (name) form.set('name', name);
   if (description) form.set('description', description);
+  form.set('type', type);
+  if (type === 'ephemeral') form.set('auto_delete_hours', auto_delete_hours.toString());
   form.set('file', file);
   const res = await fetch(`${BASE()}/api/dataframes/upload`, { 
     method: 'POST', 

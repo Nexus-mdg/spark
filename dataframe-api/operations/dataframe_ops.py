@@ -23,7 +23,8 @@ def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source
     csv_string = df.to_csv(index=False)
     df_key = f"df:{name}"
     meta_key = f"meta:{name}"
-    redis_client.set(df_key, csv_string)
+    
+    # Default to static type for operation results (no expiration)
     size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
     metadata = {
         'name': name,
@@ -34,8 +35,14 @@ def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source
         'timestamp': datetime.now().isoformat(),
         'size_mb': round(size_mb, 2),
         'format': 'csv',
-        'source': source or 'operation'
+        'source': source or 'operation',
+        'type': 'static',  # Operations always create static dataframes
+        'expires_at': None,
+        'auto_delete_hours': None
     }
+    
+    # Store without TTL (static)
+    redis_client.set(df_key, csv_string)
     redis_client.set(meta_key, json.dumps(metadata))
     redis_client.sadd("dataframe_index", name)
     return metadata
