@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import { EngineContext, ENGINE_INFO } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -515,6 +516,7 @@ function PivotBuilder({ dfOptions, onCreate }) {
 }
 
 export default function ChainedOperations() {
+  const { engine } = useContext(EngineContext)
   const [dfs, setDfs] = useState([])
   const [loading, setLoading] = useState(false)
   const [steps, setSteps] = useState([])
@@ -572,7 +574,7 @@ export default function ChainedOperations() {
   const triggerPreview = async () => {
     setPreview(p => ({ ...p, loading: true, error: '' }))
     try {
-      const res = await pipelinePreview({ steps, preview_rows: 10 })
+      const res = await pipelinePreview({ steps, preview_rows: 10, engine })
       if (!res.success) throw new Error(res.error || 'Preview failed')
       setPreview({ loading: false, error: '', steps: res.steps || [], final: res.final || null })
     } catch (e) {
@@ -589,10 +591,10 @@ export default function ChainedOperations() {
   const onRun = async () => {
     if (steps.length === 0) return toast.show('Add at least one step')
     try {
-      const res = await pipelineRun({ steps, materialize: true })
+      const res = await pipelineRun({ steps, materialize: true, engine })
       if (!res.success) throw new Error(res.error || 'Run failed')
       setResult(res.created)
-      toast.show(`Created ${res.created?.name || 'result'}`)
+      toast.show(`Created ${res.created?.name || 'result'} (${engine} engine)`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Run failed') }
   }
@@ -627,7 +629,14 @@ export default function ChainedOperations() {
   }
 
   const onRunByName = async (name) => {
-    try { const res = await pipelineRunByName(name, { materialize: true }); if (!res.success) throw new Error(res.error || 'Run failed'); toast.show(`Created ${res.created?.name || 'result'}`); await refresh() } catch (e) { toast.show(e.message || 'Run failed') }
+    try { 
+      const res = await pipelineRunByName(name, { materialize: true, engine }); 
+      if (!res.success) throw new Error(res.error || 'Run failed'); 
+      toast.show(`Created ${res.created?.name || 'result'} (${engine} engine)`); 
+      await refresh() 
+    } catch (e) { 
+      toast.show(e.message || 'Run failed') 
+    }
   }
 
   const onImportYaml = async () => {
@@ -664,6 +673,24 @@ export default function ChainedOperations() {
                 Build complex data transformation pipelines by chaining multiple operations together. 
                 Each step processes the output from the previous step, allowing you to create sophisticated workflows with live previews.
               </p>
+              
+              {/* Engine Status Indicator */}
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Pipeline Engine:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{ENGINE_INFO[engine]?.icon}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {ENGINE_INFO[engine]?.name}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {ENGINE_INFO[engine]?.description}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -837,7 +864,13 @@ export default function ChainedOperations() {
             ))}
             {preview.final && (
               <div className="border border-gray-200 dark:border-gray-600 rounded">
-                <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">Final ({preview.final.rows} rows)</div>
+                <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                  <span>Final ({preview.final.rows} rows)</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{ENGINE_INFO[engine]?.icon}</span>
+                    <span>{ENGINE_INFO[engine]?.name} engine</span>
+                  </span>
+                </div>
                 <SmallTable columns={preview.final.columns || []} rows={preview.final.preview || []} />
               </div>
             )}

@@ -22,11 +22,16 @@ pipelines_bp = Blueprint('pipelines', __name__)
 @pipelines_bp.route('/api/pipeline/preview', methods=['POST'])
 def pipeline_preview():
     """Preview pipeline execution without saving results"""
+    engine = 'unknown'  # Default value for error reporting
     try:
         p = request.get_json(force=True)
         start = p.get('start')
         steps = p.get('steps') or []
         max_rows = int(p.get('preview_rows') or 20)
+        engine = p.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
+        print(f"[DEBUG] Pipeline preview: engine={engine}, steps={len(steps)}")
+        
         current = None
         msgs: list[dict] = []
         if isinstance(start, list) and len(start) > 0:
@@ -35,55 +40,128 @@ def pipeline_preview():
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
             msgs.append({'op': 'load', 'desc': f"load {start}", 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
-        for step in steps:
-            current, desc = _apply_op(current, step, preview_mode=True)
-            msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+        
+        for i, step in enumerate(steps):
+            step_op = step.get('op') or step.get('type')
+            print(f"[DEBUG] Executing step {i+1}: {step_op} with engine={engine}")
+            try:
+                current, desc = _apply_op(current, step, preview_mode=True, engine=engine)
+                print(f"[DEBUG] Step {i+1} successful: {desc}")
+                msgs.append({'op': step_op, 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
+            except Exception as step_error:
+                print(f"[DEBUG] Step {i+1} failed: {str(step_error)}")
+                error_msg = str(step_error)
+                # Return detailed error information instead of generic 400
+                return jsonify({
+                    'success': False, 
+                    'error': error_msg,
+                    'failed_step': step_op,
+                    'step_index': i,
+                    'engine': engine,
+                    'debug_info': {
+                        'step_params': step.get('params', {}),
+                        'engine_used': engine
+                    }
+                }), 200  # Return 200 with error details instead of 400
+        
         final = None
         if current is not None:
             final = {'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows)), 'rows': int(len(current))}
-        return jsonify({'success': True, 'steps': msgs, 'final': final})
+        return jsonify({'success': True, 'steps': msgs, 'final': final, 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        print(f"[DEBUG] Pipeline preview general error: {str(e)}")
+        error_msg = str(e)
+        # Return detailed error information instead of generic 400
+        return jsonify({
+            'success': False, 
+            'error': error_msg,
+            'engine': engine,
+            'debug_info': {
+                'error_type': type(e).__name__,
+                'engine_used': engine
+            }
+        }), 200  # Return 200 with error details instead of 400
 
 
 @pipelines_bp.route('/api/pipeline/run', methods=['POST'])
 def pipeline_run():
     """Execute pipeline and optionally save result"""
+    engine = 'unknown'  # Default value for error reporting
     try:
         p = request.get_json(force=True)
         start = p.get('start')
         steps = p.get('steps') or []
         materialize = bool(p.get('materialize') or True)
         out_name = p.get('name') or None
+        engine = p.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
+        print(f"[DEBUG] Pipeline run: engine={engine}, steps={len(steps)}")
+        
         current = None
         if isinstance(start, list) and len(start) > 0:
             current = _load_df_from_cache(start[0])
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
-        for step in steps:
-            current, _ = _apply_op(current, step)
+        
+        for i, step in enumerate(steps):
+            step_op = step.get('op') or step.get('type')
+            print(f"[DEBUG] Executing step {i+1}: {step_op} with engine={engine}")
+            try:
+                current, desc = _apply_op(current, step, preview_mode=False, engine=engine)
+                print(f"[DEBUG] Step {i+1} successful: {desc}")
+            except Exception as step_error:
+                print(f"[DEBUG] Step {i+1} failed: {str(step_error)}")
+                error_msg = str(step_error)
+                # Return detailed error information instead of generic 400
+                return jsonify({
+                    'success': False, 
+                    'error': error_msg,
+                    'failed_step': step_op,
+                    'step_index': i,
+                    'engine': engine,
+                    'debug_info': {
+                        'step_params': step.get('params', {}),
+                        'engine_used': engine
+                    }
+                }), 200  # Return 200 with error details instead of 400
+        
         if current is None:
-            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
+            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps', 'engine': engine}), 200
+        
         created = None
         created_name = None
         if materialize:
             base = out_name or 'pipeline_result'
             uniq = _unique_name(base)
-            meta = _save_df_to_cache(uniq, current, description='pipeline result', source='ops:pipeline')
+            meta = _save_df_to_cache(uniq, current, description=f'pipeline result [{engine} engine]', source='ops:pipeline')
+            meta['engine'] = engine
             created = {'name': uniq, 'metadata': meta}
             created_name = uniq
+        
         # notify success
         try:
             title = 'Pipeline run'
-            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            msg = f"rows={int(len(current))}, cols={len(current.columns)} ({engine} engine)"
             if created_name:
                 msg += f"; materialized={created_name}"
             notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
         except Exception:
             pass
-        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
+        
+        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist(), 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        print(f"[DEBUG] Pipeline run general error: {str(e)}")
+        error_msg = str(e)
+        # Return detailed error information instead of generic 400
+        return jsonify({
+            'success': False, 
+            'error': error_msg,
+            'engine': engine,
+            'debug_info': {
+                'error_type': type(e).__name__,
+                'engine_used': engine
+            }
+        }), 200  # Return 200 with error details instead of 400
 
 
 @pipelines_bp.route('/api/pipelines', methods=['GET', 'POST'])
@@ -162,6 +240,7 @@ def pipelines_item(name):
 @pipelines_bp.route('/api/pipelines/<name>/run', methods=['POST'])
 def pipelines_run(name):
     """Execute a saved pipeline"""
+    engine = 'unknown'  # Default value for error reporting
     try:
         key = f'pipeline:{name}'
         if not redis_client.exists(key):
@@ -170,6 +249,10 @@ def pipelines_run(name):
         body = request.get_json(silent=True) or {}
         materialize = bool(body.get('materialize') if body.get('materialize') is not None else True)
         out_name = body.get('name') or None
+        engine = body.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
+        print(f"[DEBUG] Saved pipeline '{name}' run: engine={engine}")
+        
         start = obj.get('start')
         steps = obj.get('steps') or []
         current = None
@@ -177,30 +260,68 @@ def pipelines_run(name):
             current = _load_df_from_cache(start[0])
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
-        for step in steps:
-            current, _ = _apply_op(current, step)
+        
+        for i, step in enumerate(steps):
+            step_op = step.get('op') or step.get('type')
+            print(f"[DEBUG] Executing step {i+1}: {step_op} with engine={engine}")
+            try:
+                current, desc = _apply_op(current, step, preview_mode=False, engine=engine)
+                print(f"[DEBUG] Step {i+1} successful: {desc}")
+            except Exception as step_error:
+                print(f"[DEBUG] Step {i+1} failed: {str(step_error)}")
+                error_msg = str(step_error)
+                # Return detailed error information instead of generic 400
+                return jsonify({
+                    'success': False, 
+                    'error': error_msg,
+                    'failed_step': step_op,
+                    'step_index': i,
+                    'engine': engine,
+                    'pipeline_name': name,
+                    'debug_info': {
+                        'step_params': step.get('params', {}),
+                        'engine_used': engine
+                    }
+                }), 200  # Return 200 with error details instead of 400
+        
         if current is None:
-            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
+            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps', 'engine': engine}), 200
+        
         created = None
         created_name = None
         if materialize:
             base = out_name or f'{name}_result'
             uniq = _unique_name(base)
-            meta = _save_df_to_cache(uniq, current, description=f'pipeline: {name}', source='ops:pipeline')
+            meta = _save_df_to_cache(uniq, current, description=f'pipeline: {name} [{engine} engine]', source='ops:pipeline')
+            meta['engine'] = engine
             created = {'name': uniq, 'metadata': meta}
             created_name = uniq
+        
         # notify success
         try:
             title = f'Pipeline run: {name}'
-            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            msg = f"rows={int(len(current))}, cols={len(current.columns)} ({engine} engine)"
             if created_name:
                 msg += f"; materialized={created_name}"
             notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
         except Exception:
             pass
-        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
+        
+        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist(), 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        print(f"[DEBUG] Saved pipeline '{name}' general error: {str(e)}")
+        error_msg = str(e)
+        # Return detailed error information instead of generic 400
+        return jsonify({
+            'success': False, 
+            'error': error_msg,
+            'engine': engine,
+            'pipeline_name': name,
+            'debug_info': {
+                'error_type': type(e).__name__,
+                'engine_used': engine
+            }
+        }), 200  # Return 200 with error details instead of 400
 
 
 @pipelines_bp.route('/api/pipelines/<name>/export.yml', methods=['GET'])

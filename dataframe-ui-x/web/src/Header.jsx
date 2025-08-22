@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import { useTheme } from './contexts/ThemeContext.jsx'
+import EngineSelector from './components/EngineSelector.jsx'
 
 export default function Header({ title, children }) {
   const navigate = useNavigate()
@@ -147,6 +148,9 @@ export default function Header({ title, children }) {
                 </svg>
               )}
             </button>
+
+            {/* Engine Selector */}
+            <EngineSelector className="hidden sm:block" />
 
             {/* Mobile Navigation Menu */}
             <div className="md:hidden">
