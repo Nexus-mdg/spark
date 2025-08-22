@@ -848,7 +848,7 @@ export default function Home() {
             <table className="min-w-full text-sm table-fixed">
               <thead className="text-left text-gray-600 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                 <tr>
-                  <th className="py-2 pr-4 w-[28ch]">
+                  <th className="py-2 pr-4 w-[30ch]">
                     <button
                       onClick={() => handleSort('name')}
                       className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
@@ -904,17 +904,17 @@ export default function Home() {
                       )}
                     </button>
                   </th>
-                  <th className="py-2 pr-4">Type</th>
                   <th className="py-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                {loadingList && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={7}>Loading…</td></tr>)}
-                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={7}>No cached DataFrames</td></tr>)}
+                {loadingList && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>Loading…</td></tr>)}
+                {!loadingList && rows.length === 0 && (<tr><td className="py-3 text-gray-500 dark:text-gray-400" colSpan={6}>No cached DataFrames</td></tr>)}
                 {paginatedRows.map((r) => (
                   <tr key={r.name}>
                     <td className="py-3 pr-4 font-medium align-top">
-                      <div className="max-w-[28ch]">
+                      <div className="max-w-[30ch] flex items-center gap-2">
+                        <span className="text-lg flex-shrink-0">{getTypeIcon(r.type || 'static')}</span>
                         <button
                           className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:underline"
                           onClick={() => navigate(`/analysis/${encodeURIComponent(r.name)}`)}
@@ -941,14 +941,6 @@ export default function Home() {
                       {r.timestamp && !isNaN(new Date(r.timestamp).getTime()) 
                         ? new Date(r.timestamp).toLocaleString() 
                         : '-'}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{getTypeIcon(r.type || 'static')}</span>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeClass(r.type || 'static')}`}>
-                          {(r.type || 'static').charAt(0).toUpperCase() + (r.type || 'static').slice(1)}
-                        </span>
-                      </div>
                     </td>
                     <td className="py-3">
                       <div className="flex items-center gap-0.5">
