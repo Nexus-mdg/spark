@@ -33,19 +33,35 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
     if op == 'merge':
         how = (params.get('how') or 'inner').lower()
         keys = params.get('keys') or []
-        if not keys:
-            raise ValueError('merge: keys are required')
+        left_on = params.get('left_on') or []
+        right_on = params.get('right_on') or []
         names: list[str] = params.get('names') or []
         others: list[str] = params.get('with') or params.get('others') or []
         
-        # Debug logging
-        print(f"[DEBUG] merge operation: how={how}, keys={keys}, names={names}, others={others}")
+        # Support both old keys format and new left_on/right_on format
+        if left_on or right_on:
+            # New column mapping format
+            if not left_on or not right_on:
+                raise ValueError('merge: both left_on and right_on are required when using column mapping')
+            if isinstance(left_on, str):
+                left_on = [k.strip() for k in left_on.split(',') if k.strip()]
+            if isinstance(right_on, str):
+                right_on = [k.strip() for k in right_on.split(',') if k.strip()]
+            if len(left_on) != len(right_on):
+                raise ValueError('merge: left_on and right_on must have the same number of columns')
+            if not left_on or not right_on:
+                raise ValueError('merge: left_on and right_on must be non-empty')
+        else:
+            # Fallback to old keys format for backward compatibility
+            if not keys:
+                raise ValueError('merge: either keys or left_on/right_on are required')
+            if isinstance(keys, str):
+                keys = [k.strip() for k in keys.split(',') if k.strip()]
+            if not isinstance(keys, list) or not keys:
+                raise ValueError('merge: keys must be a non-empty list or comma-separated string')
         
-        # Validate that keys is a list of strings
-        if isinstance(keys, str):
-            keys = [k.strip() for k in keys.split(',') if k.strip()]
-        if not isinstance(keys, list) or not keys:
-            raise ValueError('merge: keys must be a non-empty list or comma-separated string')
+        # Debug logging
+        print(f"[DEBUG] merge operation: how={how}, keys={keys}, left_on={left_on}, right_on={right_on}, names={names}, others={others}")
             
         # Handle the case where we have a current dataframe AND named dataframes to merge with
         if names and df_curr is not None:
@@ -56,9 +72,16 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
             print(f"[DEBUG] starting with current dataframe: shape={df.shape}, columns={list(df.columns)}")
             
             # Validate that merge keys exist in current dataframe
-            missing_keys_curr = [k for k in keys if k not in df.columns]
-            if missing_keys_curr:
-                raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+            if left_on and right_on:
+                # Column mapping validation
+                missing_keys_curr = [k for k in left_on if k not in df.columns]
+                if missing_keys_curr:
+                    raise ValueError(f'merge: left_on columns {missing_keys_curr} not found in current dataframe')
+            else:
+                # Traditional keys validation
+                missing_keys_curr = [k for k in keys if k not in df.columns]
+                if missing_keys_curr:
+                    raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
             
             # Pre-validate that all required named dataframes exist
             from utils.redis_client import redis_client
@@ -79,13 +102,25 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
                 except ValueError as e:
                     raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
                 # Validate that merge keys exist in the other dataframe
-                missing_keys_other = [k for k in keys if k not in d2.columns]
-                if missing_keys_other:
-                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
-                print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
-                df = df.merge(d2, on=keys, how=how)
+                if left_on and right_on:
+                    # Column mapping validation
+                    missing_keys_other = [k for k in right_on if k not in d2.columns]
+                    if missing_keys_other:
+                        raise ValueError(f'merge: right_on columns {missing_keys_other} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging current dataframe with '{nm}' on left_on={left_on}, right_on={right_on} with how='{how}'")
+                    df = df.merge(d2, left_on=left_on, right_on=right_on, how=how)
+                else:
+                    # Traditional keys validation and merge
+                    missing_keys_other = [k for k in keys if k not in d2.columns]
+                    if missing_keys_other:
+                        raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
+                    df = df.merge(d2, on=keys, how=how)
                 print(f"[DEBUG] merge result: shape={df.shape}")
-            return df, f'merge current + names={names} how={how} keys={keys}'
+            if left_on and right_on:
+                return df, f'merge current + names={names} how={how} left_on={left_on} right_on={right_on}'
+            else:
+                return df, f'merge current + names={names} how={how} keys={keys}'
         
         if names:
             if len(names) < 2:
@@ -114,24 +149,46 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
                 except ValueError as e:
                     raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
                 # Validate that merge keys exist in both dataframes
-                missing_keys_df1 = [k for k in keys if k not in df.columns]
-                missing_keys_df2 = [k for k in keys if k not in d2.columns]
-                if missing_keys_df1:
-                    raise ValueError(f'merge: keys {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
-                if missing_keys_df2:
-                    raise ValueError(f'merge: keys {missing_keys_df2} not found in dataframe "{nm}"')
-                print(f"[DEBUG] merging dataframes on keys {keys} with how='{how}'")
-                df = df.merge(d2, on=keys, how=how)
+                if left_on and right_on:
+                    # Column mapping validation - for multi-df merge, left_on refers to the first/accumulated df
+                    missing_keys_df1 = [k for k in left_on if k not in df.columns]
+                    missing_keys_df2 = [k for k in right_on if k not in d2.columns]
+                    if missing_keys_df1:
+                        raise ValueError(f'merge: left_on columns {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
+                    if missing_keys_df2:
+                        raise ValueError(f'merge: right_on columns {missing_keys_df2} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging dataframes on left_on={left_on}, right_on={right_on} with how='{how}'")
+                    df = df.merge(d2, left_on=left_on, right_on=right_on, how=how)
+                else:
+                    # Traditional keys validation and merge
+                    missing_keys_df1 = [k for k in keys if k not in df.columns]
+                    missing_keys_df2 = [k for k in keys if k not in d2.columns]
+                    if missing_keys_df1:
+                        raise ValueError(f'merge: keys {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
+                    if missing_keys_df2:
+                        raise ValueError(f'merge: keys {missing_keys_df2} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging dataframes on keys {keys} with how='{how}'")
+                    df = df.merge(d2, on=keys, how=how)
                 print(f"[DEBUG] merge result: shape={df.shape}")
-            return df, f'merge names={names} how={how} keys={keys}'
+            if left_on and right_on:
+                return df, f'merge names={names} how={how} left_on={left_on} right_on={right_on}'
+            else:
+                return df, f'merge names={names} how={how} keys={keys}'
         if df_curr is None:
             raise ValueError('merge: no current dataframe; add a load step or use params.names')
         df = df_curr.copy()
         
-        # Validate that merge keys exist in current dataframe
-        missing_keys_curr = [k for k in keys if k not in df.columns]
-        if missing_keys_curr:
-            raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+        # Validate that merge keys exist in current dataframe  
+        if left_on and right_on:
+            # Column mapping validation
+            missing_keys_curr = [k for k in left_on if k not in df.columns]
+            if missing_keys_curr:
+                raise ValueError(f'merge: left_on columns {missing_keys_curr} not found in current dataframe')
+        else:
+            # Traditional keys validation
+            missing_keys_curr = [k for k in keys if k not in df.columns]
+            if missing_keys_curr:
+                raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
             
         for nm in others:
             try:
@@ -139,11 +196,22 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
             except ValueError as e:
                 raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
             # Validate that merge keys exist in the other dataframe
-            missing_keys_other = [k for k in keys if k not in d2.columns]
-            if missing_keys_other:
-                raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
-            df = df.merge(d2, on=keys, how=how)
-        return df, f'merge with={others} how={how} keys={keys}'
+            if left_on and right_on:
+                # Column mapping validation
+                missing_keys_other = [k for k in right_on if k not in d2.columns]
+                if missing_keys_other:
+                    raise ValueError(f'merge: right_on columns {missing_keys_other} not found in dataframe "{nm}"')
+                df = df.merge(d2, left_on=left_on, right_on=right_on, how=how)
+            else:
+                # Traditional keys validation and merge
+                missing_keys_other = [k for k in keys if k not in d2.columns]
+                if missing_keys_other:
+                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                df = df.merge(d2, on=keys, how=how)
+        if left_on and right_on:
+            return df, f'merge with={others} how={how} left_on={left_on} right_on={right_on}'
+        else:
+            return df, f'merge with={others} how={how} keys={keys}'
 
     # filter
     if op == 'filter':

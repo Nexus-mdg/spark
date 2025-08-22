@@ -221,20 +221,44 @@ def op_merge():
         p = request.get_json(force=True)
         names = p.get('names') or []
         keys = p.get('keys') or []
+        left_on = p.get('left_on') or []
+        right_on = p.get('right_on') or []
         how = (p.get('how') or 'inner').lower()
+        
         if how not in ['inner', 'left', 'right', 'outer']:
             return jsonify({'success': False, 'error': 'how must be one of inner,left,right,outer'}), 400
         if len(names) < 2:
             return jsonify({'success': False, 'error': 'At least 2 dataframe names required'}), 400
-        if len(keys) < 1:
-            return jsonify({'success': False, 'error': 'At least 1 key is required'}), 400
+        
+        # Support both old keys format and new left_on/right_on format
+        if left_on or right_on:
+            if not left_on or not right_on:
+                return jsonify({'success': False, 'error': 'Both left_on and right_on are required when using column mapping'}), 400
+            if len(left_on) != len(right_on):
+                return jsonify({'success': False, 'error': 'left_on and right_on must have the same number of columns'}), 400
+            if len(left_on) < 1:
+                return jsonify({'success': False, 'error': 'At least 1 column mapping is required'}), 400
+        else:
+            if len(keys) < 1:
+                return jsonify({'success': False, 'error': 'At least 1 key is required'}), 400
+        
         df = _load_df_from_cache(names[0])
         for nm in names[1:]:
             d2 = _load_df_from_cache(nm)
-            df = df.merge(d2, on=keys, how=how)
-        base = f"{'_'.join(names)}__merge_{how}_by_{'-'.join(keys)}"
+            if left_on and right_on:
+                df = df.merge(d2, left_on=left_on, right_on=right_on, how=how)
+            else:
+                df = df.merge(d2, on=keys, how=how)
+        
+        if left_on and right_on:
+            base = f"{'_'.join(names)}__merge_{how}_by_{'-'.join(left_on)}_to_{'-'.join(right_on)}"
+            description = f"Merge {names} on {left_on} → {right_on} ({how})"
+        else:
+            base = f"{'_'.join(names)}__merge_{how}_by_{'-'.join(keys)}"
+            description = f"Merge {names} on {keys} ({how})"
+        
         out_name = _unique_name(base)
-        meta = _save_df_to_cache(out_name, df, description=f"Merge {names} on {keys} ({how})", source='ops:merge')
+        meta = _save_df_to_cache(out_name, df, description=description, source='ops:merge')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
