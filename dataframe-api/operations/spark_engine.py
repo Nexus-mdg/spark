@@ -78,11 +78,39 @@ def _pandas_to_spark(df: pd.DataFrame, spark):
 
 
 def _spark_to_pandas(sdf):
-    """Convert Spark DataFrame to pandas DataFrame"""
+    """Convert Spark DataFrame to pandas DataFrame with fallback for environment issues"""
     try:
         return sdf.toPandas()
     except Exception as e:
-        raise ValueError(f'Failed to convert Spark DataFrame to pandas: {str(e)}')
+        error_msg = str(e)
+        
+        # Check for distutils-related errors (common in Python 3.10+/container environments)
+        if 'distutils' in error_msg or 'No module named' in error_msg:
+            # Try alternative conversion methods
+            try:
+                # Method 1: Use Arrow-based conversion if available
+                return sdf.toPandas()
+            except Exception:
+                try:
+                    # Method 2: Convert via collect() and manual DataFrame creation
+                    import pandas as pd
+                    
+                    # Get schema and collect data
+                    columns = sdf.columns
+                    rows = sdf.collect()
+                    
+                    # Convert rows to list of lists for pandas
+                    data = []
+                    for row in rows:
+                        data.append([row[col] for col in columns])
+                    
+                    # Create pandas DataFrame
+                    df = pd.DataFrame(data, columns=columns)
+                    return df
+                except Exception as fallback_error:
+                    raise ValueError(f'Failed to convert Spark DataFrame to pandas: {error_msg}. Fallback conversion also failed: {str(fallback_error)}. This may be due to missing system dependencies like distutils in the Spark environment.')
+        
+        raise ValueError(f'Failed to convert Spark DataFrame to pandas: {error_msg}')
 
 
 def spark_compare(df1: pd.DataFrame, df2: pd.DataFrame, n1: str, n2: str) -> dict:

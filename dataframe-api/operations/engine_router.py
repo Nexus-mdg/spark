@@ -26,6 +26,10 @@ def _handle_spark_error(operation_name: str, error: Exception) -> None:
     if 'stopped SparkContext' in error_msg or 'Cannot call methods on a stopped SparkContext' in error_msg:
         raise ValueError(f'Spark session error - SparkContext was stopped unexpectedly during {operation_name} operation. This may indicate resource constraints or connectivity issues.')
     
+    # Check for distutils/environment issues (common in containerized Spark)
+    if 'distutils' in error_msg or ('No module named' in error_msg and 'distutils' in error_msg):
+        raise ValueError(f'Spark environment issue in {operation_name} operation: Missing system dependencies (distutils) in Spark environment. This is common in Python 3.10+ containers. Consider using pandas engine or updating Spark container configuration.')
+    
     # Check for schema or data conversion issues
     if any(phrase in error_msg for phrase in ['schema', 'convert', 'toPandas', 'createDataFrame']):
         raise ValueError(f'Spark data conversion error in {operation_name} operation: {error_msg}. This may be due to unsupported data types or schema mismatches.')
