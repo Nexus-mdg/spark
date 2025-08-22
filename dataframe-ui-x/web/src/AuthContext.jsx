@@ -103,7 +103,10 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
+      // Only make logout API call if authentication is enabled
+      if (!authDisabled) {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      }
     } catch (error) {
       console.error('Logout request failed:', error)
     } finally {
@@ -115,6 +118,14 @@ export const AuthProvider = ({ children }) => {
 
   // Change password function
   const changePassword = async (currentPassword, newPassword) => {
+    // If authentication is disabled, password changes are not supported
+    if (authDisabled) {
+      return { 
+        success: false, 
+        error: 'Password changes are not available in development mode with authentication disabled.' 
+      }
+    }
+
     try {
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',

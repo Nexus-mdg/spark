@@ -6,7 +6,7 @@ import Footer from './components/Footer.jsx'
 
 export default function UserProfile() {
   const navigate = useNavigate()
-  const { user, changePassword, logout } = useAuth()
+  const { user, changePassword, logout, authDisabled } = useAuth()
   
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -72,6 +72,25 @@ export default function UserProfile() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="space-y-6">
+          {/* Development Mode Banner */}
+          {authDisabled && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-400">Development Mode</h3>
+                  <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                    <p>Authentication is currently disabled for development. This is a mock user profile with limited functionality.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* User Information */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-600">
@@ -82,20 +101,26 @@ export default function UserProfile() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
                   <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    {user?.username}
+                    {user?.username}{authDisabled && <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">(Development Mode)</span>}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Created</label>
                   <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                    {authDisabled 
+                      ? 'N/A (Development Mode)'
+                      : (user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown')
+                    }
                   </div>
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Login</label>
                 <div className="mt-1 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  {user?.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                  {authDisabled
+                    ? 'N/A (Development Mode)'
+                    : (user?.last_login ? new Date(user.last_login).toLocaleString() : 'Never')
+                  }
                 </div>
               </div>
             </div>
@@ -107,7 +132,20 @@ export default function UserProfile() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Security Settings</h2>
             </div>
             <div className="px-6 py-4">
-              {!showChangePassword ? (
+              {authDisabled ? (
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Password</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Password management is not available in development mode</p>
+                  </div>
+                  <button
+                    disabled
+                    className="px-4 py-2 text-sm font-medium text-gray-400 border border-gray-300 dark:border-gray-600 rounded-md cursor-not-allowed"
+                  >
+                    Not Available
+                  </button>
+                </div>
+              ) : !showChangePassword ? (
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Password</h3>
@@ -237,14 +275,21 @@ export default function UserProfile() {
             <div className="px-6 py-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Sign Out</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Sign out of your account on this device</p>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {authDisabled ? 'Reset Session' : 'Sign Out'}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {authDisabled 
+                      ? 'Reset your development session and return to the home page'
+                      : 'Sign out of your account on this device'
+                    }
+                  </p>
                 </div>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 border border-red-600 dark:border-red-400 hover:border-red-500 dark:hover:border-red-300 rounded-md"
                 >
-                  Sign Out
+                  {authDisabled ? 'Reset Session' : 'Sign Out'}
                 </button>
               </div>
             </div>
@@ -257,10 +302,15 @@ export default function UserProfile() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowLogoutDialog(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-600">
-              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">Confirm Sign Out</h4>
+              <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {authDisabled ? 'Reset Session' : 'Confirm Sign Out'}
+              </h4>
             </div>
             <div className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-              Are you sure you want to sign out? You'll need to log in again to access your data.
+              {authDisabled
+                ? 'Are you sure you want to reset your development session? This will return you to the home page.'
+                : 'Are you sure you want to sign out? You\'ll need to log in again to access your data.'
+              }
             </div>
             <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
               <button 
@@ -273,7 +323,7 @@ export default function UserProfile() {
                 onClick={confirmLogout} 
                 className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
               >
-                Sign Out
+                {authDisabled ? 'Reset Session' : 'Sign Out'}
               </button>
             </div>
           </div>
