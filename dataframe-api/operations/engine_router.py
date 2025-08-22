@@ -2,6 +2,7 @@
 Engine router for DataFrame operations
 Routes operations to appropriate engine (Spark or Pandas) based on engine parameter
 """
+import os
 import pandas as pd
 from typing import Dict, List, Optional, Any, Tuple
 
@@ -10,6 +11,15 @@ try:
 except ImportError:
     # Fallback for direct execution
     import pandas_engine, spark_engine
+
+
+def _handle_spark_error(operation_name: str, error: Exception) -> None:
+    """Handle Spark engine errors with informative messages"""
+    error_msg = str(error)
+    if 'Failed to connect' in error_msg or 'Connection refused' in error_msg:
+        raise ValueError(f'Spark engine unavailable - check if Spark cluster is running at {os.getenv("SPARK_MASTER_URL", "spark://localhost:7077")}. Original error: {error_msg}')
+    else:
+        raise ValueError(f'Spark engine failed for {operation_name} operation: {error_msg}')
 
 
 def validate_engine(engine: str) -> str:
@@ -62,7 +72,10 @@ def route_merge(dfs: List[pd.DataFrame], names: List[str], keys: List[str],
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_merge(dfs, names, keys, how, left_on, right_on)
+        try:
+            return spark_engine.spark_merge(dfs, names, keys, how, left_on, right_on)
+        except Exception as e:
+            _handle_spark_error('merge', e)
     else:
         return pandas_engine.pandas_merge(dfs, names, keys, how, left_on, right_on)
 
@@ -72,7 +85,10 @@ def route_filter(df: pd.DataFrame, conditions: List[Dict], combine: str, engine:
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_filter(df, conditions, combine)
+        try:
+            return spark_engine.spark_filter(df, conditions, combine)
+        except Exception as e:
+            _handle_spark_error('filter', e)
     else:
         return pandas_engine.pandas_filter(df, conditions, combine)
 
@@ -82,7 +98,10 @@ def route_groupby(df: pd.DataFrame, by: List[str], aggs: Optional[Dict], engine:
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_groupby(df, by, aggs)
+        try:
+            return spark_engine.spark_groupby(df, by, aggs)
+        except Exception as e:
+            _handle_spark_error('groupby', e)
     else:
         return pandas_engine.pandas_groupby(df, by, aggs)
 
@@ -92,7 +111,10 @@ def route_select(df: pd.DataFrame, columns: List[str], exclude: bool, engine: st
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_select(df, columns, exclude)
+        try:
+            return spark_engine.spark_select(df, columns, exclude)
+        except Exception as e:
+            _handle_spark_error('select', e)
     else:
         return pandas_engine.pandas_select(df, columns, exclude)
 
@@ -102,7 +124,10 @@ def route_rename(df: pd.DataFrame, rename_map: Dict[str, str], engine: str) -> p
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_rename(df, rename_map)
+        try:
+            return spark_engine.spark_rename(df, rename_map)
+        except Exception as e:
+            _handle_spark_error('rename', e)
     else:
         return pandas_engine.pandas_rename(df, rename_map)
 
@@ -112,7 +137,10 @@ def route_pivot(df: pd.DataFrame, mode: str, engine: str, **kwargs) -> pd.DataFr
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_pivot(df, mode, **kwargs)
+        try:
+            return spark_engine.spark_pivot(df, mode, **kwargs)
+        except Exception as e:
+            _handle_spark_error('pivot', e)
     else:
         return pandas_engine.pandas_pivot(df, mode, **kwargs)
 
@@ -122,7 +150,10 @@ def route_datetime(df: pd.DataFrame, action: str, source: str, engine: str, **kw
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_datetime(df, action, source, **kwargs)
+        try:
+            return spark_engine.spark_datetime(df, action, source, **kwargs)
+        except Exception as e:
+            _handle_spark_error('datetime', e)
     else:
         return pandas_engine.pandas_datetime(df, action, source, **kwargs)
 
@@ -133,7 +164,10 @@ def route_mutate(df: pd.DataFrame, target: str, expr: str, mode: str,
     engine = validate_engine(engine)
     
     if engine == 'spark':
-        return spark_engine.spark_mutate(df, target, expr, mode, overwrite)
+        try:
+            return spark_engine.spark_mutate(df, target, expr, mode, overwrite)
+        except Exception as e:
+            _handle_spark_error('mutate', e)
     else:
         return pandas_engine.pandas_mutate(df, target, expr, mode, overwrite)
 
