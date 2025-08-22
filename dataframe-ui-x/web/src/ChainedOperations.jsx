@@ -92,6 +92,7 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         const hasCurrentDataframe = stepCount > 0;
         const minDataframesRequired = hasCurrentDataframe ? 1 : 2;
         const selectedCount = (state.names || []).length;
+        const isAdvancedJoin = state.advancedJoin || false;
         
         return (
           <div className="space-y-3">
@@ -114,11 +115,56 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
-                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.keys || ''} onChange={e => update({ keys: e.target.value })} placeholder="id" />
+            
+            {/* Advanced Join Toggle */}
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="advancedJoin" 
+                checked={isAdvancedJoin} 
+                onChange={e => update({ advancedJoin: e.target.checked, keys: '', leftOn: '', rightOn: '' })} 
+              />
+              <label htmlFor="advancedJoin" className="text-sm text-gray-900 dark:text-gray-100 cursor-pointer">
+                Advanced Join (different column names)
               </label>
+            </div>
+
+            {/* Join Configuration */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              {!isAdvancedJoin ? (
+                // Simple join with same column names
+                <label className="block">
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">Join keys (comma)</span>
+                  <input 
+                    className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" 
+                    value={state.keys || ''} 
+                    onChange={e => update({ keys: e.target.value })} 
+                    placeholder="id" 
+                  />
+                </label>
+              ) : (
+                // Advanced join with column mapping
+                <>
+                  <label className="block">
+                    <span className="block text-sm text-gray-900 dark:text-gray-100">Left columns (comma)</span>
+                    <input 
+                      className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" 
+                      value={state.leftOn || ''} 
+                      onChange={e => update({ leftOn: e.target.value })} 
+                      placeholder="customer_id" 
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-sm text-gray-900 dark:text-gray-100">Right columns (comma)</span>
+                    <input 
+                      className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" 
+                      value={state.rightOn || ''} 
+                      onChange={e => update({ rightOn: e.target.value })} 
+                      placeholder="cust_id" 
+                    />
+                  </label>
+                </>
+              )}
               <label className="block">
                 <span className="block text-sm text-gray-900 dark:text-gray-100">Join type</span>
                 <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.how || 'inner'} onChange={e => update({ how: e.target.value })}>
@@ -130,11 +176,32 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
               </label>
               <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
                 const names = state.names || []
-                const keys = String(state.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
-                if (names.length < minDataframesRequired || keys.length === 0) return
-                onCreate({ op: 'merge', params: { names, keys, how: state.how || 'inner' } })
+                if (names.length < minDataframesRequired) return
+                
+                if (isAdvancedJoin) {
+                  // Advanced join with column mapping
+                  const leftOn = String(state.leftOn || '').split(',').map(s=>s.trim()).filter(Boolean)
+                  const rightOn = String(state.rightOn || '').split(',').map(s=>s.trim()).filter(Boolean)
+                  if (leftOn.length === 0 || rightOn.length === 0 || leftOn.length !== rightOn.length) return
+                  onCreate({ op: 'merge', params: { names, left_on: leftOn, right_on: rightOn, how: state.how || 'inner' } })
+                } else {
+                  // Simple join with same column names
+                  const keys = String(state.keys || '').split(',').map(s=>s.trim()).filter(Boolean)
+                  if (keys.length === 0) return
+                  onCreate({ op: 'merge', params: { names, keys, how: state.how || 'inner' } })
+                }
               }}>Add step</button>
             </div>
+            
+            {isAdvancedJoin && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm">
+                <div className="font-medium text-yellow-800 dark:text-yellow-200">Column Mapping Info</div>
+                <div className="text-yellow-700 dark:text-yellow-300 mt-1">
+                  Left columns are from the {hasCurrentDataframe ? 'current dataframe' : 'first selected dataframe'}. 
+                  Right columns are from the {hasCurrentDataframe ? 'selected dataframe(s)' : 'second dataframe'}.
+                </div>
+              </div>
+            )}
           </div>
         )
       case 'filter':
