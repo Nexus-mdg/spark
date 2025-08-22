@@ -228,13 +228,53 @@ def op_merge():
             return jsonify({'success': False, 'error': 'At least 2 dataframe names required'}), 400
         if len(keys) < 1:
             return jsonify({'success': False, 'error': 'At least 1 key is required'}), 400
+        
+        # Support both old format (list of strings) and new format (list of mappings)
+        # Old format: ["id", "name"] - same column names in both dataframes
+        # New format: [{"left": "customer_id", "right": "cust_id"}, {"left": "product_code", "right": "prod_code"}]
+        
         df = _load_df_from_cache(names[0])
         for nm in names[1:]:
             d2 = _load_df_from_cache(nm)
-            df = df.merge(d2, on=keys, how=how)
-        base = f"{'_'.join(names)}__merge_{how}_by_{'-'.join(keys)}"
+            
+            # Determine merge parameters based on keys format
+            if all(isinstance(k, str) for k in keys):
+                # Old format: simple column names
+                df = df.merge(d2, on=keys, how=how)
+            else:
+                # New format: column mappings
+                left_cols = []
+                right_cols = []
+                for key_mapping in keys:
+                    if isinstance(key_mapping, str):
+                        # Mixed format - treat string as same column name
+                        left_cols.append(key_mapping)
+                        right_cols.append(key_mapping)
+                    elif isinstance(key_mapping, dict) and 'left' in key_mapping and 'right' in key_mapping:
+                        left_cols.append(key_mapping['left'])
+                        right_cols.append(key_mapping['right'])
+                    else:
+                        return jsonify({'success': False, 'error': f'Invalid key mapping format: {key_mapping}'}), 400
+                
+                # Verify columns exist
+                missing_left = [col for col in left_cols if col not in df.columns]
+                missing_right = [col for col in right_cols if col not in d2.columns]
+                if missing_left:
+                    return jsonify({'success': False, 'error': f'Left columns not found in {names[0]}: {missing_left}'}), 400
+                if missing_right:
+                    return jsonify({'success': False, 'error': f'Right columns not found in {nm}: {missing_right}'}), 400
+                
+                df = df.merge(d2, left_on=left_cols, right_on=right_cols, how=how)
+        
+        # Generate description based on keys format
+        if all(isinstance(k, str) for k in keys):
+            key_desc = ','.join(keys)
+        else:
+            key_desc = ','.join([f"{k['left']}={k['right']}" if isinstance(k, dict) else k for k in keys])
+        
+        base = f"{'_'.join(names)}__merge_{how}_by_{key_desc.replace('=', '-').replace(',', '_')}"
         out_name = _unique_name(base)
-        meta = _save_df_to_cache(out_name, df, description=f"Merge {names} on {keys} ({how})", source='ops:merge')
+        meta = _save_df_to_cache(out_name, df, description=f"Merge {names} on {key_desc} ({how})", source='ops:merge')
         return jsonify({'success': True, 'name': out_name, 'metadata': meta})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

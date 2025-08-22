@@ -55,11 +55,6 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
             df = df_curr.copy()
             print(f"[DEBUG] starting with current dataframe: shape={df.shape}, columns={list(df.columns)}")
             
-            # Validate that merge keys exist in current dataframe
-            missing_keys_curr = [k for k in keys if k not in df.columns]
-            if missing_keys_curr:
-                raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
-            
             # Pre-validate that all required named dataframes exist
             from utils.redis_client import redis_client
             missing_dfs = []
@@ -78,14 +73,51 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
                     print(f"[DEBUG] loaded dataframe '{nm}': shape={d2.shape}, columns={list(d2.columns)}")
                 except ValueError as e:
                     raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
-                # Validate that merge keys exist in the other dataframe
-                missing_keys_other = [k for k in keys if k not in d2.columns]
-                if missing_keys_other:
-                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
-                print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
-                df = df.merge(d2, on=keys, how=how)
+                
+                # Handle both old and new key formats
+                if all(isinstance(k, str) for k in keys):
+                    # Old format: simple column names
+                    missing_keys_curr = [k for k in keys if k not in df.columns]
+                    missing_keys_other = [k for k in keys if k not in d2.columns]
+                    if missing_keys_curr:
+                        raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+                    if missing_keys_other:
+                        raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging current dataframe with '{nm}' on keys {keys} with how='{how}'")
+                    df = df.merge(d2, on=keys, how=how)
+                else:
+                    # New format: column mappings
+                    left_cols = []
+                    right_cols = []
+                    for key_mapping in keys:
+                        if isinstance(key_mapping, str):
+                            left_cols.append(key_mapping)
+                            right_cols.append(key_mapping)
+                        elif isinstance(key_mapping, dict) and 'left' in key_mapping and 'right' in key_mapping:
+                            left_cols.append(key_mapping['left'])
+                            right_cols.append(key_mapping['right'])
+                        else:
+                            raise ValueError(f'merge: invalid key mapping format: {key_mapping}')
+                    
+                    missing_left = [col for col in left_cols if col not in df.columns]
+                    missing_right = [col for col in right_cols if col not in d2.columns]
+                    if missing_left:
+                        raise ValueError(f'merge: left columns not found in current dataframe: {missing_left}')
+                    if missing_right:
+                        raise ValueError(f'merge: right columns not found in dataframe "{nm}": {missing_right}')
+                    
+                    print(f"[DEBUG] merging current dataframe with '{nm}' on left={left_cols}, right={right_cols} with how='{how}'")
+                    df = df.merge(d2, left_on=left_cols, right_on=right_cols, how=how)
+                
                 print(f"[DEBUG] merge result: shape={df.shape}")
-            return df, f'merge current + names={names} how={how} keys={keys}'
+            
+            # Generate description based on keys format
+            if all(isinstance(k, str) for k in keys):
+                key_desc = ','.join(keys)
+            else:
+                key_desc = ','.join([f"{k['left']}={k['right']}" if isinstance(k, dict) else k for k in keys])
+            
+            return df, f'merge current + names={names} how={how} keys={key_desc}'
         
         if names:
             if len(names) < 2:
@@ -113,37 +145,101 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
                     print(f"[DEBUG] loaded dataframe '{nm}': shape={d2.shape}, columns={list(d2.columns)}")
                 except ValueError as e:
                     raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
-                # Validate that merge keys exist in both dataframes
-                missing_keys_df1 = [k for k in keys if k not in df.columns]
-                missing_keys_df2 = [k for k in keys if k not in d2.columns]
-                if missing_keys_df1:
-                    raise ValueError(f'merge: keys {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
-                if missing_keys_df2:
-                    raise ValueError(f'merge: keys {missing_keys_df2} not found in dataframe "{nm}"')
-                print(f"[DEBUG] merging dataframes on keys {keys} with how='{how}'")
-                df = df.merge(d2, on=keys, how=how)
+                
+                # Handle both old and new key formats
+                if all(isinstance(k, str) for k in keys):
+                    # Old format: simple column names
+                    missing_keys_df1 = [k for k in keys if k not in df.columns]
+                    missing_keys_df2 = [k for k in keys if k not in d2.columns]
+                    if missing_keys_df1:
+                        raise ValueError(f'merge: keys {missing_keys_df1} not found in dataframe "{names[0] if nm == names[1] else "previous result"}"')
+                    if missing_keys_df2:
+                        raise ValueError(f'merge: keys {missing_keys_df2} not found in dataframe "{nm}"')
+                    print(f"[DEBUG] merging dataframes on keys {keys} with how='{how}'")
+                    df = df.merge(d2, on=keys, how=how)
+                else:
+                    # New format: column mappings
+                    left_cols = []
+                    right_cols = []
+                    for key_mapping in keys:
+                        if isinstance(key_mapping, str):
+                            left_cols.append(key_mapping)
+                            right_cols.append(key_mapping)
+                        elif isinstance(key_mapping, dict) and 'left' in key_mapping and 'right' in key_mapping:
+                            left_cols.append(key_mapping['left'])
+                            right_cols.append(key_mapping['right'])
+                        else:
+                            raise ValueError(f'merge: invalid key mapping format: {key_mapping}')
+                    
+                    missing_left = [col for col in left_cols if col not in df.columns]
+                    missing_right = [col for col in right_cols if col not in d2.columns]
+                    if missing_left:
+                        raise ValueError(f'merge: left columns not found in dataframe "{names[0] if nm == names[1] else "previous result"}": {missing_left}')
+                    if missing_right:
+                        raise ValueError(f'merge: right columns not found in dataframe "{nm}": {missing_right}')
+                    
+                    print(f"[DEBUG] merging dataframes on left={left_cols}, right={right_cols} with how='{how}'")
+                    df = df.merge(d2, left_on=left_cols, right_on=right_cols, how=how)
+                
                 print(f"[DEBUG] merge result: shape={df.shape}")
-            return df, f'merge names={names} how={how} keys={keys}'
+            
+            # Generate description based on keys format
+            if all(isinstance(k, str) for k in keys):
+                key_desc = ','.join(keys)
+            else:
+                key_desc = ','.join([f"{k['left']}={k['right']}" if isinstance(k, dict) else k for k in keys])
+            
+            return df, f'merge names={names} how={how} keys={key_desc}'
         if df_curr is None:
             raise ValueError('merge: no current dataframe; add a load step or use params.names')
         df = df_curr.copy()
         
-        # Validate that merge keys exist in current dataframe
-        missing_keys_curr = [k for k in keys if k not in df.columns]
-        if missing_keys_curr:
-            raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
-            
         for nm in others:
             try:
                 d2 = _load_df_from_cache(nm)
             except ValueError as e:
                 raise ValueError(f'merge: failed to load dataframe "{nm}": {str(e)}')
-            # Validate that merge keys exist in the other dataframe
-            missing_keys_other = [k for k in keys if k not in d2.columns]
-            if missing_keys_other:
-                raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
-            df = df.merge(d2, on=keys, how=how)
-        return df, f'merge with={others} how={how} keys={keys}'
+            
+            # Handle both old and new key formats
+            if all(isinstance(k, str) for k in keys):
+                # Old format: simple column names
+                missing_keys_curr = [k for k in keys if k not in df.columns]
+                missing_keys_other = [k for k in keys if k not in d2.columns]
+                if missing_keys_curr:
+                    raise ValueError(f'merge: keys {missing_keys_curr} not found in current dataframe')
+                if missing_keys_other:
+                    raise ValueError(f'merge: keys {missing_keys_other} not found in dataframe "{nm}"')
+                df = df.merge(d2, on=keys, how=how)
+            else:
+                # New format: column mappings
+                left_cols = []
+                right_cols = []
+                for key_mapping in keys:
+                    if isinstance(key_mapping, str):
+                        left_cols.append(key_mapping)
+                        right_cols.append(key_mapping)
+                    elif isinstance(key_mapping, dict) and 'left' in key_mapping and 'right' in key_mapping:
+                        left_cols.append(key_mapping['left'])
+                        right_cols.append(key_mapping['right'])
+                    else:
+                        raise ValueError(f'merge: invalid key mapping format: {key_mapping}')
+                
+                missing_left = [col for col in left_cols if col not in df.columns]
+                missing_right = [col for col in right_cols if col not in d2.columns]
+                if missing_left:
+                    raise ValueError(f'merge: left columns not found in current dataframe: {missing_left}')
+                if missing_right:
+                    raise ValueError(f'merge: right columns not found in dataframe "{nm}": {missing_right}')
+                
+                df = df.merge(d2, left_on=left_cols, right_on=right_cols, how=how)
+        
+        # Generate description based on keys format
+        if all(isinstance(k, str) for k in keys):
+            key_desc = ','.join(keys)
+        else:
+            key_desc = ','.join([f"{k['left']}={k['right']}" if isinstance(k, dict) else k for k in keys])
+        
+        return df, f'merge with={others} how={how} keys={key_desc}'
 
     # filter
     if op == 'filter':
