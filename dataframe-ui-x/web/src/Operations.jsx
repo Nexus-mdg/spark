@@ -245,8 +245,9 @@ export default function Operations() {
           values_from: pvSelectedValuesFrom ? [pvSelectedValuesFrom] : [],
           aggfunc: pvAgg
         }
-        const res = await opsPivot(payload)
-        toast.show(`Created ${res.name}`)
+        const res = await opsPivot(withEngine(payload))
+        const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+        toast.show(`Created ${res.name}${engineInfo}`)
       } else {
         const payload = {
           mode: 'longer',
@@ -256,8 +257,9 @@ export default function Operations() {
           var_name: plVarName,
           value_name: plValueName
         }
-        const res = await opsPivot(payload)
-        toast.show(`Created ${res.name}`)
+        const res = await opsPivot(withEngine(payload))
+        const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+        toast.show(`Created ${res.name}${engineInfo}`)
       }
       await refresh()
     } catch (e) { toast.show(e.message || 'Pivot failed') }
@@ -292,8 +294,9 @@ export default function Operations() {
       try { aggsObj = JSON.parse(gbAggs) } catch { return toast.show('Aggs must be JSON') }
     }
     try {
-      const res = await opsGroupBy({ name: gbName, by: gbSelectedBy, aggs: aggsObj })
-      toast.show(`Created ${res.name}`)
+      const res = await opsGroupBy(withEngine({ name: gbName, by: gbSelectedBy, aggs: aggsObj }))
+      const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+      toast.show(`Created ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'GroupBy failed') }
   }
@@ -309,8 +312,9 @@ export default function Operations() {
     if (!selName) return toast.show('Pick a dataframe')
     if (selCols.length === 0) return toast.show('Pick at least one column')
     try {
-      const res = await opsSelect({ name: selName, columns: selCols, exclude: selExclude })
-      toast.show(`Created ${res.name}`)
+      const res = await opsSelect(withEngine({ name: selName, columns: selCols, exclude: selExclude }))
+      const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+      toast.show(`Created ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Select failed') }
   }
@@ -324,8 +328,9 @@ export default function Operations() {
     try {
       const map = JSON.parse(rnMap)
       if (!map || typeof map !== 'object' || Array.isArray(map)) return toast.show('Mapping must be a JSON object')
-      const res = await opsRename({ name: rnName, map })
-      toast.show(`Created ${res.name}`)
+      const res = await opsRename(withEngine({ name: rnName, map }))
+      const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+      toast.show(`Created ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) {
       if (e instanceof SyntaxError) return toast.show('Invalid JSON mapping')
@@ -351,9 +356,10 @@ export default function Operations() {
 
   const onDateTimeRun = async (payload) => {
     try {
-      const res = await opsDatetime(payload)
+      const res = await opsDatetime(withEngine(payload))
       if (!res.success) throw new Error(res.error || '')
-      toast.show(`Created ${res.name}`)
+      const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''
+      toast.show(`Created ${res.name}${engineInfo}`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Datetime op failed') }
   }
@@ -1178,7 +1184,7 @@ export default function Operations() {
 
         {/* New: Date / Time */}
         <Section title="Date / Time">
-          <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsDatetime(payload); if (!res.success) throw new Error(res.error||''); toast.show(`Created ${res.name}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
+          <DateTimeSection dfOptions={dfOptions} onRun={async (payload) => { try { const res = await opsDatetime(withEngine(payload)); if (!res.success) throw new Error(res.error||''); const engineInfo = res.metadata?.engine ? ` (${res.metadata.engine} engine)` : ''; toast.show(`Created ${res.name}${engineInfo}`); await refresh() } catch (e) { toast.show(e.message || 'Datetime op failed') } }} />
         </Section>
 
         {/* New: Mutate */}
