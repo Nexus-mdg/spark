@@ -14,6 +14,9 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:4999")
 PORT = int(os.getenv("PORT", "5001"))
 
+# Authentication configuration - disable authentication for local development and testing
+DISABLE_AUTHENTICATION = os.getenv("DISABLE_AUTHENTICATION", "true").lower() == "true"
+
 # PostgreSQL configuration
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "15432"))
@@ -139,6 +142,10 @@ def login_required(f):
     """Decorator to require authentication"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Skip authentication check if disabled
+        if DISABLE_AUTHENTICATION:
+            return f(*args, **kwargs)
+        
         if 'user_id' not in session:
             if request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
@@ -191,6 +198,17 @@ def logout():
 @login_required
 def get_current_user():
     """Get current user information"""
+    # If authentication is disabled, return a mock user
+    if DISABLE_AUTHENTICATION:
+        return jsonify({
+            'user': {
+                'username': 'developer',
+                'created_at': None,
+                'last_login': None
+            },
+            'authenticated': True
+        })
+    
     return jsonify({
         'user': session.get('user_data'),
         'authenticated': True
@@ -227,8 +245,15 @@ def change_password():
 
 @app.route('/config.js')
 def config_js():
-    js = f"window.APP_CONFIG = {{ API_BASE_URL: '{API_BASE_URL}' }};"
+    js = f"window.APP_CONFIG = {{ API_BASE_URL: '{API_BASE_URL}', DISABLE_AUTHENTICATION: {str(DISABLE_AUTHENTICATION).lower()} }};"
     return Response(js, mimetype='application/javascript')
+
+@app.route('/api/auth/config')
+def auth_config():
+    """Get authentication configuration"""
+    return jsonify({
+        'authentication_disabled': DISABLE_AUTHENTICATION
+    })
 
 @app.route('/')
 def index():

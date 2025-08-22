@@ -81,6 +81,45 @@ cd dataframe-ui-x && python3 app.py
 ### User Roles
 Currently, all users have the same permissions. Future versions may include role-based access control.
 
+## Disabling Authentication
+
+For local development and testing, you can disable authentication entirely:
+
+### Complete Disable (Recommended for Development)
+
+Set these environment variables:
+
+```bash
+# dataframe-ui-x: Disable all authentication requirements
+DISABLE_AUTHENTICATION=true
+
+# dataframe-api: Disable API protection
+ENABLE_API_PROTECTION=false
+```
+
+When `DISABLE_AUTHENTICATION=true`:
+- ✅ No login required
+- ✅ All pages accessible without authentication  
+- ✅ Mock user automatically logged in as "developer"
+- ✅ No database dependencies for user management
+
+When `ENABLE_API_PROTECTION=false`:
+- ✅ No API key required for dataframe-api
+- ✅ Direct browser access allowed to API endpoints
+- ✅ No user-agent restrictions
+
+### Production Settings
+
+For production deployment, enable authentication:
+
+```bash
+# dataframe-ui-x: Enable authentication
+DISABLE_AUTHENTICATION=false
+
+# dataframe-api: Enable API protection  
+ENABLE_API_PROTECTION=true
+```
+
 ## API Protection Details
 
 ### How It Works
@@ -152,13 +191,18 @@ Browser → dataframe-ui-x → Redis (sessions) → dataframe-api (with API key)
 ### dataframe-ui-x Environment Variables
 
 ```bash
+# Authentication settings (disable for local development and testing)
+DISABLE_AUTHENTICATION=true
+
 # Flask secret key (change in production!)
 SECRET_KEY=dataframe-ui-secret-key-change-in-production
 
-# Redis connection
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
+# PostgreSQL connection
+POSTGRES_HOST=localhost
+POSTGRES_PORT=15432
+POSTGRES_DB=dataframe_ui
+POSTGRES_USER=dataframe_user
+POSTGRES_PASSWORD=dataframe_password
 
 # Backend API
 API_BASE_URL=http://localhost:4999
@@ -167,8 +211,8 @@ API_BASE_URL=http://localhost:4999
 ### dataframe-api Environment Variables
 
 ```bash
-# API protection
-ENABLE_API_PROTECTION=true
+# API protection (disable for local development and testing)
+ENABLE_API_PROTECTION=false
 INTERNAL_API_KEY=dataframe-api-internal-key
 ALLOWED_USER_AGENTS=python-requests,curl,wget,httpie,postman,insomnia
 

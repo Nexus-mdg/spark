@@ -6,7 +6,7 @@ import { useTheme } from './contexts/ThemeContext.jsx'
 export default function Header({ title, children }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout } = useAuth()
+  const { user, logout, authDisabled } = useAuth()
   const { isDark, toggleTheme } = useTheme()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -233,11 +233,17 @@ export default function Header({ title, children }) {
 
                   {/* User Info */}
                   <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-600">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.username}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {user?.username}
+                      {authDisabled && <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-2">(Dev Mode)</span>}
+                    </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {user?.last_login && !isNaN(new Date(user.last_login).getTime())
-                        ? `Last login: ${new Date(user.last_login).toLocaleDateString()}`
-                        : 'First login'
+                      {authDisabled
+                        ? 'Development session'
+                        : (user?.last_login && !isNaN(new Date(user.last_login).getTime())
+                            ? `Last login: ${new Date(user.last_login).toLocaleDateString()}`
+                            : 'First login'
+                          )
                       }
                     </p>
                   </div>
@@ -269,7 +275,7 @@ export default function Header({ title, children }) {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                       </svg>
-                      Sign Out
+                      {authDisabled ? 'Reset Session' : 'Sign Out'}
                     </div>
                   </button>
                 </div>
@@ -285,10 +291,15 @@ export default function Header({ title, children }) {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowLogoutDialog(false)}>
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-600">
-            <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">Confirm Sign Out</h4>
+            <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {authDisabled ? 'Reset Session' : 'Confirm Sign Out'}
+            </h4>
           </div>
           <div className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-            Are you sure you want to sign out? You'll need to log in again to access your data.
+            {authDisabled
+              ? 'Are you sure you want to reset your development session? This will return you to the home page.'
+              : 'Are you sure you want to sign out? You\'ll need to log in again to access your data.'
+            }
           </div>
           <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
             <button 
@@ -301,7 +312,7 @@ export default function Header({ title, children }) {
               onClick={confirmLogout} 
               className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
             >
-              Sign Out
+              {authDisabled ? 'Reset Session' : 'Sign Out'}
             </button>
           </div>
         </div>

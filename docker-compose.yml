@@ -65,8 +65,8 @@ services:
       - REDIS_HOST=localhost
       - REDIS_PORT=6379
       - PORT=4999
-      # API Protection settings
-      - ENABLE_API_PROTECTION=true
+      # API Protection settings (disabled by default for local development)
+      - ENABLE_API_PROTECTION=false
       - INTERNAL_API_KEY=dataframe-api-internal-key
       - ALLOWED_USER_AGENTS=python-requests,curl,wget,httpie,postman,insomnia
       # Spark client configuration for compare endpoint
@@ -96,7 +96,8 @@ services:
     environment:
       - PORT=5001
       - API_BASE_URL=http://localhost:4999
-      # Authentication settings
+      # Authentication settings (disabled by default for local development)
+      - DISABLE_AUTHENTICATION=true
       - SECRET_KEY=dataframe-ui-secret-key-change-in-production
       - POSTGRES_HOST=localhost
       - POSTGRES_PORT=15432
