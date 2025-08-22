@@ -16,10 +16,29 @@ except ImportError:
 def _handle_spark_error(operation_name: str, error: Exception) -> None:
     """Handle Spark engine errors with informative messages"""
     error_msg = str(error)
-    if 'Failed to connect' in error_msg or 'Connection refused' in error_msg:
-        raise ValueError(f'Spark engine unavailable - check if Spark cluster is running at {os.getenv("SPARK_MASTER_URL", "spark://localhost:7077")}. Original error: {error_msg}')
-    else:
-        raise ValueError(f'Spark engine failed for {operation_name} operation: {error_msg}')
+    
+    # Check for common connection issues
+    if any(phrase in error_msg for phrase in ['Failed to connect', 'Connection refused', 'ConnectException']):
+        master_url = os.getenv("SPARK_MASTER_URL", "spark://localhost:7077")
+        raise ValueError(f'Spark engine unavailable - check if Spark cluster is running at {master_url}. Connection error: {error_msg}')
+    
+    # Check for stopped SparkContext issues
+    if 'stopped SparkContext' in error_msg or 'Cannot call methods on a stopped SparkContext' in error_msg:
+        raise ValueError(f'Spark session error - SparkContext was stopped unexpectedly during {operation_name} operation. This may indicate resource constraints or connectivity issues.')
+    
+    # Check for schema or data conversion issues
+    if any(phrase in error_msg for phrase in ['schema', 'convert', 'toPandas', 'createDataFrame']):
+        raise ValueError(f'Spark data conversion error in {operation_name} operation: {error_msg}. This may be due to unsupported data types or schema mismatches.')
+    
+    # Check for operation-specific errors
+    if operation_name == 'filter' and any(phrase in error_msg for phrase in ['column', 'Column']):
+        raise ValueError(f'Spark filter error: {error_msg}. Check that all filter columns exist in the dataframe.')
+    
+    if operation_name == 'select' and any(phrase in error_msg for phrase in ['column', 'Column']):
+        raise ValueError(f'Spark select error: {error_msg}. Check that all selected columns exist in the dataframe.')
+    
+    # Generic Spark error
+    raise ValueError(f'Spark engine failed for {operation_name} operation: {error_msg}')
 
 
 def validate_engine(engine: str) -> str:
@@ -84,13 +103,22 @@ def route_filter(df: pd.DataFrame, conditions: List[Dict], combine: str, engine:
     """Route filter operation to appropriate engine"""
     engine = validate_engine(engine)
     
+    print(f"[DEBUG] route_filter: engine={engine}, conditions={len(conditions)}, combine={combine}")
+    
     if engine == 'spark':
         try:
-            return spark_engine.spark_filter(df, conditions, combine)
+            print(f"[DEBUG] Using Spark engine for filter operation")
+            result = spark_engine.spark_filter(df, conditions, combine)
+            print(f"[DEBUG] Spark filter successful: result shape={result.shape}")
+            return result
         except Exception as e:
+            print(f"[DEBUG] Spark filter failed: {str(e)}")
             _handle_spark_error('filter', e)
     else:
-        return pandas_engine.pandas_filter(df, conditions, combine)
+        print(f"[DEBUG] Using Pandas engine for filter operation")
+        result = pandas_engine.pandas_filter(df, conditions, combine)
+        print(f"[DEBUG] Pandas filter successful: result shape={result.shape}")
+        return result
 
 
 def route_groupby(df: pd.DataFrame, by: List[str], aggs: Optional[Dict], engine: str) -> pd.DataFrame:
@@ -110,13 +138,22 @@ def route_select(df: pd.DataFrame, columns: List[str], exclude: bool, engine: st
     """Route select operation to appropriate engine"""
     engine = validate_engine(engine)
     
+    print(f"[DEBUG] route_select: engine={engine}, columns={columns}, exclude={exclude}")
+    
     if engine == 'spark':
         try:
-            return spark_engine.spark_select(df, columns, exclude)
+            print(f"[DEBUG] Using Spark engine for select operation")
+            result = spark_engine.spark_select(df, columns, exclude)
+            print(f"[DEBUG] Spark select successful: result shape={result.shape}")
+            return result
         except Exception as e:
+            print(f"[DEBUG] Spark select failed: {str(e)}")
             _handle_spark_error('select', e)
     else:
-        return pandas_engine.pandas_select(df, columns, exclude)
+        print(f"[DEBUG] Using Pandas engine for select operation")
+        result = pandas_engine.pandas_select(df, columns, exclude)
+        print(f"[DEBUG] Pandas select successful: result shape={result.shape}")
+        return result
 
 
 def route_rename(df: pd.DataFrame, rename_map: Dict[str, str], engine: str) -> pd.DataFrame:
