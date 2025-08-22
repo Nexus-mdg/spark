@@ -125,14 +125,25 @@ function useToast() {
   return { msg, visible, show }
 }
 
-function Modal({ open, title, onClose, children }) {
+function Modal({ open, title, onClose, blockClose = false, children }) {
   if (!open) return null
+  
+  const handleBackdropClick = (e) => {
+    if (blockClose) return
+    onClose()
+  }
+  
+  const handleCloseClick = () => {
+    if (blockClose) return
+    onClose()
+  }
+  
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={handleBackdropClick}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-6xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400" aria-label="Close">
+          <button onClick={handleCloseClick} disabled={blockClose} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
           </button>
         </div>
@@ -144,15 +155,26 @@ function Modal({ open, title, onClose, children }) {
 
 function ConfirmDialog({ open, title = 'Confirm action', message = 'Are you sure?', confirmText = 'Confirm', cancelText = 'Cancel', confirming = false, onConfirm, onCancel }) {
   if (!open) return null
+  
+  const handleBackdropClick = (e) => {
+    if (confirming) return
+    onCancel()
+  }
+  
+  const handleCancelClick = () => {
+    if (confirming) return
+    onCancel()
+  }
+  
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={onCancel}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={handleBackdropClick}>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-600">
           <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h4>
         </div>
         <div className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{message}</div>
         <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">{cancelText}</button>
+          <button onClick={handleCancelClick} disabled={confirming} className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">{cancelText}</button>
           <button disabled={confirming} onClick={onConfirm} className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">{confirming ? 'Working…' : confirmText}</button>
         </div>
       </div>
@@ -821,10 +843,10 @@ export default function Home() {
         </div>
       </Modal>
 
-      <ConfirmDialog open={confirmOpen} title={confirmTitle} message={confirmMessage} confirming={confirming} onConfirm={onConfirmProceed} onCancel={() => !confirming && setConfirmOpen(false)} />
+      <ConfirmDialog open={confirmOpen} title={confirmTitle} message={confirmMessage} confirming={confirming} onConfirm={onConfirmProceed} onCancel={() => setConfirmOpen(false)} />
 
       {/* Edit DataFrame Modal */}
-      <Modal open={editOpen} title={`Edit DataFrame`} onClose={() => !savingEdit && setEditOpen(false)}>
+      <Modal open={editOpen} title={`Edit DataFrame`} onClose={() => !savingEdit && setEditOpen(false)} blockClose={savingEdit}>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
