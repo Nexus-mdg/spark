@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
-import { EngineContext } from './contexts/EngineContext.jsx'
+import { EngineContext, ENGINE_INFO } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -673,6 +673,24 @@ export default function ChainedOperations() {
                 Build complex data transformation pipelines by chaining multiple operations together. 
                 Each step processes the output from the previous step, allowing you to create sophisticated workflows with live previews.
               </p>
+              
+              {/* Engine Status Indicator */}
+              <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Pipeline Engine:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{ENGINE_INFO[engine]?.icon}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {ENGINE_INFO[engine]?.name}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {ENGINE_INFO[engine]?.description}
+                    </span>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -846,7 +864,13 @@ export default function ChainedOperations() {
             ))}
             {preview.final && (
               <div className="border border-gray-200 dark:border-gray-600 rounded">
-                <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">Final ({preview.final.rows} rows)</div>
+                <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                  <span>Final ({preview.final.rows} rows)</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{ENGINE_INFO[engine]?.icon}</span>
+                    <span>{ENGINE_INFO[engine]?.name} engine</span>
+                  </span>
+                </div>
                 <SmallTable columns={preview.final.columns || []} rows={preview.final.preview || []} />
               </div>
             )}
