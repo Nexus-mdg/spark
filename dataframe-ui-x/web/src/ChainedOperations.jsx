@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import { EngineContext } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
   pipelinePreview,
@@ -515,6 +516,7 @@ function PivotBuilder({ dfOptions, onCreate }) {
 }
 
 export default function ChainedOperations() {
+  const { engine } = useContext(EngineContext)
   const [dfs, setDfs] = useState([])
   const [loading, setLoading] = useState(false)
   const [steps, setSteps] = useState([])
@@ -572,7 +574,7 @@ export default function ChainedOperations() {
   const triggerPreview = async () => {
     setPreview(p => ({ ...p, loading: true, error: '' }))
     try {
-      const res = await pipelinePreview({ steps, preview_rows: 10 })
+      const res = await pipelinePreview({ steps, preview_rows: 10, engine })
       if (!res.success) throw new Error(res.error || 'Preview failed')
       setPreview({ loading: false, error: '', steps: res.steps || [], final: res.final || null })
     } catch (e) {
@@ -589,10 +591,10 @@ export default function ChainedOperations() {
   const onRun = async () => {
     if (steps.length === 0) return toast.show('Add at least one step')
     try {
-      const res = await pipelineRun({ steps, materialize: true })
+      const res = await pipelineRun({ steps, materialize: true, engine })
       if (!res.success) throw new Error(res.error || 'Run failed')
       setResult(res.created)
-      toast.show(`Created ${res.created?.name || 'result'}`)
+      toast.show(`Created ${res.created?.name || 'result'} (${engine} engine)`)
       await refresh()
     } catch (e) { toast.show(e.message || 'Run failed') }
   }
@@ -627,7 +629,14 @@ export default function ChainedOperations() {
   }
 
   const onRunByName = async (name) => {
-    try { const res = await pipelineRunByName(name, { materialize: true }); if (!res.success) throw new Error(res.error || 'Run failed'); toast.show(`Created ${res.created?.name || 'result'}`); await refresh() } catch (e) { toast.show(e.message || 'Run failed') }
+    try { 
+      const res = await pipelineRunByName(name, { materialize: true, engine }); 
+      if (!res.success) throw new Error(res.error || 'Run failed'); 
+      toast.show(`Created ${res.created?.name || 'result'} (${engine} engine)`); 
+      await refresh() 
+    } catch (e) { 
+      toast.show(e.message || 'Run failed') 
+    }
   }
 
   const onImportYaml = async () => {

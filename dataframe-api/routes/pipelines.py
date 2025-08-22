@@ -27,6 +27,8 @@ def pipeline_preview():
         start = p.get('start')
         steps = p.get('steps') or []
         max_rows = int(p.get('preview_rows') or 20)
+        engine = p.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
         current = None
         msgs: list[dict] = []
         if isinstance(start, list) and len(start) > 0:
@@ -36,14 +38,14 @@ def pipeline_preview():
             current = _load_df_from_cache(start)
             msgs.append({'op': 'load', 'desc': f"load {start}", 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         for step in steps:
-            current, desc = _apply_op(current, step, preview_mode=True)
+            current, desc = _apply_op(current, step, preview_mode=True, engine=engine)
             msgs.append({'op': step.get('op') or step.get('type'), 'desc': desc, 'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows))})
         final = None
         if current is not None:
             final = {'columns': current.columns.tolist(), 'preview': df_to_records_json_safe(current.head(max_rows)), 'rows': int(len(current))}
-        return jsonify({'success': True, 'steps': msgs, 'final': final})
+        return jsonify({'success': True, 'steps': msgs, 'final': final, 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e), 'engine': engine if 'engine' in locals() else 'unknown'}), 400
 
 
 @pipelines_bp.route('/api/pipeline/run', methods=['POST'])
@@ -55,35 +57,38 @@ def pipeline_run():
         steps = p.get('steps') or []
         materialize = bool(p.get('materialize') or True)
         out_name = p.get('name') or None
+        engine = p.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
         current = None
         if isinstance(start, list) and len(start) > 0:
             current = _load_df_from_cache(start[0])
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
         for step in steps:
-            current, _ = _apply_op(current, step)
+            current, _ = _apply_op(current, step, preview_mode=False, engine=engine)
         if current is None:
-            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
+            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps', 'engine': engine}), 400
         created = None
         created_name = None
         if materialize:
             base = out_name or 'pipeline_result'
             uniq = _unique_name(base)
-            meta = _save_df_to_cache(uniq, current, description='pipeline result', source='ops:pipeline')
+            meta = _save_df_to_cache(uniq, current, description=f'pipeline result [{engine} engine]', source='ops:pipeline')
+            meta['engine'] = engine
             created = {'name': uniq, 'metadata': meta}
             created_name = uniq
         # notify success
         try:
             title = 'Pipeline run'
-            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            msg = f"rows={int(len(current))}, cols={len(current.columns)} ({engine} engine)"
             if created_name:
                 msg += f"; materialized={created_name}"
             notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
         except Exception:
             pass
-        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
+        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist(), 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e), 'engine': engine if 'engine' in locals() else 'unknown'}), 400
 
 
 @pipelines_bp.route('/api/pipelines', methods=['GET', 'POST'])
@@ -170,6 +175,8 @@ def pipelines_run(name):
         body = request.get_json(silent=True) or {}
         materialize = bool(body.get('materialize') if body.get('materialize') is not None else True)
         out_name = body.get('name') or None
+        engine = body.get('engine', 'pandas')  # Default to pandas for backward compatibility
+        
         start = obj.get('start')
         steps = obj.get('steps') or []
         current = None
@@ -178,29 +185,30 @@ def pipelines_run(name):
         elif isinstance(start, str) and start:
             current = _load_df_from_cache(start)
         for step in steps:
-            current, _ = _apply_op(current, step)
+            current, _ = _apply_op(current, step, preview_mode=False, engine=engine)
         if current is None:
-            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps'}), 400
+            return jsonify({'success': False, 'error': 'Nothing to run: pipeline has no start and no steps', 'engine': engine}), 400
         created = None
         created_name = None
         if materialize:
             base = out_name or f'{name}_result'
             uniq = _unique_name(base)
-            meta = _save_df_to_cache(uniq, current, description=f'pipeline: {name}', source='ops:pipeline')
+            meta = _save_df_to_cache(uniq, current, description=f'pipeline: {name} [{engine} engine]', source='ops:pipeline')
+            meta['engine'] = engine
             created = {'name': uniq, 'metadata': meta}
             created_name = uniq
         # notify success
         try:
             title = f'Pipeline run: {name}'
-            msg = f"rows={int(len(current))}, cols={len(current.columns)}"
+            msg = f"rows={int(len(current))}, cols={len(current.columns)} ({engine} engine)"
             if created_name:
                 msg += f"; materialized={created_name}"
             notify_ntfy(title=title, message=msg, tags=['pipeline', 'run', 'success'])
         except Exception:
             pass
-        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist()})
+        return jsonify({'success': True, 'created': created, 'rows': int(len(current)), 'columns': current.columns.tolist(), 'engine': engine})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': str(e), 'engine': engine if 'engine' in locals() else 'unknown'}), 400
 
 
 @pipelines_bp.route('/api/pipelines/<name>/export.yml', methods=['GET'])

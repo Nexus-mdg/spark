@@ -37,42 +37,52 @@ def _get_spark_session():
 
 def _pandas_to_spark(df: pd.DataFrame, spark):
     """Convert pandas DataFrame to Spark DataFrame with proper schema"""
-    from pyspark.sql.types import (StructType, StructField, StringType, IntegerType, LongType,
-                                   DoubleType, BooleanType, TimestampType, DateType)
+    try:
+        if df.empty:
+            raise ValueError('Cannot convert empty DataFrame to Spark')
+        
+        from pyspark.sql.types import (StructType, StructField, StringType, IntegerType, LongType,
+                                       DoubleType, BooleanType, TimestampType, DateType)
+        
+        def _spark_type_from_pd(dtype: str):
+            dt = str(dtype)
+            if dt.startswith('int64') or dt == 'Int64':
+                return LongType()
+            if dt.startswith('int'):
+                return IntegerType()
+            if dt.startswith('float'):
+                return DoubleType()
+            if dt.startswith('bool') or dt == 'boolean':
+                return BooleanType()
+            if 'datetime64' in dt or dt == 'datetime64[ns]':
+                return TimestampType()
+            if 'date' == dt:
+                return DateType()
+            return StringType()
+        
+        def _schema_from_pandas(df: pd.DataFrame) -> StructType:
+            fields = []
+            for c in df.columns:
+                fields.append(StructField(c, _spark_type_from_pd(df[c].dtype), True))
+            return StructType(fields)
+        
+        def _rows_from_pandas(df: pd.DataFrame):
+            for row in df.itertuples(index=False, name=None):
+                yield tuple(None if (isinstance(v, float) and pd.isna(v)) or (v is pd.NaT) else v for v in row)
+        
+        schema = _schema_from_pandas(df)
+        return spark.createDataFrame(_rows_from_pandas(df), schema=schema)
     
-    def _spark_type_from_pd(dtype: str):
-        dt = str(dtype)
-        if dt.startswith('int64') or dt == 'Int64':
-            return LongType()
-        if dt.startswith('int'):
-            return IntegerType()
-        if dt.startswith('float'):
-            return DoubleType()
-        if dt.startswith('bool') or dt == 'boolean':
-            return BooleanType()
-        if 'datetime64' in dt or dt == 'datetime64[ns]':
-            return TimestampType()
-        if 'date' == dt:
-            return DateType()
-        return StringType()
-    
-    def _schema_from_pandas(df: pd.DataFrame) -> StructType:
-        fields = []
-        for c in df.columns:
-            fields.append(StructField(c, _spark_type_from_pd(df[c].dtype), True))
-        return StructType(fields)
-    
-    def _rows_from_pandas(df: pd.DataFrame):
-        for row in df.itertuples(index=False, name=None):
-            yield tuple(None if (isinstance(v, float) and pd.isna(v)) or (v is pd.NaT) else v for v in row)
-    
-    schema = _schema_from_pandas(df)
-    return spark.createDataFrame(_rows_from_pandas(df), schema=schema)
+    except Exception as e:
+        raise ValueError(f'Failed to convert pandas DataFrame to Spark: {str(e)}')
 
 
 def _spark_to_pandas(sdf):
     """Convert Spark DataFrame to pandas DataFrame"""
-    return sdf.toPandas()
+    try:
+        return sdf.toPandas()
+    except Exception as e:
+        raise ValueError(f'Failed to convert Spark DataFrame to pandas: {str(e)}')
 
 
 def spark_compare(df1: pd.DataFrame, df2: pd.DataFrame, n1: str, n2: str) -> dict:
@@ -364,11 +374,22 @@ def spark_select(df: pd.DataFrame, columns: List[str], exclude: bool = False) ->
         
         if exclude:
             keep_cols = [c for c in sdf.columns if c not in columns]
+            if not keep_cols:
+                raise ValueError('Cannot exclude all columns - no columns would remain')
             selected_sdf = sdf.select(keep_cols)
         else:
+            if not columns:
+                raise ValueError('Cannot select empty column list')
             selected_sdf = sdf.select(columns)
         
         return _spark_to_pandas(selected_sdf)
+    
+    except Exception as e:
+        # Ensure we capture and re-raise the actual error
+        if "columns" in str(e).lower() or "select" in str(e).lower():
+            raise ValueError(f'Spark select operation failed: {str(e)}')
+        else:
+            raise e
     
     finally:
         if spark:

@@ -222,21 +222,21 @@ export const opsMutate = async (payload) => {
 }
 
 // Pipeline endpoints
-export const pipelinePreview = async ({ start, steps, preview_rows = 20 }) => {
+export const pipelinePreview = async ({ start, steps, preview_rows = 20, engine = 'pandas' }) => {
   const res = await fetch(`${BASE()}/api/pipeline/preview`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ start, steps, preview_rows })
+    body: JSON.stringify({ start, steps, preview_rows, engine })
   })
   if (!res.ok) throw new Error(`Pipeline preview failed: ${res.status}`)
   return res.json()
 }
 
-export const pipelineRun = async ({ start, steps, materialize = true, name }) => {
+export const pipelineRun = async ({ start, steps, materialize = true, name, engine = 'pandas' }) => {
   const res = await fetch(`${BASE()}/api/pipeline/run`, {
     method: 'POST',
     headers: getHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ start, steps, materialize, name })
+    body: JSON.stringify({ start, steps, materialize, name, engine })
   })
   if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
   return res.json()
@@ -279,9 +279,9 @@ export const pipelineDelete = async (name) => {
   return res.json()
 }
 
-export const pipelineRunByName = async (name, { materialize = true, outName } = {}) => {
+export const pipelineRunByName = async (name, { materialize = true, outName, engine = 'pandas' } = {}) => {
   const res = await fetch(`${BASE()}/api/pipelines/${encodeURIComponent(name)}/run`, {
-    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ materialize, name: outName })
+    method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ materialize, name: outName, engine })
   })
   if (!res.ok) throw new Error(`Pipeline run failed: ${res.status}`)
   return res.json()
