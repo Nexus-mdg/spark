@@ -41,9 +41,22 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
         # Debug logging
         print(f"[DEBUG] merge operation: how={how}, keys={keys}, names={names}, others={others}")
         
-        # Validate that keys is a list of strings
+        # Validate and parse keys
         if isinstance(keys, str):
-            keys = [k.strip() for k in keys.split(',') if k.strip()]
+            keys_str = keys.strip()
+            if '=' in keys_str:
+                # Parse text format: "customer_id=cust_id,product_code=prod_code"
+                keys = []
+                for pair in keys_str.split(','):
+                    pair = pair.strip()
+                    if '=' in pair:
+                        left, right = pair.split('=', 1)
+                        keys.append({'left': left.strip(), 'right': right.strip()})
+                    else:
+                        keys.append(pair)
+            else:
+                # Simple comma-separated format
+                keys = [k.strip() for k in keys_str.split(',') if k.strip()]
         if not isinstance(keys, list) or not keys:
             raise ValueError('merge: keys must be a non-empty list or comma-separated string')
             
