@@ -84,16 +84,36 @@ services:
     networks:
       - test-network
 
+  # Playwright testing container for local services
+  playwright-tests-local:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.playwright
+    environment:
+      - UI_BASE=${UI_BASE:-http://host.docker.internal:5001}
+      - API_BASE=${API_BASE:-http://host.docker.internal:4999}
+      - CI=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+      - TEST_ENV=${TEST_ENV:-local}
+    volumes:
+      - ../visual:/app
+      - test_reports:/app/reports
+      - test_screenshots:/app/screenshots
+    network_mode: host
+    profiles:
+      - visual-tests-local
+
   # Playwright testing container
   playwright-tests:
     build:
       context: ../..
       dockerfile: tests/docker/Dockerfile.playwright
     environment:
-      - UI_BASE=http://test-dataframe-ui:5001
-      - API_BASE=http://test-dataframe-api:4999
+      - UI_BASE=${UI_BASE:-http://test-dataframe-ui:5001}
+      - API_BASE=${API_BASE:-http://test-dataframe-api:4999}
       - CI=true
       - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+      - TEST_ENV=${TEST_ENV:-docker}
     volumes:
       - ../visual:/app
       - test_reports:/app/reports

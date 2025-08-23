@@ -14,14 +14,13 @@ The testing infrastructure consists of three main components:
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 16+ (for visual tests)
-- Docker & Docker Compose (for containerized testing)
+- Python 3.11+ (for API tests)
+- Docker & Docker Compose (required for all testing)
 
 ### Basic Usage
 
 ```bash
-# Install test dependencies
+# Install Python test dependencies (for API tests)
 pip install -r tests/requirements.txt
 
 # Run infrastructure tests (no services required)
@@ -30,11 +29,14 @@ make test-infrastructure
 # Run API tests (requires API running)
 make test-api
 
-# Run visual tests (requires UI running) 
+# Run visual tests (Docker-based, no npm/Playwright installation needed) 
 make test-visual
 
 # Run all available tests
 make test-all
+
+# Run everything in isolated Docker environment
+make test-docker
 ```
 
 ## Test Categories
@@ -100,18 +102,20 @@ tests/api/
 
 ### 3. Visual Testing
 
-Playwright-based UI testing with screenshot comparison.
+Playwright-based UI testing with screenshot comparison. **All visual tests run in Docker containers - no local npm or Playwright installation required.**
 
 ```bash
-# Prerequisites: Start services and install Node.js dependencies
+# Prerequisites: Start services (for local testing)
 make up
-cd tests/visual && npm install && npx playwright install chromium
 
-# Run visual tests
+# Run visual tests in Docker (no npm installation needed)
 make test-visual
 
 # Run with different options
 ./tests/scripts/run_tests.sh visual --verbose
+
+# Run in completely isolated Docker environment
+./tests/scripts/run_tests.sh docker
 ```
 
 **Test Structure:**

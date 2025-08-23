@@ -46,7 +46,7 @@ Usage: $0 [COMMAND] [OPTIONS]
 Commands:
     infrastructure    Run infrastructure/setup tests only
     api              Run API endpoint tests
-    visual           Run visual regression tests (requires UI)
+    visual           Run visual regression tests (Docker-based, no host npm required)
     auth             Run authentication tests
     core             Run core operation tests (select, filter, etc.)
     all              Run all available tests
@@ -71,8 +71,10 @@ Options:
 Examples:
     $0 infrastructure              # Test basic infrastructure
     $0 api --verbose               # Run API tests with verbose output
+    $0 visual                      # Run visual tests in Docker (no npm needed)
     $0 all --coverage --html       # Run all tests with reports
     $0 core --parallel 4           # Run core tests with 4 workers
+    $0 docker                      # Run complete test suite in Docker
     $0 wait-api                    # Wait for API to be ready
 
 Environment Variables:
@@ -115,9 +117,9 @@ wait_for_ui() {
 setup_test_environment() {
     print_info "Setting up test environment..."
     
-    # Install test dependencies if not already installed
+    # Install test dependencies if not already installed (for API tests only)
     if ! python -c "import pytest" >/dev/null 2>&1; then
-        print_info "Installing test dependencies..."
+        print_info "Installing Python test dependencies..."
         pip install -r "$TESTS_DIR/requirements.txt"
     fi
     
@@ -125,6 +127,21 @@ setup_test_environment() {
     mkdir -p "$TESTS_DIR/reports/api_coverage"
     mkdir -p "$TESTS_DIR/reports/visual_reports"
     mkdir -p "/tmp/test_data"
+    
+    # Check Docker availability for visual tests
+    if command -v docker >/dev/null 2>&1; then
+        if docker compose version >/dev/null 2>&1; then
+            print_success "Docker and Docker Compose detected - visual tests will run in containers"
+        elif command -v docker-compose >/dev/null 2>&1; then
+            print_success "Docker and docker-compose detected - visual tests will run in containers"
+        else
+            print_warning "Docker detected but Docker Compose not found - visual tests may not work"
+            print_info "Install Docker Compose to enable visual regression testing"
+        fi
+    else
+        print_warning "Docker not detected - visual tests will not be available"
+        print_info "Install Docker to enable visual regression testing"
+    fi
     
     print_success "Test environment setup complete"
 }
@@ -235,53 +252,61 @@ run_auth_tests() {
 }
 
 run_visual_tests() {
-    print_info "Running visual tests..."
+    print_info "Running visual tests in Docker..."
     cd "$PROJECT_ROOT"
     
-    # Check if Playwright is available
-    if ! command -v npx >/dev/null 2>&1; then
-        print_error "Node.js and npm are required for visual tests"
-        print_info "Install Node.js from https://nodejs.org/"
+    # Check if docker-compose is available
+    if ! command -v docker >/dev/null 2>&1; then
+        print_error "Docker is required for visual tests"
+        print_info "Please install Docker"
         return 1
     fi
     
-    # Navigate to visual tests directory
-    cd "tests/visual"
-    
-    # Install dependencies if needed
-    if [ ! -d "node_modules" ]; then
-        print_info "Installing Playwright dependencies..."
-        npm install
-        npx playwright install chromium
-    fi
-    
-    # Wait for UI to be ready
-    cd "$PROJECT_ROOT"
-    wait_for_ui || {
-        print_warning "UI not available, visual tests require the UI to be running"
-        print_info "Start the UI with: make up"
+    # Check for docker compose (prefer plugin over standalone)
+    if docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE="docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        DOCKER_COMPOSE="docker-compose"
+    else
+        print_error "Docker Compose is required for visual tests"
+        print_info "Please install Docker Compose"
         return 1
-    }
-    
-    cd "tests/visual"
-    
-    # Set environment variables
-    export UI_BASE="$UI_BASE"
-    export API_BASE="$API_BASE"
-    export TEST_ENV="$TEST_ENV"
-    
-    local playwright_args=()
-    
-    if [[ "$VERBOSE" == "true" ]]; then
-        playwright_args+=("--reporter=list,html")
     fi
     
-    if [[ "$FAILFAST" == "true" ]]; then
-        playwright_args+=("--max-failures=1")
+    # Determine test mode based on environment
+    if [[ "$TEST_ENV" == "local" ]]; then
+        # For local testing, use host network to connect to existing services
+        wait_for_ui || {
+            print_warning "UI not available, visual tests require the UI to be running"
+            print_info "Start the UI with: make up"
+            return 1
+        }
+        
+        print_info "Running visual tests against local services..."
+        local playwright_args="npx playwright test"
+        
+        if [[ "$VERBOSE" == "true" ]]; then
+            playwright_args="$playwright_args --reporter=list,html"
+        fi
+        
+        if [[ "$FAILFAST" == "true" ]]; then
+            playwright_args="$playwright_args --max-failures=1"
+        fi
+        
+        # Use host network configuration for local services
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml --profile visual-tests-local run --rm \
+            -e UI_BASE="http://host.docker.internal:5001" \
+            -e API_BASE="http://host.docker.internal:4999" \
+            -e TEST_ENV="local" \
+            playwright-tests-local sh -c "$playwright_args"
+    else
+        # For Docker/CI environment, start all services
+        print_info "Starting test environment with all services..."
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml --profile visual-tests up --build --abort-on-container-exit playwright-tests
+        
+        # Cleanup
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml down --volumes
     fi
-    
-    # Run Playwright tests
-    npx playwright test "${playwright_args[@]}"
 }
 
 run_all_tests() {
@@ -419,24 +444,38 @@ case "$COMMAND" in
         print_info "Running tests in Docker environment..."
         cd "$PROJECT_ROOT"
         
-        # Check if docker-compose is available
-        if ! command -v docker-compose >/dev/null 2>&1; then
-            print_error "docker-compose is required for Docker testing"
+        # Check if docker is available
+        if ! command -v docker >/dev/null 2>&1; then
+            print_error "Docker is required for Docker testing"
             return 1
         fi
         
-        # Run API tests in Docker
-        print_info "Running API tests in Docker..."
-        docker-compose -f tests/docker/docker-compose.test.yml --profile api-tests up --build --abort-on-container-exit api-tests
-        
-        # Run visual tests in Docker (if requested)
-        if [[ "$VISUAL" == "true" ]]; then
-            print_info "Running visual tests in Docker..."
-            docker-compose -f tests/docker/docker-compose.test.yml --profile visual-tests up --build --abort-on-container-exit playwright-tests
+        # Check for docker compose (prefer plugin over standalone)
+        if docker compose version >/dev/null 2>&1; then
+            DOCKER_COMPOSE="docker compose"
+        elif command -v docker-compose >/dev/null 2>&1; then
+            DOCKER_COMPOSE="docker-compose"
+        else
+            print_error "Docker Compose is required for Docker testing"
+            return 1
         fi
         
+        # Set test environment
+        export TEST_ENV="docker"
+        
+        # Run API tests in Docker
+        print_info "Running API tests in Docker..."
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml --profile api-tests up --build --abort-on-container-exit api-tests
+        
+        # Run visual tests in Docker
+        print_info "Running visual tests in Docker..."
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml --profile visual-tests up --build --abort-on-container-exit playwright-tests
+        
         # Cleanup
-        docker-compose -f tests/docker/docker-compose.test.yml down --volumes
+        print_info "Cleaning up test containers..."
+        $DOCKER_COMPOSE -f tests/docker/docker-compose.test.yml down --volumes
+        
+        print_success "Docker tests completed"
         ;;
     wait-api)
         wait_for_api
