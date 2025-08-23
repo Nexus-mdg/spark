@@ -18,7 +18,6 @@ export default function EngineSelector({ className = '' }) {
       <div className="flex items-center gap-2">
         {/* Engine status indicator */}
         <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-600 dark:text-gray-300">Engine:</span>
           <div 
             className="flex items-center gap-1 cursor-help"
             onMouseEnter={() => setShowTooltip(true)}
