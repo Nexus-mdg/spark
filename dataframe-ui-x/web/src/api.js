@@ -101,6 +101,25 @@ export const renameDataframe = async (oldName, { new_name, description } = {}) =
   return res.json();
 };
 
+// Convert DataFrame type
+export const convertDataframeType = async (name, { type, auto_delete_hours } = {}) => {
+  const payload = { type };
+  if (type === 'ephemeral' && auto_delete_hours !== undefined) {
+    payload.auto_delete_hours = auto_delete_hours;
+  }
+  const res = await fetch(`${BASE()}/api/dataframes/${encodeURIComponent(name)}/type`, {
+    method: 'PATCH',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    let msg = `Type conversion failed: ${res.status}`;
+    try { const t = await res.text(); if (t) msg += ` ${t}`; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+};
+
 // URL builders for downloads and share links
 export const buildDownloadCsvUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.csv`;
 export const buildDownloadJsonUrl = (name) => `${BASE()}/api/dataframes/${encodeURIComponent(name)}/download.json`;

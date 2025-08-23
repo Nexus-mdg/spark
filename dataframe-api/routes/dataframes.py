@@ -344,6 +344,91 @@ def rename_dataframe(name):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@dataframes_bp.route('/api/dataframes/<name>/type', methods=['PATCH'])
+def convert_dataframe_type(name):
+    """Convert DataFrame to a different type (static, ephemeral, temporary)"""
+    try:
+        df_key = f"df:{name}"
+        meta_key = f"meta:{name}"
+        
+        if not redis_client.exists(df_key):
+            return jsonify({'success': False, 'error': 'DataFrame not found'}), 404
+        
+        # Get request data
+        data = request.get_json() or {}
+        new_type = data.get('type', '').lower()
+        auto_delete_hours = data.get('auto_delete_hours', 10)
+        
+        # Validate type
+        if new_type not in ['static', 'ephemeral', 'temporary']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+        
+        # Validate auto_delete_hours for ephemeral type
+        try:
+            auto_delete_hours = int(auto_delete_hours) if auto_delete_hours else 10
+            if new_type == 'ephemeral' and auto_delete_hours <= 0:
+                return jsonify({'success': False, 'error': 'auto_delete_hours must be a positive integer for ephemeral type'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'auto_delete_hours must be a valid integer'}), 400
+        
+        # Load current metadata
+        meta_json = redis_client.get(meta_key) or '{}'
+        try:
+            metadata = json.loads(meta_json)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Failed to parse DataFrame metadata'}), 500
+        
+        current_type = metadata.get('type', 'static')
+        
+        # Skip if no change needed
+        if current_type == new_type and (new_type != 'ephemeral' or metadata.get('auto_delete_hours') == auto_delete_hours):
+            return jsonify({'success': True, 'message': 'No type conversion needed', 'metadata': metadata})
+        
+        # Calculate new expiration and TTL
+        expires_at, ttl_seconds = calculate_expiration(new_type, auto_delete_hours)
+        
+        # Update metadata
+        metadata['type'] = new_type
+        metadata['expires_at'] = expires_at
+        if new_type == 'ephemeral':
+            metadata['auto_delete_hours'] = auto_delete_hours
+        elif 'auto_delete_hours' in metadata:
+            # Remove auto_delete_hours for non-ephemeral types
+            del metadata['auto_delete_hours']
+        
+        # Apply TTL changes to Redis keys
+        try:
+            if new_type == 'static':
+                # Remove TTL (make keys persistent)
+                redis_client.persist(df_key)
+                redis_client.persist(meta_key)
+            else:
+                # Set TTL for ephemeral/temporary
+                redis_client.expire(df_key, ttl_seconds)
+                redis_client.expire(meta_key, ttl_seconds)
+            
+            # Update metadata in Redis
+            redis_client.set(meta_key, json.dumps(metadata))
+            
+            # If converting to static, ensure metadata persists
+            if new_type == 'static':
+                redis_client.persist(meta_key)
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Failed to update Redis TTL: {str(e)}'}), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f'DataFrame type converted from {current_type} to {new_type}',
+            'metadata': metadata,
+            'expires_at': expires_at,
+            'ttl_seconds': ttl_seconds
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @dataframes_bp.route('/api/stats', methods=['GET'])
 def get_cache_stats():
     """Get cache statistics"""

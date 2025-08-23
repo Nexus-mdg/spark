@@ -15,6 +15,7 @@ import {
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import TypeConversionModal from './components/TypeConversionModal.jsx'
 import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon } from './components/DataFrameTypeIcons.jsx'
 import {
   getStats,
@@ -25,7 +26,8 @@ import {
   getDataframe,
   buildDownloadCsvUrl,
   buildDownloadJsonUrl,
-  renameDataframe
+  renameDataframe,
+  convertDataframeType
 } from './api.js'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, ArcElement, LineElement, PointElement, Tooltip, Legend)
@@ -227,6 +229,11 @@ export default function Home() {
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+
+  // Type conversion modal state
+  const [typeConversionOpen, setTypeConversionOpen] = useState(false)
+  const [typeConversionDataframe, setTypeConversionDataframe] = useState(null)
+  const [convertingType, setConvertingType] = useState(false)
 
   const toast = useToast()
   const navigate = useNavigate()
@@ -517,6 +524,34 @@ export default function Home() {
     } catch {
       toast.show('Copy failed')
     }
+  }
+
+  // Type conversion handlers
+  const openTypeConversion = (dataframe) => {
+    setTypeConversionDataframe(dataframe)
+    setTypeConversionOpen(true)
+  }
+
+  const handleTypeConversion = async (name, conversionData) => {
+    setConvertingType(true)
+    try {
+      const result = await convertDataframeType(name, conversionData)
+      if (result.success) {
+        toast.show(`DataFrame type converted to ${conversionData.type}`)
+        await refreshList() // Refresh to show updated data
+        setTypeConversionOpen(false)
+        setTypeConversionDataframe(null)
+      }
+    } catch (err) {
+      toast.show(err.message || 'Type conversion failed')
+    } finally {
+      setConvertingType(false)
+    }
+  }
+
+  const cancelTypeConversion = () => {
+    setTypeConversionOpen(false)
+    setTypeConversionDataframe(null)
   }
 
   // Open edit modal for a given row
@@ -909,7 +944,13 @@ export default function Home() {
                   <tr key={r.name}>
                     <td className="py-3 pr-4 font-medium align-top">
                       <div className="max-w-[30ch] flex items-center gap-2">
-                        <span className="text-lg flex-shrink-0">{getTypeIcon(r.type || 'static')}</span>
+                        <button
+                          className="text-lg flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          onClick={() => openTypeConversion(r)}
+                          title="Click to convert DataFrame type"
+                        >
+                          {getTypeIcon(r.type || 'static')}
+                        </button>
                         <button
                           className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:underline"
                           onClick={() => navigate(`/analysis/${encodeURIComponent(r.name)}`)}
@@ -1056,6 +1097,15 @@ export default function Home() {
           </div>
         </div>
       </Modal>
+
+      {/* Type Conversion Modal */}
+      <TypeConversionModal
+        open={typeConversionOpen}
+        dataframe={typeConversionDataframe}
+        converting={convertingType}
+        onConvert={handleTypeConversion}
+        onCancel={cancelTypeConversion}
+      />
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
