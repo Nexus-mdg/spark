@@ -89,7 +89,7 @@ export default function Header({ title, children }) {
           {/* Navigation Menu */}
           <div className="flex items-center gap-2">
             {/* Main Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-1">
               <button 
                 onClick={() => navigate('/')} 
                 className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
@@ -153,7 +153,7 @@ export default function Header({ title, children }) {
             <EngineSelector className="hidden sm:block" />
 
             {/* Mobile Navigation Menu */}
-            <div className="md:hidden">
+            <div className="lg:hidden">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="text-white/80 hover:text-white p-2"
@@ -196,7 +196,7 @@ export default function Header({ title, children }) {
                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-white dark:ring-opacity-20 z-50">
                   <div className="py-1">
                   {/* Mobile Navigation Items */}
-                  <div className="md:hidden border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
+                  <div className="lg:hidden border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
                     <button
                       onClick={() => {
                         navigate('/')

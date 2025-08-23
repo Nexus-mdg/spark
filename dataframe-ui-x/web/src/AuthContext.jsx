@@ -34,9 +34,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Auth config check failed:', error)
-      // When API is not available, assume auth is disabled for development
-      setAuthDisabled(true)
-      return true
     }
     return false
   }
