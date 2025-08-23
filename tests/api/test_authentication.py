@@ -69,7 +69,7 @@ class TestAPIAuthentication:
         response = session.get(f"{api_base_url}/api/stats")
         assert response.status_code == 200, "Valid API key should allow access"
     
-    def test_api_dataframes_endpoint_accessible(self, api_client):
+    def test_api_dataframes_endpoint_accessible(self, api_client, setup_test_data):
         """Test that basic DataFrame endpoints are accessible."""
         # Test getting people DataFrame (should exist from fixtures)
         response = api_client.get_dataframe("people")
@@ -78,7 +78,7 @@ class TestAPIAuthentication:
         data = validate_response_structure(response, ['data', 'columns', 'name', 'shape'])
         assert data['name'] == 'people', "DataFrame name should be 'people'"
     
-    def test_api_operations_endpoints_accessible(self, api_client):
+    def test_api_operations_endpoints_accessible(self, api_client, setup_test_data):
         """Test that operation endpoints are accessible."""
         # Test select operation
         response = api_client.select_operation("people", "id,name")
@@ -155,7 +155,7 @@ class TestErrorHandling:
             # Timeout is expected and handled properly
             pass
     
-    def test_api_large_request_handling(self, api_base_url):
+    def test_api_large_request_handling(self, api_base_url, setup_test_data):
         """Test API handles large requests appropriately."""
         session = requests.Session()
         session.headers.update({

@@ -17,7 +17,7 @@ from tests.api.utils.api_client import (
 class TestSelectOperations:
     """Test SELECT operations (column selection and exclusion)."""
     
-    def test_select_specific_columns(self, api_client):
+    def test_select_specific_columns(self, api_client, setup_test_data):
         """Test selecting specific columns from people DataFrame."""
         response = api_client.select_operation("people", "id,name")
         data = validate_dataframe_response(response)
@@ -31,7 +31,7 @@ class TestSelectOperations:
         assert len(rows) > 0, "No data returned"
         assert all(len(row) == 2 for row in rows), "All rows should have 2 columns"
     
-    def test_select_exclude_columns(self, api_client):
+    def test_select_exclude_columns(self, api_client, setup_test_data):
         """Test excluding specific columns from people DataFrame."""
         response = api_client.select_operation("people", "id,name", exclude=True)
         data = validate_dataframe_response(response)
@@ -46,7 +46,7 @@ class TestSelectOperations:
         for col in expected_columns:
             assert col in columns, f"Expected column {col} in result"
     
-    def test_select_all_columns(self, api_client):
+    def test_select_all_columns(self, api_client, setup_test_data):
         """Test selecting all columns (equivalent to no operation)."""
         # Get original DataFrame
         orig_response = api_client.get_dataframe("people")
@@ -62,7 +62,7 @@ class TestSelectOperations:
         columns = extract_dataframe_columns(data)
         assert set(columns) == set(orig_columns), "Should have all original columns"
     
-    def test_select_nonexistent_column(self, api_client):
+    def test_select_nonexistent_column(self, api_client, setup_test_data):
         """Test selecting a column that doesn't exist should handle gracefully."""
         response = api_client.select_operation("people", "nonexistent_column")
         # The API should return an error or handle gracefully
@@ -73,7 +73,7 @@ class TestSelectOperations:
 class TestFilterOperations:
     """Test FILTER operations with various conditions."""
     
-    def test_filter_age_greater_than(self, api_client, sample_filters):
+    def test_filter_age_greater_than(self, api_client, sample_filters, setup_test_data):
         """Test filtering people with age >= 30."""
         response = api_client.filter_operation("people", sample_filters['simple'])
         data = validate_operation_response(response)
@@ -90,7 +90,7 @@ class TestFilterOperations:
             for row in rows:
                 assert row[age_index] >= 30, f"Found age {row[age_index]} < 30"
     
-    def test_filter_multiple_conditions(self, api_client, sample_filters):
+    def test_filter_multiple_conditions(self, api_client, sample_filters, setup_test_data):
         """Test filtering with multiple AND conditions."""
         response = api_client.filter_operation("people", sample_filters['multiple'], "and")
         data = validate_operation_response(response)
@@ -105,7 +105,7 @@ class TestFilterOperations:
                 age = row[age_index]
                 assert 25 <= age <= 35, f"Age {age} not in range [25, 35]"
     
-    def test_filter_string_equality(self, api_client, sample_filters):
+    def test_filter_string_equality(self, api_client, sample_filters, setup_test_data):
         """Test filtering by string equality."""
         response = api_client.filter_operation("people", sample_filters['string'])
         data = validate_operation_response(response)
@@ -123,7 +123,7 @@ class TestFilterOperations:
 class TestGroupByOperations:
     """Test GROUPBY operations with various aggregations."""
     
-    def test_groupby_count(self, api_client, sample_aggregations):
+    def test_groupby_count(self, api_client, sample_aggregations, setup_test_data):
         """Test groupby with count aggregation on purchases."""
         response = api_client.groupby_operation("purchases", ["product"], sample_aggregations['count'])
         data = validate_operation_response(response)
@@ -141,7 +141,7 @@ class TestGroupByOperations:
             # Should have aggregated data
             assert len(rows) > 0, "Groupby should return aggregated rows"
     
-    def test_groupby_sum(self, api_client, sample_aggregations):
+    def test_groupby_sum(self, api_client, sample_aggregations, setup_test_data):
         """Test groupby with sum aggregation on purchases."""
         response = api_client.groupby_operation("purchases", ["product"], sample_aggregations['sum'])
         data = validate_operation_response(response)
@@ -159,7 +159,7 @@ class TestGroupByOperations:
 class TestMergeOperations:
     """Test MERGE operations between DataFrames."""
     
-    def test_inner_merge(self, api_client):
+    def test_inner_merge(self, api_client, setup_test_data):
         """Test inner merge between people and purchases on id."""
         response = api_client.merge_operation("people", "purchases", "id", "inner")
         data = validate_operation_response(response)
@@ -179,7 +179,7 @@ class TestMergeOperations:
             assert len(people_cols_found) > 0, "No people columns found in merge result"
             assert len(purchase_cols_found) > 0, "No purchase columns found in merge result"
     
-    def test_left_merge(self, api_client):
+    def test_left_merge(self, api_client, setup_test_data):
         """Test left merge to preserve all people records."""
         response = api_client.merge_operation("people", "purchases", "id", "left")
         data = validate_operation_response(response)
@@ -200,7 +200,7 @@ class TestMergeOperations:
 class TestPivotOperations:
     """Test PIVOT operations for data reshaping."""
     
-    def test_pivot_longer(self, api_client):
+    def test_pivot_longer(self, api_client, setup_test_data):
         """Test pivot longer operation (melt)."""
         pivot_config = {
             "name": "purchases",
@@ -227,7 +227,7 @@ class TestPivotOperations:
             assert len(rows) > 0, "Pivot longer should return data"
     
     @pytest.mark.skip(reason="Pivot wider requires specific data structure")
-    def test_pivot_wider(self, api_client):
+    def test_pivot_wider(self, api_client, setup_test_data):
         """Test pivot wider operation (casting)."""
         # This would require specific test data designed for widening
         pass
@@ -236,7 +236,7 @@ class TestPivotOperations:
 class TestCompareOperations:
     """Test COMPARE operations between DataFrames."""
     
-    def test_compare_identical_dataframes(self, api_client):
+    def test_compare_identical_dataframes(self, api_client, setup_test_data):
         """Test comparing a DataFrame with itself."""
         response = api_client.compare_operation("people", "people")
         data = validate_operation_response(response)
@@ -249,7 +249,7 @@ class TestCompareOperations:
         if 'identical' in data:
             assert data['identical'] is True, "Identical DataFrames should be marked as identical"
     
-    def test_compare_different_dataframes(self, api_client):
+    def test_compare_different_dataframes(self, api_client, setup_test_data):
         """Test comparing different DataFrames (people vs purchases)."""
         response = api_client.compare_operation("people", "purchases")
         data = validate_operation_response(response)
@@ -265,7 +265,7 @@ class TestCompareOperations:
 class TestIntegrationHelper:
     """Integration tests using the test helper class."""
     
-    def test_dataframe_helper_basic_operations(self, api_client):
+    def test_dataframe_helper_basic_operations(self, api_client, setup_test_data):
         """Test DataFrameTestHelper utility functions."""
         helper = DataFrameTestHelper(api_client)
         
