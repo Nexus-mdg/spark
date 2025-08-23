@@ -304,6 +304,85 @@ test_api_stats() {
   curl -sS "${API_BASE}/api/stats" | python3 -m json.tool || true
 }
 
+# Spark Engine Tests
+
+test_select_spark() {
+  echo "\n[TEST] SELECT (Spark): people columns=id,name"
+  curl -sS -X POST "${API_BASE}/api/ops/select" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"people","columns":["id","name"],"engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_select_exclude_spark() {
+  echo "\n[TEST] SELECT exclude (Spark): people drop id,name"
+  curl -sS -X POST "${API_BASE}/api/ops/select" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"people","columns":["id","name"],"exclude":true,"engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_filter_spark() {
+  echo "\n[TEST] FILTER (Spark): people age>=30 AND city==New York"
+  curl -sS -X POST "${API_BASE}/api/ops/filter" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"people","filters":[{"col":"age","op":"gte","value":30},{"col":"city","op":"eq","value":"New York"}],"combine":"and","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_groupby_spark() {
+  echo "\n[TEST] GROUPBY (Spark): purchases by product sum(quantity)"
+  curl -sS -X POST "${API_BASE}/api/ops/groupby" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","by":["product"],"aggs":{"quantity":"sum"},"engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_merge_spark() {
+  echo "\n[TEST] MERGE (Spark): people with purchases on id (inner)"
+  curl -sS -X POST "${API_BASE}/api/ops/merge" \
+    -H 'Content-Type: application/json' \
+    -d '{"names":["people","purchases"],"keys":["id"],"how":"inner","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_pivot_spark() {
+  echo "\n[TEST] PIVOT wider (Spark): purchases index=city names_from=product values_from=quantity agg=sum"
+  curl -sS -X POST "${API_BASE}/api/ops/pivot" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","mode":"wider","index":["city"],"names_from":"product","values_from":"quantity","aggfunc":"sum","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_compare_identical_spark() {
+  echo "\n[TEST] COMPARE (Spark): people vs people (identical)"
+  curl -sS -X POST "${API_BASE}/api/ops/compare" \
+    -H 'Content-Type: application/json' \
+    -d '{"name1":"people","name2":"people","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_compare_schema_spark() {
+  echo "\n[TEST] COMPARE (Spark): people vs purchases (schema mismatch)"
+  curl -sS -X POST "${API_BASE}/api/ops/compare" \
+    -H 'Content-Type: application/json' \
+    -d '{"name1":"people","name2":"purchases","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_mutate_total_value_spark() {
+  echo "\n[TEST] MUTATE vector (Spark): purchases total_value = quantity * price"
+  curl -sS -X POST "${API_BASE}/api/ops/mutate" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","target":"total_value","mode":"vector","expr":"col('\''quantity'\'') * col('\''price'\'')","engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_datetime_parse_spark() {
+  echo "\n[TEST] DATETIME parse (Spark): purchases date -> date_dt"
+  curl -sS -X POST "${API_BASE}/api/ops/datetime" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"purchases","action":"parse","source":"date","target":"date_dt","overwrite":true,"engine":"spark"}' | python3 -m json.tool || true
+}
+
+test_rename_columns_spark() {
+  echo "\n[TEST] RENAME columns (Spark): people id->person_id, name->full_name"
+  curl -sS -X POST "${API_BASE}/api/ops/rename" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"people","map":{"id":"person_id","name":"full_name"},"engine":"spark"}' | python3 -m json.tool || true
+}
+
 run_all() {
   # Basic operation tests
   test_select
@@ -327,6 +406,19 @@ run_all() {
   test_filter_null_checks
   test_merge_left
   test_merge_outer
+  
+  # Spark engine tests
+  test_select_spark
+  test_select_exclude_spark
+  test_filter_spark
+  test_groupby_spark
+  test_merge_spark
+  test_pivot_spark
+  test_compare_identical_spark
+  test_compare_schema_spark
+  test_mutate_total_value_spark
+  test_datetime_parse_spark
+  test_rename_columns_spark
   
   # Pipeline operation tests
   test_pipeline_preview
@@ -378,6 +470,19 @@ main() {
     filter-null) test_filter_null_checks ;;
     merge-left) test_merge_left ;;
     merge-outer) test_merge_outer ;;
+    
+    # Spark engine tests
+    select-spark) test_select_spark ;;
+    select-exclude-spark) test_select_exclude_spark ;;
+    filter-spark) test_filter_spark ;;
+    groupby-spark) test_groupby_spark ;;
+    merge-spark) test_merge_spark ;;
+    pivot-spark) test_pivot_spark ;;
+    compare-identical-spark) test_compare_identical_spark ;;
+    compare-schema-spark) test_compare_schema_spark ;;
+    mutate-spark) test_mutate_total_value_spark ;;
+    datetime-spark) test_datetime_parse_spark ;;
+    rename-columns-spark) test_rename_columns_spark ;;
     
     # Pipeline tests
     pipeline-preview) test_pipeline_preview ;;
