@@ -1,0 +1,19 @@
+services:
+  # Simple API test runner - runs basic infrastructure tests
+  api-tests:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ../..:/app
+    command: >
+      sh -c "
+        echo 'Installing test dependencies...' &&
+        pip install pytest pytest-html requests &&
+        echo 'Running API tests...' &&
+        python -m pytest tests/api/test_infrastructure.py -v --html=tests/reports/api_report.html --self-contained-html
+      "
+    profiles:
+      - api-tests
+
+volumes:
+  test_reports:

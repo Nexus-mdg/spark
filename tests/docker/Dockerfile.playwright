@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install Node.js dependencies for Playwright
 COPY tests/visual/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Install additional tools for test execution
 RUN apt-get update && apt-get install -y \

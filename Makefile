@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users test-infrastructure test-api test-auth test-core test-all test-visual test-docker test-setup test-clean
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users test-api test-docker test-clean
 
 help:
 	@echo "Targets:"
@@ -20,16 +20,10 @@ help:
 	@echo "  wait       - wait for API readiness"
 	@echo "  test       - run all curl tests (legacy)"
 	@echo ""
-	@echo "Modern Testing (pytest-based):"
-	@echo "  test-infrastructure - run infrastructure tests"
-	@echo "  test-api           - run API endpoint tests"
-	@echo "  test-auth          - run authentication tests"
-	@echo "  test-core          - run core DataFrame operation tests"
-	@echo "  test-all           - run all modern tests"
-	@echo "  test-visual        - run visual regression tests (Docker-based)"
-	@echo "  test-docker        - run tests in Docker environment (isolated)"
-	@echo "  test-setup         - setup test environment"
-	@echo "  test-clean         - clean test artifacts"
+	@echo "Modern Testing (Docker-only):"
+	@echo "  test-docker        - run all tests in Docker (complete isolation)"
+	@echo "  test-api           - run API tests in Docker"
+	@echo "  test-clean         - clean up test containers and volumes"
 	@echo ""
 	@echo "Basic Operation Tests:"
 	@echo "  select     - run SELECT test"
@@ -244,40 +238,16 @@ list-users:
 	@echo "Listing all users in PostgreSQL..."
 	docker compose -f ./docker-compose.yml exec postgres psql -U dataframe_user -d dataframe_ui -c "SELECT username, created_at FROM users ORDER BY created_at;"
 
-# Modern testing infrastructure
-
-test-infrastructure:
-	@echo "Running infrastructure tests..."
-	./tests/scripts/run_tests.sh infrastructure
-
-test-api:
-	@echo "Running API tests..."
-	./tests/scripts/run_tests.sh api
-
-test-auth:
-	@echo "Running authentication tests..."
-	./tests/scripts/run_tests.sh auth
-
-test-core:
-	@echo "Running core operation tests..."
-	./tests/scripts/run_tests.sh core
-
-test-all:
-	@echo "Running all modern tests..."
-	./tests/scripts/run_tests.sh all
-
-test-visual:
-	@echo "Running visual tests (Phase 2)..."
-	./tests/scripts/run_tests.sh visual
+# Docker-only testing infrastructure
 
 test-docker:
-	@echo "Running tests in Docker environment (Phase 3)..."
-	./tests/scripts/run_tests.sh docker
+	@echo "Running all tests in Docker..."
+	./tests/scripts/run_tests.sh all
 
-test-setup:
-	@echo "Setting up test environment..."
-	./tests/scripts/run_tests.sh setup
+test-api:
+	@echo "Running API tests in Docker..."
+	./tests/scripts/run_tests.sh api
 
 test-clean:
-	@echo "Cleaning test artifacts..."
+	@echo "Cleaning up test containers and volumes..."
 	./tests/scripts/run_tests.sh clean

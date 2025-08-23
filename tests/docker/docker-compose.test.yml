@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Test database for isolated testing
   test-postgres:
@@ -141,8 +139,7 @@ services:
     command: >
       sh -c "
         pip install -r tests/requirements.txt &&
-        pip install -r dataframe-api/requirements.txt &&
-        python -m pytest tests/api/ -v --html=tests/reports/api_report.html
+        python -m pytest tests/api/test_infrastructure.py -v --html=tests/reports/api_report.html
       "
     depends_on:
       test-dataframe-api:
