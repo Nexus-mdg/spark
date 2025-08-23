@@ -306,11 +306,11 @@ test-visual: prepare
 	@echo "Visual tests completed."
 
 test-visual-dev:
-	@echo "Running Playwright visual tests in development mode (non-headless)..."
+	@echo "Running Playwright visual tests in development mode (headless with verbose output)..."
 	docker compose -f ./docker-compose.yml up -d redis dataframe-api dataframe-ui-x
 	sleep 15
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh wait
-	docker compose -f ./docker-compose.yml --profile testing run --rm -e HEADLESS=false playwright-tests
+	docker compose -f ./docker-compose.yml --profile testing run --rm -e HEADLESS=true playwright-tests python -m pytest tests/ -v -s --tb=long
 
 test-visual-screenshots:
 	@echo "Running visual tests and capturing screenshots..."
