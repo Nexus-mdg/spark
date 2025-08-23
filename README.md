@@ -75,6 +75,16 @@ Access the feature through the "Chained Pipes" button in the navigation bar.
 - **NGINX**: Reverse proxy and load balancing
 - **SSL Support**: Certificate generation for secure connections
 
+### 🧪 Visual Testing (Playwright)
+- **End-to-end Testing**: Comprehensive browser-based testing with Python
+- **Dataframes List Testing**: Automated validation of table functionality, pagination, and filtering
+- **Cross-browser Support**: Tests run on Chromium, Firefox, and WebKit
+- **Responsive Testing**: Validates layout across mobile, tablet, and desktop sizes
+- **Screenshot Capture**: Automated screenshots on test failures for debugging
+- **Docker Integration**: Containerized test environment for consistent results
+
+See [PLAYWRIGHT_IMPLEMENTATION.md](PLAYWRIGHT_IMPLEMENTATION.md) for detailed testing documentation.
+
 ## Quick start (local dev)
 
 ### Prerequisites
@@ -190,6 +200,13 @@ Common helpers are provided via the root Makefile:
 - make restart-x # restart dataframe-ui-x
 - make down     # stop all services
 - Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
+
+### Visual Testing Targets
+- make test-visual-build     # build Playwright test container
+- make test-visual           # run visual tests (headless)
+- make test-visual-dev       # run visual tests in development mode (with browser)
+- make test-visual-screenshots # run tests and capture screenshots on failure
+- make test-visual-clean     # clean up visual test artifacts
 
 ## Jenkins pipeline
 A Kotlin-based Jenkins pipeline script is provided at `jenkins.kt`.

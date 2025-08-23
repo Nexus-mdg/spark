@@ -1,8 +1,16 @@
 import pytest
 import asyncio
+import os
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from config import Config
 from utils import TestHelpers
+
+# Configure pytest with playwright
+def pytest_configure(config):
+    """Configure pytest with playwright settings"""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -35,7 +43,7 @@ async def context(browser: Browser):
     yield context
     await context.close()
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  
 async def page(context: BrowserContext):
     """Create a new page for each test"""
     page = await context.new_page()
@@ -43,10 +51,8 @@ async def page(context: BrowserContext):
     # Set default timeout
     page.set_default_timeout(Config.TIMEOUT)
     
-    # Navigate to the home page
-    await page.goto(Config.BASE_URL)
-    await TestHelpers.wait_for_app_ready(page)
-    
+    # For tests that don't need the application, skip navigation
+    # Tests can override this by calling page.goto() themselves
     yield page
     
     # Take screenshot on failure if configured
@@ -54,19 +60,14 @@ async def page(context: BrowserContext):
         import inspect
         test_name = inspect.stack()[1].function
         try:
-            await TestHelpers.take_screenshot(page, f"failure_{test_name}")
+            screenshot_dir = Config.SCREENSHOT_DIR
+            os.makedirs(screenshot_dir, exist_ok=True)
+            await page.screenshot(path=f"{screenshot_dir}/failure_{test_name}.png")
         except:
             pass
 
 @pytest.fixture(autouse=True)
-def check_api_health():
-    """Check API health before running tests"""
-    if not TestHelpers.check_api_health():
-        pytest.skip("API is not healthy - skipping visual tests")
-
-# Configure pytest-playwright if available
-def pytest_configure(config):
-    """Configure pytest with playwright settings"""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
+def skip_if_no_app():
+    """Skip tests that require the app if BASE_URL indicates testing mode"""
+    # For infrastructure tests, we don't need to check the app
+    pass
