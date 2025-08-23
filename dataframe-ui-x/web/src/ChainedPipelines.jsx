@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import ConfirmDialog from './components/ConfirmDialog.jsx'
 import { EngineContext, ENGINE_INFO } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
@@ -630,6 +631,11 @@ export default function ChainedPipelines() {
   const [result, setResult] = useState(null)
   const [preview, setPreview] = useState({ loading: false, error: '', steps: [], final: null })
   
+  // Confirmation dialog state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [pipelineToDelete, setPipelineToDelete] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  
   // Pagination state for pipelines
   const [pipelinesCurrentPage, setPipelinesCurrentPage] = useState(1)
   const itemsPerPage = parseInt(import.meta.env.VITE_MAX_ITEMS_PER_PAGE || '15', 10)
@@ -789,7 +795,30 @@ export default function ChainedPipelines() {
   }
 
   const onDeletePipeline = async (name) => {
-    try { await pipelineDelete(name); toast.show('Deleted'); await refreshPipelines() } catch (e) { toast.show(e.message || 'Delete failed') }
+    setPipelineToDelete(name)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!pipelineToDelete) return
+    
+    setIsDeleting(true)
+    try { 
+      await pipelineDelete(pipelineToDelete); 
+      toast.show('Deleted'); 
+      await refreshPipelines() 
+    } catch (e) { 
+      toast.show(e.message || 'Delete failed') 
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+      setPipelineToDelete('')
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false)
+    setPipelineToDelete('')
   }
 
   const onRunByName = async (name) => {
@@ -1097,6 +1126,17 @@ export default function ChainedPipelines() {
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
         <div className="bg-slate-900 text-white px-4 py-2 rounded shadow">{toast.msg}</div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Pipeline"
+        message={`Are you sure you want to delete the pipeline "${pipelineToDelete}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirming={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   )
 }
