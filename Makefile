@@ -92,10 +92,10 @@ prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
 
 up:
-	docker compose -f ./docker-compose.yml up -d redis spark spark-worker dataframe-api dataframe-ui-x
+	docker compose -f ./docker-compose.yml up -d redis spark spark-worker dataframe-api story-mode dataframe-ui-x
 
 build:
-	docker compose -f ./docker-compose.yml build dataframe-api dataframe-ui-x
+	docker compose -f ./docker-compose.yml build dataframe-api story-mode dataframe-ui-x
 
 build-ui:
 	docker compose -f ./docker-compose.yml build dataframe-api
@@ -103,17 +103,26 @@ build-ui:
 build-ui-x:
 	docker compose -f ./docker-compose.yml build dataframe-ui-x
 
+build-story:
+	docker compose -f ./docker-compose.yml build story-mode
+
 restart:
 	docker compose -f ./docker-compose.yml restart dataframe-api
 
 restart-x:
 	docker compose -f ./docker-compose.yml restart dataframe-ui-x
 
+restart-story:
+	docker compose -f ./docker-compose.yml restart story-mode
+
 logs:
 	docker compose -f ./docker-compose.yml logs -f dataframe-api
 
 logs-x:
 	docker compose -f ./docker-compose.yml logs -f dataframe-ui-x
+
+logs-story:
+	docker compose -f ./docker-compose.yml logs -f story-mode
 
 wait: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh wait

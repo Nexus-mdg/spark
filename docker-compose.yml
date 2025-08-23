@@ -88,6 +88,22 @@ services:
     volumes:
       - ./dataframe-api:/app
 
+  story-mode:
+    build: ./story-mode
+    container_name: story-mode
+    restart: always
+    network_mode: "host"
+    environment:
+      - PORT=5002
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379
+      - DATAFRAME_API_URL=http://localhost:4999
+      - LFS_REPO_PATH=/app/lfs-data
+    depends_on:
+      - redis
+    volumes:
+      - story-lfs-data:/app/lfs-data
+
   dataframe-ui-x:
     build: ./dataframe-ui-x
     container_name: dataframe-ui-x
@@ -96,6 +112,7 @@ services:
     environment:
       - PORT=5001
       - API_BASE_URL=http://localhost:4999
+      - STORY_MODE_API_URL=http://localhost:5002
       # Authentication settings (disabled by default for local development)
       - DISABLE_AUTHENTICATION=true
       - SECRET_KEY=dataframe-ui-secret-key-change-in-production
@@ -112,6 +129,7 @@ services:
     depends_on:
       - dataframe-api
       - postgres
+      - story-mode
 
   ntfy:
     image: binwiederhier/ntfy
@@ -161,4 +179,6 @@ volumes:
   postgres-data:
     driver: local
   ntfy-data:
+    driver: local
+  story-lfs-data:
     driver: local
