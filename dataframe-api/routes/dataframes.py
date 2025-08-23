@@ -193,7 +193,7 @@ def upload_dataframe():
         file = request.files['file']
         name = request.form.get('name', '')
         description = request.form.get('description', '')
-        df_type = request.form.get('type', 'static')  # Default to static
+        df_type = request.form.get('type', 'ephemeral')  # Default to ephemeral
         auto_delete_hours = request.form.get('auto_delete_hours', '10')
 
         if file.filename == '':

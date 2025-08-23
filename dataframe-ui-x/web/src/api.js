@@ -64,7 +64,7 @@ export const clearCache = async () => {
   return res.json();
 };
 
-export const uploadDataframe = async ({ file, name, description, type = 'static', auto_delete_hours = 10 }) => {
+export const uploadDataframe = async ({ file, name, description, type = 'ephemeral', auto_delete_hours = 10 }) => {
   const form = new FormData();
   if (name) form.set('name', name);
   if (description) form.set('description', description);
