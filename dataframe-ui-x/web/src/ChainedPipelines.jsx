@@ -629,7 +629,7 @@ export default function ChainedPipelines() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const dfOptions = useMemo(() => (dfs || []).map(d => ({ value: d.name, label: d.name })), [dfs])
+  const dfOptions = useMemo(() => (dfs || []).map(d => ({ value: d.name, label: d.name, columns: d.columns || [] })), [dfs])
 
   const refresh = async () => {
     setLoading(true)
