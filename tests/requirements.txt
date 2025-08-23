@@ -1,0 +1,17 @@
+# API Testing Dependencies
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.0  # For parallel test execution
+requests>=2.31.0
+
+# Visual Testing Dependencies (will be installed in Docker container)
+# playwright>=1.37.0
+
+# Test Reporting
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+
+# Development and Testing Utilities
+coverage>=7.2.0
+black>=23.3.0  # Code formatting
+flake8>=6.0.0  # Linting
