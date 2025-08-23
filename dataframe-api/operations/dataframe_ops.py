@@ -18,13 +18,30 @@ def _load_df_from_cache(name: str) -> pd.DataFrame:
     return pd.read_csv(io.StringIO(csv_string))
 
 
-def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source: str = '') -> dict:
+def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source: str = '', df_type: str = None, auto_delete_hours: int = None) -> dict:
     """Save a DataFrame to Redis cache and return metadata"""
     csv_string = df.to_csv(index=False)
     df_key = f"df:{name}"
     meta_key = f"meta:{name}"
     
-    # Default to static type for operation results (no expiration)
+    # Determine DataFrame type - default to ephemeral for pipeline sources, static for others
+    if df_type is None:
+        if source and 'pipeline' in source.lower():
+            df_type = 'ephemeral'
+        else:
+            df_type = 'static'
+    
+    # Import the expiration calculation function from dataframes route
+    from routes.dataframes import calculate_expiration, set_dataframe_with_ttl
+    
+    # Set default auto_delete_hours for ephemeral pipeline results from environment
+    if df_type == 'ephemeral' and auto_delete_hours is None:
+        import os
+        auto_delete_hours = int(os.getenv('PIPELINE_RESULT_EXPIRATION_HOURS', '8'))  # 8 hours default
+    
+    # Calculate expiration
+    expires_at, ttl_seconds = calculate_expiration(df_type, auto_delete_hours)
+    
     size_mb = len(csv_string.encode('utf-8')) / (1024 * 1024)
     metadata = {
         'name': name,
@@ -36,15 +53,13 @@ def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source
         'size_mb': round(size_mb, 2),
         'format': 'csv',
         'source': source or 'operation',
-        'type': 'static',  # Operations always create static dataframes
-        'expires_at': None,
-        'auto_delete_hours': None
+        'type': df_type,
+        'expires_at': expires_at,
+        'auto_delete_hours': auto_delete_hours if df_type == 'ephemeral' else None
     }
     
-    # Store without TTL (static)
-    redis_client.set(df_key, csv_string)
-    redis_client.set(meta_key, json.dumps(metadata))
-    redis_client.sadd("dataframe_index", name)
+    # Store with TTL if applicable
+    set_dataframe_with_ttl(df_key, meta_key, csv_string, metadata, ttl_seconds)
     return metadata
 
 

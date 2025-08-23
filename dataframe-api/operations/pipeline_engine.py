@@ -455,7 +455,7 @@ def _apply_op(df_curr: pd.DataFrame | None, step: dict, preview_mode: bool = Fal
         else:
             print(f"[DEBUG] chain_pipeline: saving result as '{result_name}' with shape={current.shape}")
             try:
-                _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name} [{engine} engine]')
+                _save_df_to_cache(result_name, current, f'Result from chained pipeline: {pipeline_name} [{engine} engine]', source='ops:pipeline')
                 print(f"[DEBUG] chain_pipeline: successfully saved '{result_name}' to cache")
             except Exception as e:
                 raise ValueError(f'chain_pipeline: failed to save result "{result_name}": {str(e)}')
