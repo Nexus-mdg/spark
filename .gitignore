@@ -23,3 +23,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Playwright
+playwright/screenshots/*.png
+playwright/screenshots/*.jpg
+playwright/screenshots/*.jpeg
+playwright/.env
+

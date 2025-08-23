@@ -1,0 +1,1 @@
+# Tests module for Playwright visual testing

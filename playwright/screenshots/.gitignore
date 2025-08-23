@@ -1,0 +1,5 @@
+# This directory is for screenshots captured during test failures
+# Screenshots are automatically generated when tests fail
+*.png
+*.jpg
+*.jpeg
