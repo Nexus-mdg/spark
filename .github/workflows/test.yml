@@ -8,9 +8,246 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Core API tests without Spark (faster and more reliable)
-  test-core:
+  # Infrastructure tests (always run first)
+  test-infrastructure:
     runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r tests/requirements.txt
+
+    - name: Run infrastructure tests
+      run: |
+        chmod +x tests/scripts/run_tests.sh
+        ./tests/scripts/run_tests.sh infrastructure
+
+  # Core API tests without Spark (faster and more reliable)
+  test-api-core:
+    runs-on: ubuntu-latest
+    needs: test-infrastructure
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        cd dataframe-api
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        cd ..
+        pip install -r tests/requirements.txt
+
+    - name: Wait for Redis
+      run: |
+        until timeout 2 bash -c "</dev/tcp/localhost/6379"; do
+          echo "Waiting for Redis..."
+          sleep 2
+        done
+        echo "Redis is ready!"
+
+    - name: Start dataframe-api service (without Spark)
+      run: |
+        cd dataframe-api
+        export FLASK_ENV=development
+        export REDIS_HOST=localhost
+        export REDIS_PORT=6379
+        export PORT=4999
+        # Disable Spark for core tests - API will fallback to pandas
+        export SPARK_MASTER_URL=""
+        export ENABLE_API_PROTECTION=false
+        python app.py &
+        APP_PID=$!
+        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        
+        # Wait for the app to start
+        sleep 10
+
+    - name: Wait for API readiness
+      run: |
+        chmod +x tests/scripts/run_tests.sh
+        export API_BASE=http://localhost:4999
+        ./tests/scripts/run_tests.sh wait-api
+
+    - name: Run modern API tests
+      run: |
+        export API_BASE=http://localhost:4999
+        export TEST_ENV=ci
+        ./tests/scripts/run_tests.sh api --coverage --html
+
+    - name: Upload API test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: api-test-results
+        path: |
+          tests/reports/
+          .pytest_cache/
+        retention-days: 30
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$APP_PID" ]; then
+          kill $APP_PID || true
+        fi
+
+  # Visual regression tests (requires UI)
+  test-visual:
+    runs-on: ubuntu-latest
+    needs: test-infrastructure
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: dataframe_ui
+          POSTGRES_USER: dataframe_user
+          POSTGRES_PASSWORD: dataframe_password
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 15432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install API dependencies
+      run: |
+        cd dataframe-api
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install UI dependencies
+      run: |
+        cd dataframe-ui-x
+        pip install -r requirements.txt
+
+    - name: Install test dependencies
+      run: |
+        pip install -r tests/requirements.txt
+
+    - name: Install Playwright
+      run: |
+        cd tests/visual
+        npm install
+        npx playwright install --with-deps chromium
+
+    - name: Start dataframe-api service
+      run: |
+        cd dataframe-api
+        export FLASK_ENV=development
+        export REDIS_HOST=localhost
+        export REDIS_PORT=6379
+        export PORT=4999
+        export SPARK_MASTER_URL=""
+        export ENABLE_API_PROTECTION=false
+        python app.py &
+        API_PID=$!
+        echo "API_PID=$API_PID" >> $GITHUB_ENV
+        sleep 10
+
+    - name: Start dataframe-ui-x service
+      run: |
+        cd dataframe-ui-x
+        export PORT=5001
+        export API_BASE_URL=http://localhost:4999
+        export DATABASE_URL=postgresql://dataframe_user:dataframe_password@localhost:15432/dataframe_ui
+        export DISABLE_AUTHENTICATION=true
+        export SECRET_KEY=test-secret-key
+        python app.py &
+        UI_PID=$!
+        echo "UI_PID=$UI_PID" >> $GITHUB_ENV
+        sleep 15
+
+    - name: Wait for services
+      run: |
+        chmod +x tests/scripts/run_tests.sh
+        export API_BASE=http://localhost:4999
+        export UI_BASE=http://localhost:5001
+        ./tests/scripts/run_tests.sh wait-api
+        ./tests/scripts/run_tests.sh wait-ui
+
+    - name: Run visual tests
+      run: |
+        export API_BASE=http://localhost:4999
+        export UI_BASE=http://localhost:5001
+        export TEST_ENV=ci
+        ./tests/scripts/run_tests.sh visual
+
+    - name: Upload visual test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: visual-test-results
+        path: |
+          tests/visual/test-results/
+          tests/visual/playwright-report/
+          tests/reports/visual_reports/
+        retention-days: 30
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$API_PID" ]; then
+          kill $API_PID || true
+        fi
+        if [ ! -z "$UI_PID" ]; then
+          kill $UI_PID || true
+        fi
+
+  # Legacy shell-based tests (for compatibility)
+  test-legacy:
+    runs-on: ubuntu-latest
+    needs: test-infrastructure
 
     services:
       redis:
@@ -39,7 +276,6 @@ jobs:
 
     - name: Wait for Redis
       run: |
-        # Simple approach using netcat (already available on GitHub runners)
         until timeout 2 bash -c "</dev/tcp/localhost/6379"; do
           echo "Waiting for Redis..."
           sleep 2
@@ -53,13 +289,11 @@ jobs:
         export REDIS_HOST=localhost
         export REDIS_PORT=6379
         export PORT=4999
-        # Disable Spark for core tests - API will fallback to pandas
         export SPARK_MASTER_URL=""
+        export ENABLE_API_PROTECTION=false
         python app.py &
         APP_PID=$!
         echo "APP_PID=$APP_PID" >> $GITHUB_ENV
-        
-        # Wait for the app to start
         sleep 10
 
     - name: Wait for API readiness
@@ -69,50 +303,14 @@ jobs:
         export API_BASE=http://localhost:4999
         ./test.sh wait
 
-    - name: Run all core tests (matching run_all function)
+    - name: Run legacy core tests
       run: |
         cd dataframe-api
         export API_BASE=http://localhost:4999
-        
-        # Run each test that's part of run_all() function
-        echo "Running test_select..."
         ./test.sh select
-        
-        echo "Running test_select_exclude..."
-        ./test.sh select-exclude
-        
-        echo "Running test_groupby..."
-        ./test.sh groupby
-        
-        echo "Running test_filter..."
         ./test.sh filter
-        
-        echo "Running test_merge..."
+        ./test.sh groupby
         ./test.sh merge
-        
-        echo "Running test_pivot..."
-        ./test.sh pivot
-        
-        echo "Running test_compare_identical..."
-        ./test.sh compare-identical
-        
-        echo "Running test_compare_schema..."
-        ./test.sh compare-schema
-        
-        echo "Running test_mutate_total_value..."
-        ./test.sh mutate
-        
-        echo "Running test_datetime_parse..."
-        ./test.sh datetime
-        
-        echo "Running test_rename_dataframe..."
-        ./test.sh rename
-
-    - name: Run complete test suite
-      run: |
-        cd dataframe-api
-        export API_BASE=http://localhost:4999
-        ./test.sh all
 
     - name: Cleanup
       if: always()
@@ -125,6 +323,7 @@ jobs:
   test-with-spark:
     runs-on: ubuntu-latest
     continue-on-error: true  # Allow this job to fail without failing the workflow
+    needs: [test-api-core]
 
     services:
       redis:
@@ -214,11 +413,10 @@ jobs:
         export SPARK_DRIVER_MEMORY=2g
         export PYSPARK_PYTHON=python3
         export PYSPARK_DRIVER_PYTHON=python3
+        export ENABLE_API_PROTECTION=false
         python app.py &
         SPARK_APP_PID=$!
         echo "SPARK_APP_PID=$SPARK_APP_PID" >> $GITHUB_ENV
-        
-        # Wait for the app to start
         sleep 15
 
     - name: Wait for API readiness (Spark)
@@ -231,7 +429,6 @@ jobs:
       run: |
         cd dataframe-api
         export API_BASE=http://localhost:5000
-        # Run compare tests which benefit from Spark
         ./test.sh compare-identical
         ./test.sh compare-schema
 
