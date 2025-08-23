@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer select-spark select-exclude-spark filter-spark groupby-spark merge-spark pivot-spark compare-identical-spark compare-schema-spark mutate-spark datetime-spark rename-columns-spark pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
 
 help:
 	@echo "Targets:"
@@ -42,6 +42,19 @@ help:
 	@echo "  filter-null    - run null check FILTER test"
 	@echo "  merge-left     - run LEFT MERGE test"
 	@echo "  merge-outer    - run OUTER MERGE test"
+	@echo ""
+	@echo "Spark Engine Tests:"
+	@echo "  select-spark     - run SELECT test with Spark engine"
+	@echo "  select-exclude-spark - run SELECT exclude test with Spark engine"
+	@echo "  filter-spark     - run FILTER test with Spark engine"
+	@echo "  groupby-spark    - run GROUPBY test with Spark engine"
+	@echo "  merge-spark      - run MERGE test with Spark engine"
+	@echo "  pivot-spark      - run PIVOT test with Spark engine"
+	@echo "  compare-identical-spark - run COMPARE identical test with Spark engine"
+	@echo "  compare-schema-spark    - run COMPARE schema mismatch test with Spark engine"
+	@echo "  mutate-spark     - run MUTATE test with Spark engine"
+	@echo "  datetime-spark   - run DATETIME parse test with Spark engine"
+	@echo "  rename-columns-spark - run RENAME columns test with Spark engine"
 	@echo ""
 	@echo "Pipeline Tests:"
 	@echo "  pipeline-preview      - run PIPELINE preview test"
@@ -159,6 +172,41 @@ merge-left: prepare
 
 merge-outer: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh merge-outer
+
+# Spark engine tests
+
+select-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh select-spark
+
+select-exclude-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh select-exclude-spark
+
+filter-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh filter-spark
+
+groupby-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh groupby-spark
+
+merge-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh merge-spark
+
+pivot-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh pivot-spark
+
+compare-identical-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh compare-identical-spark
+
+compare-schema-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh compare-schema-spark
+
+mutate-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh mutate-spark
+
+datetime-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh datetime-spark
+
+rename-columns-spark: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh rename-columns-spark
 
 # Pipeline tests
 
