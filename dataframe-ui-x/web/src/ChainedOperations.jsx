@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import MutateBuilder from './components/MutateBuilder.jsx'
 import { EngineContext, ENGINE_INFO } from './contexts/EngineContext.jsx'
 import {
   listDataframes,
@@ -358,35 +359,23 @@ function ParamInput({ op, dfOptions, onCreate, stepCount = 0 }) {
         )
       case 'mutate':
         return (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Target column</span>
-                <input className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.target || ''} onChange={e => update({ target: e.target.value })} placeholder="new_col" />
-              </label>
-              <label className="block">
-                <span className="block text-sm text-gray-900 dark:text-gray-100">Mode</span>
-                <select className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.mode || 'vector'} onChange={e => update({ mode: e.target.value })}>
-                  <option value="vector">vector</option>
-                  <option value="row">row</option>
-                </select>
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={!!state.overwrite} onChange={e => update({ overwrite: e.target.checked })} />
-                <span className="text-sm text-gray-900 dark:text-gray-100">Overwrite if exists</span>
-              </label>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => {
-                const target = String(state.target||'').trim(); const expr = String(state.expr||'').trim();
-                if (!target || !expr) return
-                onCreate({ op: 'mutate', params: { target, expr, mode: state.mode || 'vector', overwrite: !!state.overwrite } })
-              }}>Add step</button>
-            </div>
-            <label className="block">
-              <span className="block text-sm text-gray-900 dark:text-gray-100">Expression</span>
-              <textarea className="mt-1 border border-gray-300 dark:border-gray-600 rounded w-full p-2 font-mono text-xs h-28 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={state.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder={"Examples:\n- vector: col('a') + col('b')\n- vector: np.where(col('x') > 0, 'pos', 'neg')\n- vector: col('name').astype(str).str[:3] + '_' + col('country')\n- row: r['price'] * r['qty']\n- vector date: pd.to_datetime(col('ts')).dt.year"} />
-            </label>
-            <div className="text-xs text-gray-600 dark:text-gray-300">Tip: use col('colname') for Series, or r['col'] in row mode. pd and np are available.</div>
-          </div>
+          <MutateBuilder
+            dfOptions={dfOptions}
+            showDataframeSelector={false}
+            showPreview={false}
+            submitLabel="Add step"
+            initialState={{
+              target: state.target || '',
+              expr: state.expr || '',
+              mode: state.mode || 'vector',
+              overwrite: !!state.overwrite
+            }}
+            onSubmit={(payload) => {
+              const { target, expr, mode, overwrite } = payload
+              if (!target || !expr) return
+              onCreate({ op: 'mutate', params: { target, expr, mode, overwrite } })
+            }}
+          />
         )
       default:
         return <div className="text-sm text-gray-600 dark:text-gray-300">Pick an operation</div>
