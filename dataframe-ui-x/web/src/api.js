@@ -317,3 +317,119 @@ export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
   }
   return res.json()
 }
+
+// Story Mode API functions
+const getStoryModeBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.STORY_MODE_API_URL) {
+    return window.APP_CONFIG.STORY_MODE_API_URL;
+  }
+  return 'http://localhost:5002';
+};
+
+const STORY_BASE = () => getStoryModeBaseUrl();
+
+// Story management functions
+export const listStories = async () => {
+  const res = await fetch(`${STORY_BASE()}/api/stories`);
+  if (!res.ok) throw new Error(`Failed to list stories: ${res.status}`);
+  return res.json();
+};
+
+export const getStory = async (name) => {
+  const res = await fetch(`${STORY_BASE()}/api/stories/${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error(`Failed to get story: ${res.status}`);
+  return res.json();
+};
+
+export const createStory = async ({ name, dataframe_name, title, content, tags = [], metadata = {} }) => {
+  const payload = { name, dataframe_name, title, content, tags, metadata };
+  const res = await fetch(`${STORY_BASE()}/api/stories`, {
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const text = await res.text(); 
+    throw new Error(`Story creation failed: ${res.status} ${text}`);
+  }
+  return res.json();
+};
+
+export const deleteStory = async (name) => {
+  const res = await fetch(`${STORY_BASE()}/api/stories/${encodeURIComponent(name)}`, { 
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error(`Story deletion failed: ${res.status}`);
+  return res.json();
+};
+
+// Shapefile management functions
+export const listShapefiles = async () => {
+  const res = await fetch(`${STORY_BASE()}/api/shapefiles`);
+  if (!res.ok) throw new Error(`Failed to list shapefiles: ${res.status}`);
+  return res.json();
+};
+
+export const uploadShapefile = async (file, name) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('name', name);
+
+  const res = await fetch(`${STORY_BASE()}/api/shapefiles/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Shapefile upload failed: ${res.status} ${text}`);
+  }
+  return res.json();
+};
+
+export const deleteShapefile = async (name) => {
+  const res = await fetch(`${STORY_BASE()}/api/shapefiles/${encodeURIComponent(name)}`, { 
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error(`Shapefile deletion failed: ${res.status}`);
+  return res.json();
+};
+
+export const buildShapefileDownloadUrl = (name) => `${STORY_BASE()}/api/shapefiles/${encodeURIComponent(name)}`;
+
+// Geospatial join functions
+export const listJoins = async () => {
+  const res = await fetch(`${STORY_BASE()}/api/joins`);
+  if (!res.ok) throw new Error(`Failed to list joins: ${res.status}`);
+  return res.json();
+};
+
+export const createGeospatialJoin = async ({ 
+  dataframe_name, 
+  shapefile_name, 
+  join_type = 'inner', 
+  output_name, 
+  dataframe_coords, 
+  buffer_distance = 0 
+}) => {
+  const payload = { 
+    dataframe_name, 
+    shapefile_name, 
+    join_type, 
+    output_name, 
+    dataframe_coords, 
+    buffer_distance 
+  };
+  const res = await fetch(`${STORY_BASE()}/api/joins`, {
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const text = await res.text(); 
+    throw new Error(`Geospatial join failed: ${res.status} ${text}`);
+  }
+  return res.json();
+};
+
+export const buildJoinDownloadUrl = (name) => `${STORY_BASE()}/api/joins/${encodeURIComponent(name)}`;

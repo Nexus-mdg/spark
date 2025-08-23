@@ -29,3 +29,8 @@ playwright/screenshots/*.jpg
 playwright/screenshots/*.jpeg
 playwright/.env
 
+# Test files
+/tmp/test_*.geojson
+/tmp/test_*.shp
+/tmp/test_*.zip
+

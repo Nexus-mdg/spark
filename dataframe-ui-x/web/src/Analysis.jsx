@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Footer from './components/Footer.jsx'
+import StorySection from './components/StorySection.jsx'
+import ShapefileUpload from './components/ShapefileUpload.jsx'
+import GeospatialJoin from './components/GeospatialJoin.jsx'
 import { getDataFrameTypeIcon } from './components/DataFrameTypeIcons.jsx'
 import { getProfile, getDataframe } from './api.js'
 import { Bar } from 'react-chartjs-2'
@@ -298,6 +301,15 @@ export default function Analysis() {
                 </div>
               </section>
             )}
+            
+            {/* Story Mode Section */}
+            <StorySection dataframeName={name} />
+            
+            {/* Shapefile Upload Section */}
+            <ShapefileUpload />
+            
+            {/* Geospatial Join Section */}
+            <GeospatialJoin dataframeName={name} dataframeColumns={dfColumns} />
           </>
         )}
       </main>

@@ -12,6 +12,7 @@ app = Flask(__name__, static_folder='dist', static_url_path='')
 
 # Configurable API base URL (default points to the existing dataframe-api API on 4999)
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:4999")
+STORY_MODE_API_URL = os.getenv("STORY_MODE_API_URL", "http://localhost:5002")
 PORT = int(os.getenv("PORT", "5001"))
 
 # Authentication configuration - disable authentication for local development and testing
@@ -245,7 +246,7 @@ def change_password():
 
 @app.route('/config.js')
 def config_js():
-    js = f"window.APP_CONFIG = {{ API_BASE_URL: '{API_BASE_URL}', DISABLE_AUTHENTICATION: {str(DISABLE_AUTHENTICATION).lower()} }};"
+    js = f"window.APP_CONFIG = {{ API_BASE_URL: '{API_BASE_URL}', STORY_MODE_API_URL: '{STORY_MODE_API_URL}', DISABLE_AUTHENTICATION: {str(DISABLE_AUTHENTICATION).lower()} }};"
     return Response(js, mimetype='application/javascript')
 
 @app.route('/api/auth/config')
