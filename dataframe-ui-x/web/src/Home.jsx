@@ -15,6 +15,7 @@ import {
 import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
+import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon } from './components/DataFrameTypeIcons.jsx'
 import {
   getStats,
   listDataframes,
@@ -232,12 +233,7 @@ export default function Home() {
 
   // Helper functions for dataframe types and expiration
   const getTypeIcon = (type) => {
-    switch (type) {
-      case 'static': return '📌'
-      case 'ephemeral': return '⏰'
-      case 'temporary': return '💨'
-      default: return '📌'
-    }
+    return getDataFrameTypeIcon(type)
   }
 
   const getTypeBadgeClass = (type) => {
@@ -704,8 +700,9 @@ export default function Home() {
                     onChange={(e) => setDataframeType(e.target.value)}
                     className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
                   />
-                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    📌 <span className="font-medium">Static</span> - Never expires, manually deleted only
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <StaticIcon />
+                    <span className="font-medium">Static</span> - Never expires, manually deleted only
                   </span>
                 </label>
                 <label className="flex items-center">
@@ -717,8 +714,9 @@ export default function Home() {
                     onChange={(e) => setDataframeType(e.target.value)}
                     className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
                   />
-                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    ⏰ <span className="font-medium">Ephemeral</span> - Auto-deletes after specified hours
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <EphemeralIcon />
+                    <span className="font-medium">Ephemeral</span> - Auto-deletes after specified hours
                   </span>
                 </label>
                 <label className="flex items-center">
@@ -730,8 +728,9 @@ export default function Home() {
                     onChange={(e) => setDataframeType(e.target.value)}
                     className="form-radio h-4 w-4 text-indigo-600 dark:text-indigo-400"
                   />
-                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                    💨 <span className="font-medium">Temporary</span> - Auto-deletes after 1 hour
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <TemporaryIcon />
+                    <span className="font-medium">Temporary</span> - Auto-deletes after 1 hour
                   </span>
                 </label>
               </div>
@@ -980,21 +979,21 @@ export default function Home() {
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">DataFrame Types:</h3>
             <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center gap-2">
-                <span className="text-lg">📌</span>
+                <StaticIcon />
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                   Static
                 </span>
                 <span>Never expires, manually deleted only</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-lg">⏰</span>
+                <EphemeralIcon />
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
                   Ephemeral
                 </span>
                 <span>Auto-deletes after user-specified hours (default 10)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-lg">💨</span>
+                <TemporaryIcon />
                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
                   Temporary
                 </span>

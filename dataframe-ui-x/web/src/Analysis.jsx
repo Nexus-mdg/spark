@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import Header from './Header.jsx'
 import Footer from './components/Footer.jsx'
+import { getDataFrameTypeIcon } from './components/DataFrameTypeIcons.jsx'
 import { getProfile, getDataframe } from './api.js'
 import { Bar } from 'react-chartjs-2'
 import {
@@ -17,12 +18,7 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
 // Helper functions for dataframe types and expiration
 const getTypeIcon = (type) => {
-  switch (type) {
-    case 'static': return '📌'
-    case 'ephemeral': return '⏰'
-    case 'temporary': return '💨'
-    default: return '📌'
-  }
+  return getDataFrameTypeIcon(type)
 }
 
 const getTypeBadgeClass = (type) => {
