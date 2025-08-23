@@ -235,9 +235,53 @@ run_auth_tests() {
 }
 
 run_visual_tests() {
-    print_warning "Visual tests not yet implemented - placeholder"
-    print_info "Visual tests will be implemented in Phase 2"
-    return 0
+    print_info "Running visual tests..."
+    cd "$PROJECT_ROOT"
+    
+    # Check if Playwright is available
+    if ! command -v npx >/dev/null 2>&1; then
+        print_error "Node.js and npm are required for visual tests"
+        print_info "Install Node.js from https://nodejs.org/"
+        return 1
+    fi
+    
+    # Navigate to visual tests directory
+    cd "tests/visual"
+    
+    # Install dependencies if needed
+    if [ ! -d "node_modules" ]; then
+        print_info "Installing Playwright dependencies..."
+        npm install
+        npx playwright install chromium
+    fi
+    
+    # Wait for UI to be ready
+    cd "$PROJECT_ROOT"
+    wait_for_ui || {
+        print_warning "UI not available, visual tests require the UI to be running"
+        print_info "Start the UI with: make up"
+        return 1
+    }
+    
+    cd "tests/visual"
+    
+    # Set environment variables
+    export UI_BASE="$UI_BASE"
+    export API_BASE="$API_BASE"
+    export TEST_ENV="$TEST_ENV"
+    
+    local playwright_args=()
+    
+    if [[ "$VERBOSE" == "true" ]]; then
+        playwright_args+=("--reporter=list,html")
+    fi
+    
+    if [[ "$FAILFAST" == "true" ]]; then
+        playwright_args+=("--max-failures=1")
+    fi
+    
+    # Run Playwright tests
+    npx playwright test "${playwright_args[@]}"
 }
 
 run_all_tests() {
@@ -253,8 +297,14 @@ run_all_tests() {
         print_warning "API not available, skipping API tests"
     fi
     
-    # Visual tests would go here in Phase 2
-    print_info "Visual tests will be added in Phase 2"
+    # Run visual tests if UI is available
+    if wait_for_ui; then
+        run_visual_tests || {
+            print_warning "Visual tests failed or skipped"
+        }
+    else
+        print_warning "UI not available, skipping visual tests"
+    fi
     
     print_success "All tests completed"
 }
@@ -366,7 +416,27 @@ case "$COMMAND" in
         run_all_tests
         ;;
     docker)
-        print_warning "Docker tests not yet implemented - placeholder"
+        print_info "Running tests in Docker environment..."
+        cd "$PROJECT_ROOT"
+        
+        # Check if docker-compose is available
+        if ! command -v docker-compose >/dev/null 2>&1; then
+            print_error "docker-compose is required for Docker testing"
+            return 1
+        fi
+        
+        # Run API tests in Docker
+        print_info "Running API tests in Docker..."
+        docker-compose -f tests/docker/docker-compose.test.yml --profile api-tests up --build --abort-on-container-exit api-tests
+        
+        # Run visual tests in Docker (if requested)
+        if [[ "$VISUAL" == "true" ]]; then
+            print_info "Running visual tests in Docker..."
+            docker-compose -f tests/docker/docker-compose.test.yml --profile visual-tests up --build --abort-on-container-exit playwright-tests
+        fi
+        
+        # Cleanup
+        docker-compose -f tests/docker/docker-compose.test.yml down --volumes
         ;;
     wait-api)
         wait_for_api

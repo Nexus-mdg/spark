@@ -1,0 +1,30 @@
+{
+  "name": "dataframe-visual-tests",
+  "version": "1.0.0",
+  "description": "Visual regression tests for DataFrame Processing System",
+  "main": "playwright.config.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:codegen": "playwright codegen",
+    "install:browsers": "playwright install",
+    "install:deps": "playwright install-deps"
+  },
+  "keywords": [
+    "playwright",
+    "visual-testing",
+    "regression-testing",
+    "ui-testing"
+  ],
+  "author": "DataFrame Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

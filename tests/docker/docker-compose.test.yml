@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # Test database for isolated testing
+  test-postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: dataframe_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "15433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d dataframe_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Test Redis for caching
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # DataFrame API for testing
+  test-dataframe-api:
+    build:
+      context: ../../dataframe-api
+      dockerfile: Dockerfile
+    environment:
+      - PORT=4999
+      - REDIS_HOST=test-redis
+      - REDIS_PORT=6379
+      - ENABLE_API_PROTECTION=false
+      - FLASK_ENV=test
+    ports:
+      - "4999:4999"
+    depends_on:
+      test-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4999/api/stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - test-network
+
+  # DataFrame UI for testing
+  test-dataframe-ui:
+    build:
+      context: ../../dataframe-ui-x
+      dockerfile: Dockerfile
+    environment:
+      - PORT=5001
+      - API_BASE_URL=http://test-dataframe-api:4999
+      - DATABASE_URL=postgresql://test_user:test_password@test-postgres:5432/dataframe_test
+      - DISABLE_AUTHENTICATION=true
+      - SECRET_KEY=test-secret-key
+    ports:
+      - "5001:5001"
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-dataframe-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - test-network
+
+  # Playwright testing container
+  playwright-tests:
+    build:
+      context: ../..
+      dockerfile: tests/docker/Dockerfile.playwright
+    environment:
+      - UI_BASE=http://test-dataframe-ui:5001
+      - API_BASE=http://test-dataframe-api:4999
+      - CI=true
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    volumes:
+      - ../visual:/app
+      - test_reports:/app/reports
+      - test_screenshots:/app/screenshots
+    depends_on:
+      test-dataframe-ui:
+        condition: service_healthy
+      test-dataframe-api:
+        condition: service_healthy
+    networks:
+      - test-network
+    profiles:
+      - visual-tests
+
+  # API testing container (pytest)
+  api-tests:
+    image: python:3.11-slim
+    working_dir: /app
+    environment:
+      - API_BASE=http://test-dataframe-api:4999
+      - TEST_ENV=docker
+    volumes:
+      - ../..:/app
+      - test_reports:/app/tests/reports
+    command: >
+      sh -c "
+        pip install -r tests/requirements.txt &&
+        pip install -r dataframe-api/requirements.txt &&
+        python -m pytest tests/api/ -v --html=tests/reports/api_report.html
+      "
+    depends_on:
+      test-dataframe-api:
+        condition: service_healthy
+    networks:
+      - test-network
+    profiles:
+      - api-tests
+
+volumes:
+  test_postgres_data:
+  test_reports:
+  test_screenshots:
+
+networks:
+  test-network:
+    driver: bridge
