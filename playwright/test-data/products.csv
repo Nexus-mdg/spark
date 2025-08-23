@@ -1,0 +1,11 @@
+product_id,product_name,category,price,quantity_sold,sale_date
+1,Laptop Pro,Electronics,1299.99,45,2024-01-15
+2,Wireless Mouse,Electronics,29.99,120,2024-01-16
+3,Coffee Maker,Appliances,89.99,75,2024-01-17
+4,Desk Chair,Furniture,249.99,32,2024-01-18
+5,Smartphone,Electronics,799.99,88,2024-01-19
+6,Headphones,Electronics,149.99,95,2024-01-20
+7,Microwave,Appliances,199.99,58,2024-01-21
+8,Standing Desk,Furniture,399.99,25,2024-01-22
+9,Tablet,Electronics,499.99,67,2024-01-23
+10,Blender,Appliances,79.99,43,2024-01-24

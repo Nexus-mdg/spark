@@ -80,6 +80,13 @@ help:
 	@echo "  flush-redis           - clear Redis cache"
 	@echo "  flush-users           - remove all users from PostgreSQL"
 	@echo "  list-users            - list all users in PostgreSQL"
+	@echo ""
+	@echo "Visual Testing (Playwright):"
+	@echo "  test-visual-build     - build Playwright test container"
+	@echo "  test-visual           - run visual tests (headless)"
+	@echo "  test-visual-dev       - run visual tests in development mode (with browser)"
+	@echo "  test-visual-screenshots - run tests and capture screenshots on failure"
+	@echo "  test-visual-clean     - clean up visual test artifacts"
 
 prepare:
 	chmod +x $(DFUI_DIR)/test.sh || true
@@ -280,3 +287,42 @@ flush-users:
 list-users:
 	@echo "Listing all users in PostgreSQL..."
 	docker compose -f ./docker-compose.yml exec postgres psql -U dataframe_user -d dataframe_ui -c "SELECT username, created_at FROM users ORDER BY created_at;"
+
+# Visual testing with Playwright
+
+test-visual-build:
+	@echo "Building Playwright test container..."
+	docker compose -f ./docker-compose.yml build playwright-tests
+
+test-visual: prepare
+	@echo "Running Playwright visual tests..."
+	@echo "Starting required services..."
+	docker compose -f ./docker-compose.yml up -d redis dataframe-api dataframe-ui-x
+	@echo "Waiting for services to be ready..."
+	sleep 15
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh wait
+	@echo "Running visual tests..."
+	docker compose -f ./docker-compose.yml --profile testing run --rm playwright-tests
+	@echo "Visual tests completed."
+
+test-visual-dev:
+	@echo "Running Playwright visual tests in development mode (non-headless)..."
+	docker compose -f ./docker-compose.yml up -d redis dataframe-api dataframe-ui-x
+	sleep 15
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh wait
+	docker compose -f ./docker-compose.yml --profile testing run --rm -e HEADLESS=false playwright-tests
+
+test-visual-screenshots:
+	@echo "Running visual tests and capturing screenshots..."
+	docker compose -f ./docker-compose.yml up -d redis dataframe-api dataframe-ui-x
+	sleep 15
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh wait
+	docker compose -f ./docker-compose.yml --profile testing run --rm -e SCREENSHOT_ON_FAILURE=true playwright-tests
+	@echo "Screenshots saved to ./playwright/screenshots/"
+
+test-visual-clean:
+	@echo "Cleaning up visual test artifacts..."
+	docker compose -f ./docker-compose.yml --profile testing down
+	rm -rf ./playwright/screenshots/*
+
+.PHONY: test-visual-build test-visual test-visual-dev test-visual-screenshots test-visual-clean

@@ -134,6 +134,25 @@ services:
     depends_on:
       - ntfy
 
+  playwright-tests:
+    build: ./playwright
+    container_name: playwright-tests
+    network_mode: "host"
+    environment:
+      - BASE_URL=http://localhost:5001
+      - API_BASE_URL=http://localhost:4999
+      - HEADLESS=true
+      - BROWSER=chromium
+      - TIMEOUT=30000
+    volumes:
+      - ./playwright/screenshots:/app/screenshots
+      - ./playwright/test-data:/app/test-data
+    depends_on:
+      - dataframe-ui-x
+      - dataframe-api
+    profiles:
+      - testing
+
 volumes:
   spark-data:
     driver: local
