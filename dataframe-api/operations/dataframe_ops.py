@@ -24,12 +24,9 @@ def _save_df_to_cache(name: str, df: pd.DataFrame, description: str = '', source
     df_key = f"df:{name}"
     meta_key = f"meta:{name}"
     
-    # Determine DataFrame type - default to ephemeral for pipeline sources, static for others
+    # Determine DataFrame type - default to ephemeral for all new dataframes
     if df_type is None:
-        if source and 'pipeline' in source.lower():
-            df_type = 'ephemeral'
-        else:
-            df_type = 'static'
+        df_type = 'ephemeral'
     
     # Import the expiration calculation function from dataframes route
     from routes.dataframes import calculate_expiration, set_dataframe_with_ttl

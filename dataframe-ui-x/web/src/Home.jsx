@@ -203,7 +203,7 @@ export default function Home() {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const [dataframeType, setDataframeType] = useState('static')
+  const [dataframeType, setDataframeType] = useState('ephemeral')
   const [autoDeleteHours, setAutoDeleteHours] = useState(10)
 
   // Auto-refresh state
