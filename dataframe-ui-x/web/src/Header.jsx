@@ -43,7 +43,7 @@ export default function Header({ title, children }) {
   return (
     <>
       <header className="bg-slate-900 dark:bg-slate-800 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               className="text-white/90 hover:text-white flex items-center gap-2" 
@@ -87,12 +87,12 @@ export default function Header({ title, children }) {
           </div>
 
           {/* Navigation Menu */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Main Navigation */}
-            <nav className="hidden md:flex items-center gap-2">
+            <nav className="hidden md:flex items-center gap-1">
               <button 
                 onClick={() => navigate('/')} 
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
                   isCurrentPage('/') 
                     ? 'bg-white/20 text-white' 
                     : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -102,7 +102,7 @@ export default function Header({ title, children }) {
               </button>
               <button 
                 onClick={() => navigate('/operations')} 
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
                   isCurrentPage('/operations')
                     ? 'bg-indigo-600 text-white' 
                     : 'text-white/80 hover:text-white hover:bg-indigo-700'
@@ -112,7 +112,7 @@ export default function Header({ title, children }) {
               </button>
               <button 
                 onClick={() => navigate('/chained-operations')} 
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
                   isCurrentPage('/chained-operations')
                     ? 'bg-emerald-600 text-white' 
                     : 'text-white/80 hover:text-white hover:bg-emerald-700'
@@ -122,7 +122,7 @@ export default function Header({ title, children }) {
               </button>
               <button 
                 onClick={() => navigate('/chained-pipelines')} 
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
                   isCurrentPage('/chained-pipelines')
                     ? 'bg-purple-600 text-white' 
                     : 'text-white/80 hover:text-white hover:bg-purple-700'

@@ -548,11 +548,7 @@ export default function Home() {
 
   return (
     <div className="bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
-      <Header title="Spark test visualizer">
-        <div className="text-sm text-slate-300">
-          {stats ? (<span>{stats.dataframe_count} cached • {stats.total_size_mb} MB</span>) : 'Loading stats...'}
-        </div>
-      </Header>
+      <Header title="Spark test visualizer" />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6 flex-grow">
         {/* Animated Feature Showcase */}
