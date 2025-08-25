@@ -1087,16 +1087,10 @@ export default function ChainedPipelines() {
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
                         <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700" onClick={() => onExportPipelineR(p.name)} title="Export R">
-                          <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
-                            <path d="M16 2C8.269 2 2 8.269 2 16s6.269 14 14 14 14-6.269 14-14S23.731 2 16 2zm0 25.231C9.458 27.231 4.769 22.542 4.769 16S9.458 4.769 16 4.769 27.231 9.458 27.231 16 22.542 27.231 16 27.231z"/>
-                            <path d="M10 9h6c2.2 0 4 1.8 4 4s-1.8 4-4 4h-2v4h-2V13h2v2h2c1.1 0 2-.9 2-2s-.9-2-2-2h-4v8h-2V9z"/>
-                          </svg>
+                          <img src="https://www.r-project.org/logo/Rlogo.svg" alt="R" width="16" height="16" />
                         </button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-orange-600 dark:bg-orange-600 text-white hover:bg-orange-700 dark:hover:bg-orange-700" onClick={() => onExportPipelinePython(p.name)} title="Export Python">
-                          <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
-                            <path d="M15.885 2c1.944 0 3.655.138 4.765.388 2.333.526 2.753 1.627 2.753 3.659v2.685h-5.506v.776H25.75c1.6 0 2.192 1.121 2.192 3.639v6.326c0 2.518-.654 3.639-2.192 3.639h-1.78v-2.364c0-1.816-1.573-3.416-3.42-3.416h-5.506c-1.542 0-2.753-1.266-2.753-2.815V8.047c0-2.032.43-3.133 2.753-3.659C14.155 2.138 13.94 2 15.885 2zM18.069 5.18c-.601 0-1.09.492-1.09 1.1 0 .607.489 1.09 1.09 1.09.608 0 1.1-.483 1.1-1.09 0-.608-.492-1.1-1.1-1.1z"/>
-                            <path d="M16.115 30c-1.944 0-3.655-.138-4.765-.388-2.333-.526-2.753-1.627-2.753-3.659v-2.685h5.506v-.776H6.25c-1.6 0-2.192-1.121-2.192-3.639v-6.326c0-2.518.654-3.639 2.192-3.639h1.78v2.364c0 1.816 1.573 3.416 3.42 3.416h5.506c1.542 0 2.753 1.266 2.753 2.815v7.465c0 2.032-.43 3.133-2.753 3.659-.911.25-.726.388-2.671.388zm-2.184-2.82c.601 0 1.09-.492 1.09-1.1 0-.607-.489-1.09-1.09-1.09-.608 0-1.1.483-1.1 1.09 0 .608.492 1.1 1.1 1.1z"/>
-                          </svg>
+                          <img src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" alt="Python" width="16" height="16" />
                         </button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                       </td>
