@@ -2,18 +2,21 @@
 Pipeline execution engine
 """
 
-import io
-import json
-import os
-
-import numpy as np
 import pandas as pd
 
-from operations.dataframe_ops import _load_df_from_cache, _save_df_to_cache, _unique_name
-from operations.engine_router import (route_compare, route_datetime, route_filter, route_groupby,
-                                      route_merge, route_mutate, route_pivot, route_rename,
-                                      route_select, validate_engine)
-from utils.helpers import df_to_records_json_safe
+from operations.dataframe_ops import _load_df_from_cache, _save_df_to_cache
+from operations.engine_router import (
+    route_compare,
+    route_datetime,
+    route_filter,
+    route_groupby,
+    route_merge,
+    route_mutate,
+    route_pivot,
+    route_rename,
+    route_select,
+    validate_engine,
+)
 
 
 def _apply_op(
@@ -81,7 +84,7 @@ def _apply_op(
 
         # Handle the case where we have a current dataframe AND named dataframes to merge with
         if names and df_curr is not None:
-            print(f"[DEBUG] merge: using current dataframe + named dataframes")
+            print("[DEBUG] merge: using current dataframe + named dataframes")
             # In chained pipelines, we want to merge the current dataframe with the named ones
             # Pre-validate that all required named dataframes exist
             from utils.redis_client import redis_client
