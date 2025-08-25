@@ -734,8 +734,11 @@ def sync_alien_dataframe(name):
             odk_connection_successful = False
             try:
                 from pyodk import Client
+                from pyodk._utils.session import Session
                 import tempfile
                 import os
+                import threading
+                import time
                 
                 print(f"Attempting ODK Central connection to {metadata['odk_config']['server_url']}")
                 
@@ -751,23 +754,61 @@ password = "{password}"
                     config_path = f.name
                 
                 try:
-                    # Create pyodk client with temporary config
+                    # Create a custom session with timeout settings
+                    custom_session = Session(
+                        base_url=metadata['odk_config']['server_url'],
+                        api_version='v1',
+                        username=username,
+                        password=password,
+                        cache_path=config_path
+                    )
+                    
+                    # Set timeout on the session (30 seconds for connection and read)
+                    # This will be used for all HTTP requests made by pyodk
+                    custom_session.timeout = 30
+                    
+                    # Create pyodk client with timeout-configured session
                     client = Client(
                         config_path=config_path,
-                        project_id=int(metadata['odk_config']['project_id'])
+                        project_id=int(metadata['odk_config']['project_id']),
+                        session=custom_session
                     )
                     
                     form_id = metadata['odk_config']['form_id']
-                    print(f"Fetching submissions data using pyodk for form: {form_id}")
+                    print(f"Fetching submissions data using pyodk for form: {form_id} (30s timeout)")
                     
-                    # Use pyodk's submission data methods as shown in documentation
-                    # This gets both submission metadata and actual form response data
-                    # Use pyodk's get_table method to get complete submission data
-                    # This gets both submission metadata and actual form response data in OData format
-                    print(f"Fetching submission table data for form: {form_id}")
+                    # Implement an additional timeout wrapper using threading
+                    # This ensures we don't hang even if the session timeout doesn't work
+                    table_data = None
+                    exception_occurred = None
                     
-                    # Get table data using pyodk's get_table method (returns OData JSON format)
-                    table_data = client.submissions.get_table(form_id=form_id)
+                    def fetch_data():
+                        nonlocal table_data, exception_occurred
+                        try:
+                            print(f"Fetching submission table data for form: {form_id}")
+                            # Get table data using pyodk's get_table method (returns OData JSON format)
+                            table_data = client.submissions.get_table(form_id=form_id)
+                        except Exception as e:
+                            exception_occurred = e
+                    
+                    # Start the fetch operation in a separate thread
+                    fetch_thread = threading.Thread(target=fetch_data)
+                    fetch_thread.daemon = True
+                    fetch_thread.start()
+                    
+                    # Wait for the thread to complete with a 30-second timeout
+                    fetch_thread.join(timeout=30)
+                    
+                    if fetch_thread.is_alive():
+                        # Thread is still running, meaning it timed out
+                        print("ODK Central request timed out after 30 seconds")
+                        raise Exception("ODK Central request timed out after 30 seconds")
+                    elif exception_occurred:
+                        # Thread completed but with an exception
+                        raise exception_occurred
+                    elif table_data is None:
+                        # Thread completed but no data was set
+                        raise Exception("No data returned from ODK Central")
                     
                     print(f"get_table returned: {type(table_data)}")
                     
