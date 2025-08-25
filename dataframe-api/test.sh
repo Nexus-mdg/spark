@@ -539,7 +539,7 @@ test_alien_list_and_stats() {
   # Test dataframe list
   echo "Checking dataframe list..."
   list_response=$(curl -sS "${API_BASE}/api/dataframes" | python3 -m json.tool || true)
-  echo "$list_response" | head -20
+  echo "$list_response" | head -20 || true
   
   if echo "$list_response" | grep -q "household_survey" && echo "$list_response" | grep -q "alien"; then
     echo "✓ Alien dataframe appears in list with correct type"
