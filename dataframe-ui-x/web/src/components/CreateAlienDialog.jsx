@@ -8,7 +8,8 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
     serverUrl: '',
     projectId: '',
     formId: '',
-    apiToken: '',
+    username: '',
+    password: '',
     syncFrequency: 60 // Default 60 minutes
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,7 +33,8 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
         server_url: formData.serverUrl,
         project_id: formData.projectId,
         form_id: formData.formId,
-        api_token: formData.apiToken
+        username: formData.username,
+        password: formData.password
       }
 
       await onSubmit({
@@ -49,7 +51,8 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
         serverUrl: '',
         projectId: '',
         formId: '',
-        apiToken: '',
+        username: '',
+        password: '',
         syncFrequency: 60
       })
       onClose()
@@ -64,21 +67,21 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-4">
           <AlienIcon className="w-6 h-6" />
-          <h2 className="text-xl font-semibold text-gray-900">Create Alien DataFrame</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create Alien DataFrame</h2>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               DataFrame Name *
             </label>
             <input
@@ -87,13 +90,13 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
               value={formData.name}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               placeholder="my_alien_dataframe"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
             </label>
             <textarea
@@ -101,16 +104,16 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
               value={formData.description}
               onChange={handleInputChange}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               placeholder="Data from ODK Central survey..."
             />
           </div>
 
-          <div className="border-t pt-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">ODK Central Configuration</h3>
+          <div className="border-t dark:border-gray-600 pt-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">ODK Central Configuration</h3>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Server URL *
               </label>
               <input
@@ -119,13 +122,13 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.serverUrl}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="https://central.example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Project ID *
               </label>
               <input
@@ -134,13 +137,13 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.projectId}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="1"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Form ID *
               </label>
               <input
@@ -149,39 +152,54 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.formId}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="survey_form"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                API Token *
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Username *
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                placeholder="ODK Central username"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password *
               </label>
               <input
                 type="password"
-                name="apiToken"
-                value={formData.apiToken}
+                name="password"
+                value={formData.password}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your ODK Central API token"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                placeholder="ODK Central password"
               />
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Sync Settings</h3>
+          <div className="border-t dark:border-gray-600 pt-4">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Sync Settings</h3>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Sync Frequency (minutes)
               </label>
               <select
                 name="syncFrequency"
                 value={formData.syncFrequency}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value={15}>Every 15 minutes</option>
                 <option value={60}>Every hour</option>
@@ -195,7 +213,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               disabled={isSubmitting}
             >
               Cancel
@@ -203,7 +221,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? 'Creating...' : 'Create DataFrame'}
             </button>

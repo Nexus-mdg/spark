@@ -629,7 +629,7 @@ def create_alien_dataframe():
             return jsonify({'success': False, 'error': 'DataFrame name is required'}), 400
         
         # Validate ODK Central configuration
-        required_odk_fields = ['server_url', 'project_id', 'form_id', 'api_token']
+        required_odk_fields = ['server_url', 'project_id', 'form_id', 'username', 'password']
         for field in required_odk_fields:
             if field not in odk_config or not odk_config[field]:
                 return jsonify({'success': False, 'error': f'ODK Central {field} is required'}), 400
@@ -662,7 +662,8 @@ def create_alien_dataframe():
                 'server_url': odk_config['server_url'],
                 'project_id': odk_config['project_id'],
                 'form_id': odk_config['form_id'],
-                'api_token': '***masked***'  # Don't store the actual token
+                'username': odk_config['username']
+                # password is not stored in metadata for security
             },
             'sync_status': 'pending',
             'last_sync': None,
@@ -673,9 +674,10 @@ def create_alien_dataframe():
         # Store the DataFrame and metadata without TTL (persistent like static)
         set_dataframe_with_ttl(f"df:{name}", f"meta:{name}", csv_string, metadata, ttl_seconds=None)
         
-        # Store the actual API token separately in a secure way (in real implementation)
-        # For now, we'll store it in a separate Redis key
-        redis_client.set(f"alien_token:{name}", odk_config['api_token'])
+        # Store the actual credentials separately in a secure way
+        # For now, we'll store username and password in separate Redis keys
+        redis_client.set(f"alien_username:{name}", odk_config['username'])
+        redis_client.set(f"alien_password:{name}", odk_config['password'])
         
         return jsonify({
             'success': True,
@@ -711,10 +713,24 @@ def sync_alien_dataframe(name):
         redis_client.set(meta_key, json.dumps(metadata))
         
         # In a real implementation, this would trigger an async background job
-        # For now, we'll simulate a sync operation
+        # For now, we'll simulate a sync operation using pyodk
         try:
-            # Simulate ODK Central API call
-            # This would normally fetch data from ODK Central API
+            # Get stored credentials
+            username = redis_client.get(f"alien_username:{name}")
+            password = redis_client.get(f"alien_password:{name}")
+            
+            if not username or not password:
+                raise Exception("ODK Central credentials not found")
+            
+            username = username.decode('utf-8')
+            password = password.decode('utf-8')
+            
+            # For demo/testing purposes, we'll still use the demo data
+            # In a real implementation, this is where you'd use pyodk to fetch data:
+            # from pyodk import Client
+            # client = Client(base_url=metadata['odk_config']['server_url'], username=username, password=password)
+            # submissions = client.submissions.list(metadata['odk_config']['project_id'], metadata['odk_config']['form_id'])
+            
             import pandas as pd
             import json
             

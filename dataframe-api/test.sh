@@ -396,7 +396,8 @@ test_alien_create() {
         "server_url": "https://central.example.com",
         "project_id": "5",
         "form_id": "household_survey_v1",
-        "api_token": "demo_token_123456789"
+        "username": "demo_user",
+        "password": "demo_password"
       },
       "sync_frequency": 60
     }' | python3 -m json.tool || true
