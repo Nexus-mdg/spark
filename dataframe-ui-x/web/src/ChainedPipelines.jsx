@@ -1136,6 +1136,12 @@ export default function ChainedPipelines() {
             
             <div className="flex items-center gap-3 flex-wrap">
               <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run chained pipeline</button>
+              <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700" onClick={onExportR} title="Export R">
+                <img src="/r-logo.svg" alt="R" width="16" height="16" />
+              </button>
+              <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-orange-600 dark:bg-orange-600 text-white hover:bg-orange-700 dark:hover:bg-orange-700" onClick={onExportPython} title="Export Python">
+                <img src="/python-logo.svg" alt="Python" width="16" height="16" />
+              </button>
               {result?.name && (
                 <span className="text-sm text-gray-900 dark:text-gray-100">Created <button className="underline text-indigo-700" onClick={() => navigate(`/analysis/${encodeURIComponent(result.name)}`)}>{result.name}</button></span>
               )}
