@@ -731,10 +731,13 @@ def sync_alien_dataframe(name):
             import pandas as pd
             
             # Try to connect to actual ODK Central first
+            odk_connection_successful = False
             try:
                 from pyodk import Client
                 import tempfile
                 import os
+                
+                print(f"Attempting ODK Central connection to {metadata['odk_config']['server_url']}")
                 
                 # Create temporary config file for pyodk
                 config_content = f'''[central]
@@ -754,44 +757,74 @@ password = "{password}"
                         project_id=int(metadata['odk_config']['project_id'])
                     )
                     
+                    print(f"Fetching submissions from form: {metadata['odk_config']['form_id']}")
+                    
                     # Fetch submissions from ODK Central
                     submissions = client.submissions.list(
                         form_id=metadata['odk_config']['form_id']
                     )
+                    
+                    print(f"ODK Central returned: {type(submissions)} with {len(submissions) if submissions else 0} items")
+                    
+                    # Transform ODK Central submissions to DataFrame
+                    if submissions and len(submissions) > 0:
+                        print(f"Processing {len(submissions)} submissions from ODK Central")
+                        
+                        # Convert submissions to tabular format
+                        flattened_data = []
+                        for i, record in enumerate(submissions):
+                            print(f"Processing submission {i+1}: {type(record)}")
+                            flat_record = {}
+                            
+                            # Handle different submission data structures
+                            if hasattr(record, '__dict__'):
+                                # If it's an object with attributes, convert to dict
+                                record_dict = record.__dict__
+                            elif isinstance(record, dict):
+                                record_dict = record
+                            else:
+                                print(f"Unexpected submission type: {type(record)}")
+                                continue
+                            
+                            for key, value in record_dict.items():
+                                if isinstance(value, dict):
+                                    # Flatten nested objects (like location, geo data)
+                                    for sub_key, sub_value in value.items():
+                                        flat_record[f"{key}_{sub_key}"] = sub_value
+                                elif isinstance(value, list):
+                                    # Convert lists to strings
+                                    flat_record[key] = str(value)
+                                else:
+                                    flat_record[key] = value
+                            flattened_data.append(flat_record)
+                        
+                        if flattened_data:
+                            df = pd.DataFrame(flattened_data)
+                            print(f"Successfully created DataFrame with {len(df)} rows and {len(df.columns)} columns from ODK Central")
+                            odk_connection_successful = True
+                        else:
+                            print("No valid data found in submissions")
+                            raise Exception("No valid data found in submissions")
+                    else:
+                        print("No submissions found in ODK Central form")
+                        # Create DataFrame indicating no submissions
+                        df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
+                        odk_connection_successful = True
+                        
                 finally:
                     # Clean up temporary config file
                     if os.path.exists(config_path):
                         os.unlink(config_path)
-                
-                # Transform ODK Central submissions to DataFrame
-                if submissions and len(submissions) > 0:
-                    # Convert submissions to tabular format
-                    flattened_data = []
-                    for record in submissions:
-                        flat_record = {}
-                        for key, value in record.items():
-                            if isinstance(value, dict):
-                                # Flatten nested objects (like location, geo data)
-                                for sub_key, sub_value in value.items():
-                                    flat_record[f"{key}_{sub_key}"] = sub_value
-                            elif isinstance(value, list):
-                                # Convert lists to strings
-                                flat_record[key] = str(value)
-                            else:
-                                flat_record[key] = value
-                        flattened_data.append(flat_record)
-                    
-                    df = pd.DataFrame(flattened_data)
-                    print(f"Successfully fetched {len(submissions)} submissions from ODK Central")
-                else:
-                    # No submissions found, create empty DataFrame with minimal structure
-                    df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
-                    print("No submissions found in ODK Central form")
-                    
+                        
             except Exception as odk_error:
-                print(f"ODK Central connection failed: {odk_error}")
-                
-                # Fall back to demo data for testing/development
+                print(f"ODK Central connection/processing failed: {odk_error}")
+                import traceback
+                print(f"Full traceback: {traceback.format_exc()}")
+                odk_connection_successful = False
+            
+            # Only fall back to demo data if ODK Central connection completely failed
+            if not odk_connection_successful:
+                print("Falling back to demo data due to ODK Central connection failure")
                 demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
                 try:
                     with open(demo_data_file, 'r') as f:
@@ -812,7 +845,7 @@ password = "{password}"
                             flattened_data.append(flat_record)
                         
                         df = pd.DataFrame(flattened_data)
-                        print(f"Using demo data due to ODK Central error: {odk_error}")
+                        print(f"Using demo data: {len(df)} rows")
                     else:
                         raise Exception("Demo data is empty")
                         
