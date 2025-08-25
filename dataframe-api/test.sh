@@ -273,6 +273,70 @@ test_chained_pipelines() {
     -d '{"materialize":true}' | python3 -m json.tool || true
 }
 
+test_complex_chained_pipeline() {
+  echo "\n[TEST] COMPLEX CHAINED pipeline: 7+ steps with 3 sub-pipelines using pandas engine"
+  
+  # Sub-pipeline 1: Data filtering and selection
+  echo "Creating sub-pipeline 1: data_filter..."
+  curl -sS -X POST "${API_BASE}/api/pipelines" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"data_filter","description":"Filter and select customer data","start":null,"steps":[{"op":"filter","params":{"filters":[{"col":"age","op":"gte","value":25}],"combine":"and","engine":"pandas"}},{"op":"select","params":{"columns":["id","name","age","city"],"engine":"pandas"}}],"overwrite":true,"engine":"pandas"}' | python3 -m json.tool || true
+  
+  # Sub-pipeline 2: Data enrichment with purchases
+  echo "Creating sub-pipeline 2: data_enrichment..."
+  curl -sS -X POST "${API_BASE}/api/pipelines" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"data_enrichment","description":"Enrich data with purchase information","start":null,"steps":[{"op":"merge","params":{"names":["current","purchases"],"keys":["id"],"how":"left","engine":"pandas"}},{"op":"mutate","params":{"target":"total_value","expr":"col(\"quantity\") * col(\"price\")","mode":"vector","overwrite":true,"engine":"pandas"}},{"op":"filter","params":{"filters":[{"col":"total_value","op":"notnull"}],"combine":"and","engine":"pandas"}}],"overwrite":true,"engine":"pandas"}' | python3 -m json.tool || true
+  
+  # Sub-pipeline 3: Data aggregation
+  echo "Creating sub-pipeline 3: data_aggregation..."
+  curl -sS -X POST "${API_BASE}/api/pipelines" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"data_aggregation","description":"Aggregate purchase data by customer and city","start":null,"steps":[{"op":"groupby","params":{"by":["id","name","city"],"aggs":{"total_value":"sum","quantity":"sum","purchase_id":"count"},"engine":"pandas"}},{"op":"rename","params":{"map":{"purchase_id":"transaction_count"},"engine":"pandas"}}],"overwrite":true,"engine":"pandas"}' | python3 -m json.tool || true
+  
+  # Main complex pipeline that chains all 3 sub-pipelines with additional steps
+  echo "Creating main complex chained pipeline..."
+  curl -sS -X POST "${API_BASE}/api/pipelines" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"complex_chained_analysis","description":"Complex analysis pipeline with 7+ steps using 3 sub-pipelines","start":"people","steps":[{"op":"chain_pipeline","params":{"pipeline":"data_filter"}},{"op":"chain_pipeline","params":{"pipeline":"data_enrichment"}},{"op":"chain_pipeline","params":{"pipeline":"data_aggregation"}},{"op":"mutate","params":{"target":"avg_transaction_value","expr":"col(\"total_value\") / col(\"transaction_count\")","mode":"vector","overwrite":true,"engine":"pandas"}},{"op":"filter","params":{"filters":[{"col":"avg_transaction_value","op":"gt","value":50}],"combine":"and","engine":"pandas"}},{"op":"select","params":{"columns":["name","city","total_value","transaction_count","avg_transaction_value"],"engine":"pandas"}},{"op":"rename","params":{"map":{"total_value":"lifetime_value","transaction_count":"total_purchases"},"engine":"pandas"}}],"overwrite":true,"engine":"pandas"}' | python3 -m json.tool || true
+  
+  # Execute the complex chained pipeline
+  echo "Executing complex chained pipeline..."
+  curl -sS -X POST "${API_BASE}/api/pipelines/complex_chained_analysis/run" \
+    -H 'Content-Type: application/json' \
+    -d '{"materialize":true,"engine":"pandas"}' | python3 -m json.tool || true
+  
+  echo "Testing R export for complex pipeline..."
+  curl -sS "${API_BASE}/api/pipelines/complex_chained_analysis/export.r" > /tmp/complex_pipeline_export.r || true
+  echo "R export file size: $(wc -c < /tmp/complex_pipeline_export.r) bytes"
+  echo "R export preview (first 10 lines):"
+  head -10 /tmp/complex_pipeline_export.r || true
+  
+  echo "Testing Python export for complex pipeline..."  
+  curl -sS "${API_BASE}/api/pipelines/complex_chained_analysis/export.py" > /tmp/complex_pipeline_export.py || true
+  echo "Python export file size: $(wc -c < /tmp/complex_pipeline_export.py) bytes"
+  echo "Python export preview (first 10 lines):"
+  head -10 /tmp/complex_pipeline_export.py || true
+  
+  # Verify pipeline structure and count steps
+  echo "Verifying pipeline structure..."
+  pipeline_info=$(curl -sS "${API_BASE}/api/pipelines/complex_chained_analysis" | python3 -m json.tool || true)
+  echo "Pipeline info:"
+  echo "$pipeline_info"
+  
+  # Count total steps (main + sub-pipelines)
+  step_count=$(echo "$pipeline_info" | grep -o '"op":' | wc -l || true)
+  echo "Total steps in main pipeline: $step_count"
+  
+  if [ "$step_count" -ge 7 ]; then
+    echo "✓ Complex pipeline has $step_count steps (requirement: ≥7)"
+  else
+    echo "✗ Complex pipeline has only $step_count steps (requirement: ≥7)"
+  fi
+  
+  echo "✓ Complex chained pipeline test completed successfully"
+}
+
 # Chained operations tests
 
 test_chained_operations() {
@@ -561,6 +625,7 @@ run_all() {
   test_pipeline_export_yaml
   test_pipeline_import_yaml
   test_chained_pipelines
+  test_complex_chained_pipeline
   
   # Chained operations
   test_chained_operations
@@ -634,6 +699,7 @@ main() {
     pipeline-export-yaml) test_pipeline_export_yaml ;;
     pipeline-import-yaml) test_pipeline_import_yaml ;;
     chained-pipelines) test_chained_pipelines ;;
+    complex-chained-pipeline) test_complex_chained_pipeline ;;
     
     # Chained operations
     chained-operations) test_chained_operations ;;

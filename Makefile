@@ -66,6 +66,7 @@ help:
 	@echo "  pipeline-export-yaml  - run PIPELINE YAML export test"
 	@echo "  pipeline-import-yaml  - run PIPELINE YAML import test"
 	@echo "  chained-pipelines     - run chained PIPELINE test"
+	@echo "  complex-chained-pipeline - run complex chained PIPELINE test with 7+ steps and 3 sub-pipelines"
 	@echo ""
 	@echo "Advanced Tests:"
 	@echo "  chained-operations    - run chained operations test"
@@ -253,6 +254,9 @@ pipeline-import-yaml: prepare
 
 chained-pipelines: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh chained-pipelines
+
+complex-chained-pipeline: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh complex-chained-pipeline
 
 # Advanced tests
 

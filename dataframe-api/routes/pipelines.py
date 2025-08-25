@@ -431,3 +431,55 @@ def pipeline_export_python():
         return Response(python_code, mimetype='text/plain; charset=utf-8')
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@pipelines_bp.route('/api/pipelines/<name>/export.r', methods=['GET'])
+def pipelines_export_r(name):
+    """Export saved pipeline as R code"""
+    try:
+        key = f'pipeline:{name}'
+        if not redis_client.exists(key):
+            return jsonify({'success': False, 'error': 'Pipeline not found'}), 404
+        obj = json.loads(redis_client.get(key))
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': obj.get('steps', []),
+            'start': obj.get('start'),
+            'description': obj.get('description', 'Saved pipeline export'),
+            'name': name
+        }
+        
+        # Generate R code
+        r_code = generate_r_code(pipeline_data)
+        
+        return Response(r_code, mimetype='text/plain; charset=utf-8', 
+                       headers={'Content-Disposition': f'attachment; filename="{name}.r"'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@pipelines_bp.route('/api/pipelines/<name>/export.py', methods=['GET'])
+def pipelines_export_python_saved(name):
+    """Export saved pipeline as Python code"""
+    try:
+        key = f'pipeline:{name}'
+        if not redis_client.exists(key):
+            return jsonify({'success': False, 'error': 'Pipeline not found'}), 404
+        obj = json.loads(redis_client.get(key))
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': obj.get('steps', []),
+            'start': obj.get('start'),
+            'description': obj.get('description', 'Saved pipeline export'),
+            'name': name
+        }
+        
+        # Generate Python code
+        python_code = generate_python_code(pipeline_data)
+        
+        return Response(python_code, mimetype='text/plain; charset=utf-8',
+                       headers={'Content-Disposition': f'attachment; filename="{name}.py"'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
