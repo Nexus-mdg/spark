@@ -29,3 +29,7 @@ playwright/screenshots/*.jpg
 playwright/screenshots/*.jpeg
 playwright/.env
 
+# Temporary test files
+/tmp/
+*.tmp
+
