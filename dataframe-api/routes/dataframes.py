@@ -722,8 +722,11 @@ def sync_alien_dataframe(name):
             if not username or not password:
                 raise Exception("ODK Central credentials not found")
             
-            username = username.decode('utf-8')
-            password = password.decode('utf-8')
+            # Handle both string and bytes return types from Redis
+            if isinstance(username, bytes):
+                username = username.decode('utf-8')
+            if isinstance(password, bytes):
+                password = password.decode('utf-8')
             
             # For demo/testing purposes, we'll still use the demo data
             # In a real implementation, this is where you'd use pyodk to fetch data:
@@ -732,7 +735,6 @@ def sync_alien_dataframe(name):
             # submissions = client.submissions.list(metadata['odk_config']['project_id'], metadata['odk_config']['form_id'])
             
             import pandas as pd
-            import json
             
             # Load demo data from file to simulate real ODK Central data
             demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
