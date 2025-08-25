@@ -808,68 +808,60 @@ password = "{password}"
                 print(f"Full traceback: {traceback.format_exc()}")
                 odk_connection_successful = False
             
-            # Only fall back to demo data if ODK Central connection completely failed
+            # If ODK Central connection failed, create error DataFrame instead of fallback data
             if not odk_connection_successful:
-                print("Falling back to demo data due to ODK Central connection failure")
-                demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
-                try:
-                    with open(demo_data_file, 'r') as f:
-                        odk_central_data = json.load(f)
-                    
-                    # Transform demo data to tabular format
-                    if odk_central_data:
-                        flattened_data = []
-                        for record in odk_central_data:
-                            flat_record = {}
-                            for key, value in record.items():
-                                if isinstance(value, dict):
-                                    # Flatten nested objects (like location)
-                                    for sub_key, sub_value in value.items():
-                                        flat_record[f"{key}_{sub_key}"] = sub_value
-                                else:
-                                    flat_record[key] = value
-                            flattened_data.append(flat_record)
-                        
-                        df = pd.DataFrame(flattened_data)
-                        print(f"Using demo data: {len(df)} rows")
-                    else:
-                        raise Exception("Demo data is empty")
-                        
-                except Exception as demo_error:
-                    print(f"Demo data fallback also failed: {demo_error}")
-                    # Final fallback to minimal mock data
-                    mock_data = {
-                        'id': [1, 2, 3],
-                        'name': ['Fallback Entry 1', 'Fallback Entry 2', 'Fallback Entry 3'],
-                        'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
-                        'location': ['Location A', 'Location B', 'Location C'],
-                        'error_note': ['ODK Central connection failed', 'Demo data unavailable', 'Using fallback data']
-                    }
-                    df = pd.DataFrame(mock_data)
+                print("ODK Central sync failed - creating error DataFrame")
+                # Create a simple DataFrame with sync failure message
+                df = pd.DataFrame({
+                    'sync_status': ['ODK Central sync failed - please check your credentials and connection']
+                })
             
             csv_string = df.to_csv(index=False)
             
-            # Update metadata
-            metadata.update({
-                'rows': len(df),
-                'cols': len(df.columns),
-                'columns': df.columns.tolist(),
-                'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
-                'sync_status': 'success',
-                'last_sync': datetime.now().isoformat(),
-                'sync_error': None
-            })
-            
-            # Store updated DataFrame and metadata
-            redis_client.set(f"df:{name}", csv_string)
-            redis_client.set(meta_key, json.dumps(metadata))
-            
-            return jsonify({
-                'success': True,
-                'message': f'Alien DataFrame "{name}" synced successfully',
-                'metadata': metadata,
-                'synced_rows': len(df)
-            })
+            # Update metadata based on whether ODK Central connection was successful
+            if odk_connection_successful:
+                metadata.update({
+                    'rows': len(df),
+                    'cols': len(df.columns),
+                    'columns': df.columns.tolist(),
+                    'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+                    'sync_status': 'success',
+                    'last_sync': datetime.now().isoformat(),
+                    'sync_error': None
+                })
+                
+                # Store updated DataFrame and metadata
+                redis_client.set(f"df:{name}", csv_string)
+                redis_client.set(meta_key, json.dumps(metadata))
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Alien DataFrame "{name}" synced successfully',
+                    'metadata': metadata,
+                    'synced_rows': len(df)
+                })
+            else:
+                # ODK Central connection failed - set error status
+                metadata.update({
+                    'rows': len(df),
+                    'cols': len(df.columns),
+                    'columns': df.columns.tolist(),
+                    'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+                    'sync_status': 'error',
+                    'last_sync': datetime.now().isoformat(),
+                    'sync_error': 'ODK Central connection failed - please check your credentials and server settings'
+                })
+                
+                # Store error DataFrame and metadata
+                redis_client.set(f"df:{name}", csv_string)
+                redis_client.set(meta_key, json.dumps(metadata))
+                
+                return jsonify({
+                    'success': False,
+                    'error': 'ODK Central sync failed - please check your credentials and connection',
+                    'metadata': metadata,
+                    'synced_rows': len(df)
+                }), 400
             
         except Exception as sync_error:
             # Update metadata with error status
