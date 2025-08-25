@@ -67,19 +67,19 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-5 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 mb-3">
           <AlienIcon className="w-6 h-6" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create Alien DataFrame</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create Alien DataFrame</h2>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+          <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               DataFrame Name *
@@ -90,7 +90,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
               value={formData.name}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               placeholder="my_alien_dataframe"
             />
           </div>
@@ -103,14 +103,14 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              rows={1}
+              className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               placeholder="Data from ODK Central survey..."
             />
           </div>
 
-          <div className="border-t dark:border-gray-600 pt-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">ODK Central Configuration</h3>
+          <div className="border-t dark:border-gray-600 pt-3">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">ODK Central Configuration</h3>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -122,7 +122,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.serverUrl}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="https://central.example.com"
               />
             </div>
@@ -137,7 +137,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.projectId}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="1"
               />
             </div>
@@ -152,7 +152,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.formId}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="survey_form"
               />
             </div>
@@ -167,7 +167,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="ODK Central username"
               />
             </div>
@@ -182,14 +182,14 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 value={formData.password}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder="ODK Central password"
               />
             </div>
           </div>
 
-          <div className="border-t dark:border-gray-600 pt-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Sync Settings</h3>
+          <div className="border-t dark:border-gray-600 pt-3">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">Sync Settings</h3>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -199,7 +199,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
                 name="syncFrequency"
                 value={formData.syncFrequency}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value={15}>Every 15 minutes</option>
                 <option value={60}>Every hour</option>
@@ -209,7 +209,7 @@ export default function CreateAlienDialog({ isOpen, onClose, onSubmit }) {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
