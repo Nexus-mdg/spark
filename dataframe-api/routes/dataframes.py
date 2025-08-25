@@ -757,162 +757,45 @@ password = "{password}"
                         project_id=int(metadata['odk_config']['project_id'])
                     )
                     
-                    print(f"Fetching submissions from form: {metadata['odk_config']['form_id']}")
+                    form_id = metadata['odk_config']['form_id']
+                    print(f"Fetching submissions data using pyodk for form: {form_id}")
                     
-                    # Fetch submissions from ODK Central
-                    submissions = client.submissions.list(
-                        form_id=metadata['odk_config']['form_id']
-                    )
+                    # Use pyodk's submission data methods as shown in documentation
+                    # This gets both submission metadata and actual form response data
+                    # Use pyodk's get_table method to get complete submission data
+                    # This gets both submission metadata and actual form response data in OData format
+                    print(f"Fetching submission table data for form: {form_id}")
                     
-                    print(f"ODK Central returned: {type(submissions)} with {len(submissions) if submissions else 0} items")
+                    # Get table data using pyodk's get_table method (returns OData JSON format)
+                    table_data = client.submissions.get_table(form_id=form_id)
                     
-                    # Transform ODK Central submissions to DataFrame
-                    if submissions and len(submissions) > 0:
-                        print(f"Processing {len(submissions)} submissions from ODK Central")
-                        
-                        # Convert submissions to tabular format
-                        flattened_data = []
-                        for i, submission in enumerate(submissions):
-                            print(f"Processing submission {i+1}: {type(submission)}")
-                            flat_record = {}
+                    print(f"get_table returned: {type(table_data)}")
+                    
+                    if table_data and isinstance(table_data, dict):
+                        # OData response should have a 'value' key with the actual data
+                        if 'value' in table_data and table_data['value']:
+                            submissions_data = table_data['value']
+                            print(f"Found {len(submissions_data)} submissions in table data")
                             
-                            try:
-                                # pyodk submissions might need explicit data fetching
-                                # First try to get submission details if it's just metadata
-                                if hasattr(submission, 'instanceId') or hasattr(submission, 'instance_id'):
-                                    instance_id = getattr(submission, 'instanceId', getattr(submission, 'instance_id', None))
-                                    print(f"Fetching full submission data for instance: {instance_id}")
-                                    
-                                    # Get full submission data including form responses
-                                    full_submission = client.submissions.get(
-                                        form_id=metadata['odk_config']['form_id'],
-                                        instance_id=instance_id
-                                    )
-                                    
-                                    if full_submission:
-                                        # Handle the full submission object
-                                        if hasattr(full_submission, '__dict__'):
-                                            record_dict = full_submission.__dict__
-                                        elif isinstance(full_submission, dict):
-                                            record_dict = full_submission
-                                        else:
-                                            print(f"Unexpected full submission type: {type(full_submission)}")
-                                            continue
-                                    else:
-                                        # Fall back to original submission
-                                        if hasattr(submission, '__dict__'):
-                                            record_dict = submission.__dict__
-                                        elif isinstance(submission, dict):
-                                            record_dict = submission
-                                        else:
-                                            print(f"Unexpected submission type: {type(submission)}")
-                                            continue
-                                else:
-                                    # Handle submission object directly
-                                    if hasattr(submission, '__dict__'):
-                                        record_dict = submission.__dict__
-                                    elif isinstance(submission, dict):
-                                        record_dict = submission
-                                    else:
-                                        print(f"Unexpected submission type: {type(submission)}")
-                                        continue
-                                
-                            except Exception as fetch_error:
-                                print(f"Error fetching full submission data: {fetch_error}")
-                                # Fall back to original submission
-                                if hasattr(submission, '__dict__'):
-                                    record_dict = submission.__dict__
-                                elif isinstance(submission, dict):
-                                    record_dict = submission
-                                else:
-                                    print(f"Unexpected submission type: {type(submission)}")
-                                    continue
+                            # Convert OData response to pandas DataFrame
+                            df = pd.DataFrame(submissions_data)
                             
-                            print(f"Record keys: {list(record_dict.keys())}")
-                            
-                            # Debug: Print full structure of first record to understand ODK Central format
-                            if i == 0:
-                                print(f"Full record structure sample: {dict(list(record_dict.items())[:5])}")
-                            
-                            # Extract metadata fields (submission-level info)
-                            metadata_fields = ['instanceID', 'instanceId', 'submissionDate', 'submitterId', 'submitterName', 
-                                             'deviceId', 'reviewState', 'userAgent', 'createdAt', 'updatedAt']
-                            
-                            # Try different strategies to find form data
-                            form_data_found = False
-                            
-                            # Strategy 1: Check for 'data' field (common in ODK Central)
-                            if 'data' in record_dict and isinstance(record_dict['data'], dict):
-                                print(f"Found form data in 'data' field with {len(record_dict['data'])} items")
-                                for form_key, form_value in record_dict['data'].items():
-                                    if isinstance(form_value, dict):
-                                        # Flatten nested objects (like location, geo data)
-                                        for sub_key, sub_value in form_value.items():
-                                            flat_record[f"{form_key}_{sub_key}"] = sub_value
-                                    elif isinstance(form_value, list):
-                                        # Convert lists to strings
-                                        flat_record[form_key] = str(form_value)
-                                    else:
-                                        flat_record[form_key] = form_value
-                                form_data_found = True
-                            
-                            # Strategy 2: Check for '__system' field and form data at root level
-                            if '__system' in record_dict:
-                                # ODK Central sometimes puts system metadata in __system
-                                system_fields = record_dict.get('__system', {})
-                                if isinstance(system_fields, dict):
-                                    for sys_key, sys_value in system_fields.items():
-                                        if sys_key in metadata_fields:
-                                            flat_record[sys_key] = sys_value
-                                
-                                # Form data might be at root level alongside __system
-                                for key, value in record_dict.items():
-                                    if key != '__system' and key not in metadata_fields:
-                                        if isinstance(value, dict):
-                                            # Flatten nested objects
-                                            for sub_key, sub_value in value.items():
-                                                flat_record[f"{key}_{sub_key}"] = sub_value
-                                        elif isinstance(value, list):
-                                            flat_record[key] = str(value)
-                                        else:
-                                            flat_record[key] = value
-                                form_data_found = True
-                            
-                            # Strategy 3: Flat structure (like our demo data)
-                            if not form_data_found:
-                                print("Using flat structure approach")
-                                for key, value in record_dict.items():
-                                    if isinstance(value, dict):
-                                        # Flatten nested objects (like location, geo data)
-                                        for sub_key, sub_value in value.items():
-                                            flat_record[f"{key}_{sub_key}"] = sub_value
-                                    elif isinstance(value, list):
-                                        # Convert lists to strings
-                                        flat_record[key] = str(value)
-                                    else:
-                                        flat_record[key] = value
-                            
-                            # Always include metadata fields
-                            for key, value in record_dict.items():
-                                if key in metadata_fields:
-                                    flat_record[key] = value
-                            
-                            print(f"Flattened record keys: {list(flat_record.keys())}")
-                            flattened_data.append(flat_record)
-                        
-                        if flattened_data:
-                            df = pd.DataFrame(flattened_data)
-                            print(f"Successfully created DataFrame with {len(df)} rows and {len(df.columns)} columns from ODK Central")
-                            print(f"DataFrame columns: {list(df.columns)}")
-                            odk_connection_successful = True
+                            if not df.empty:
+                                print(f"Successfully created DataFrame with {len(df)} rows and {len(df.columns)} columns")
+                                print(f"Column names: {list(df.columns)}")
+                                odk_connection_successful = True
+                            else:
+                                print("DataFrame is empty")
+                                df = pd.DataFrame({'__note__': ['No submission data found in ODK Central response']})
+                                odk_connection_successful = True
                         else:
-                            print("No valid data found in submissions")
-                            raise Exception("No valid data found in submissions")
+                            print("No submissions found in ODK Central table data")
+                            df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
+                            odk_connection_successful = True
                     else:
-                        print("No submissions found in ODK Central form")
-                        # Create DataFrame indicating no submissions
-                        df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
-                        odk_connection_successful = True
+                        print(f"Unexpected table data format: {type(table_data)}")
+                        print(f"Table data content: {table_data}")
+                        raise Exception("Invalid table data format from ODK Central")
                         
                 finally:
                     # Clean up temporary config file
