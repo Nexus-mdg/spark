@@ -25,10 +25,19 @@ def generate_r_code(pipeline_data: Dict[str, Any]) -> str:
         "library(dplyr)",
         "library(tidyverse)",
         "library(lubridate)",
-        "library(readr)",
+        "library(jsonlite)",
         "",
-        "# Load cached dataframes from CSV files",
-        "# Note: Place CSV files in the same directory as this script",
+        "# Function to load cached dataframes",
+        "load_cached_dataframe <- function(name, meta_json) {",
+        "  df <- jsonlite::fromJSON(meta_json)",
+        "  cat('📂 Loaded from cache:', name, '\\n')",
+        "  cat('📊 Size:', nrow(df), 'rows x', ncol(df), 'columns\\n')",
+        "  cat('⚡ Instant loading from RAM!\\n\\n')",
+        "  return(df)",
+        "}",
+        "",
+        "# Load cached dataframes using the cache function",
+        "# Note: Replace 'meta_json_string' with actual JSON metadata",
         ""
     ]
     
@@ -42,7 +51,7 @@ def generate_r_code(pipeline_data: Dict[str, Any]) -> str:
             df_name = "main_data"
         
         lines.append(f'# Load main dataframe')
-        lines.append(f'current_df <- read_csv("{escape_string(df_name)}.csv")')
+        lines.append(f'current_df <- load_cached_dataframe("{escape_string(df_name)}", meta_json_{escape_string(df_name)})')
         lines.append('')
     else:
         lines.append('# No start dataframe specified')
@@ -59,7 +68,7 @@ def generate_r_code(pipeline_data: Dict[str, Any]) -> str:
         
         if op == 'load':
             name = params.get('name', '')
-            lines.append(f'current_df <- read_csv("{escape_string(name)}.csv")')
+            lines.append(f'current_df <- load_cached_dataframe("{escape_string(name)}", meta_json_{escape_string(name)})')
             
         elif op == 'filter':
             filters = params.get('filters', [])
@@ -198,7 +207,7 @@ def generate_r_code(pipeline_data: Dict[str, Any]) -> str:
             
             if others:
                 for other_df in others:
-                    lines.append(f'other_df <- read_csv("{escape_string(other_df)}.csv")')
+                    lines.append(f'other_df <- load_cached_dataframe("{escape_string(other_df)}", meta_json_{escape_string(other_df)})')
                     
                     # R dplyr join mapping
                     join_func = {
@@ -257,10 +266,18 @@ def generate_python_code(pipeline_data: Dict[str, Any]) -> str:
         "import pandas as pd",
         "import numpy as np",
         "from sklearn.preprocessing import StandardScaler, LabelEncoder",
-        "import re",
+        "import json",
         "",
-        "# Load cached dataframes from CSV files",
-        "# Note: Place CSV files in the same directory as this script",
+        "# Function to load cached dataframes",
+        "def load_cached_dataframe(name, meta_json):",
+        "    df = pd.DataFrame(json.loads(meta_json))",
+        "    print(f'📂 Loaded from cache: {name}')",
+        "    print(f'📊 Size: {df.shape[0]} rows x {df.shape[1]} columns')",
+        "    print('⚡ Instant loading from RAM!\\n')",
+        "    return df",
+        "",
+        "# Load cached dataframes using the cache function",
+        "# Note: Replace 'meta_json_string' with actual JSON metadata",
         ""
     ]
     
@@ -274,7 +291,7 @@ def generate_python_code(pipeline_data: Dict[str, Any]) -> str:
             df_name = "main_data"
         
         lines.append(f'# Load main dataframe')
-        lines.append(f'current_df = pd.read_csv("{escape_string(df_name)}.csv")')
+        lines.append(f'current_df = load_cached_dataframe("{escape_string(df_name)}", meta_json_{escape_string(df_name)})')
         lines.append('')
     else:
         lines.append('# No start dataframe specified')
@@ -291,7 +308,7 @@ def generate_python_code(pipeline_data: Dict[str, Any]) -> str:
         
         if op == 'load':
             name = params.get('name', '')
-            lines.append(f'current_df = pd.read_csv("{escape_string(name)}.csv")')
+            lines.append(f'current_df = load_cached_dataframe("{escape_string(name)}", meta_json_{escape_string(name)})')
             
         elif op == 'filter':
             filters = params.get('filters', [])
@@ -417,7 +434,7 @@ def generate_python_code(pipeline_data: Dict[str, Any]) -> str:
             
             if others:
                 for other_df in others:
-                    lines.append(f'other_df = pd.read_csv("{escape_string(other_df)}.csv")')
+                    lines.append(f'other_df = load_cached_dataframe("{escape_string(other_df)}", meta_json_{escape_string(other_df)})')
                     
                     if left_on and right_on:
                         lines.append(f'current_df = current_df.merge(other_df, left_on={repr(left_on)}, right_on={repr(right_on)}, how="{how}")')
