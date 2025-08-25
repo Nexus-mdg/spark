@@ -318,6 +318,30 @@ export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
   return res.json()
 }
 
+export const pipelineExportR = async ({ steps, start = null }) => {
+  const res = await fetch(`${BASE()}/api/pipeline/export/r`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ steps, start })
+  })
+  if (!res.ok) {
+    const text = await res.text(); throw new Error(`R export failed: ${res.status} ${text}`)
+  }
+  return res.text()
+}
+
+export const pipelineExportPython = async ({ steps, start = null }) => {
+  const res = await fetch(`${BASE()}/api/pipeline/export/python`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ steps, start })
+  })
+  if (!res.ok) {
+    const text = await res.text(); throw new Error(`Python export failed: ${res.status} ${text}`)
+  }
+  return res.text()
+}
+
 // Alien DataFrame API functions
 export const createAlienDataframe = async ({ name, description, odk_config, sync_frequency = 60 }) => {
   const payload = { name, description, odk_config, sync_frequency };

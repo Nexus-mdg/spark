@@ -15,7 +15,9 @@ import {
   pipelineDelete,
   pipelineRunByName,
   buildPipelineExportUrl,
-  pipelineImportYaml
+  pipelineImportYaml,
+  pipelineExportR,
+  pipelineExportPython
 } from './api.js'
 
 function Section({ title, children }) {
@@ -757,6 +759,52 @@ export default function ChainedPipelines() {
     }
   }
 
+  const onExportR = async () => {
+    if (steps.length === 0) return toast.show('Add at least one step')
+    try {
+      const executableSteps = convertToExecutableSteps(steps)
+      const rCode = await pipelineExportR({ steps: executableSteps, start: null })
+      
+      // Create download link
+      const blob = new Blob([rCode], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'chained_pipeline.R'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.show('R code exported successfully')
+    } catch (e) {
+      toast.show(e.message || 'R export failed')
+    }
+  }
+
+  const onExportPython = async () => {
+    if (steps.length === 0) return toast.show('Add at least one step')
+    try {
+      const executableSteps = convertToExecutableSteps(steps)
+      const pythonCode = await pipelineExportPython({ steps: executableSteps, start: null })
+      
+      // Create download link
+      const blob = new Blob([pythonCode], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'chained_pipeline.py'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.show('Python code exported successfully')
+    } catch (e) {
+      toast.show(e.message || 'Python export failed')
+    }
+  }
+
   const onSavePipeline = async () => {
     if (!plName.trim()) return toast.show('Provide a pipeline name')
     if (steps.length === 0) return toast.show('Nothing to save')
@@ -1032,8 +1080,10 @@ export default function ChainedPipelines() {
               </div>
             )}
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run chained pipeline</button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={onExportR}>Export to R</button>
+              <button className="px-4 py-2 bg-orange-600 text-white rounded" onClick={onExportPython}>Export to Python</button>
               {result?.name && (
                 <span className="text-sm text-gray-900 dark:text-gray-100">Created <button className="underline text-indigo-700" onClick={() => navigate(`/analysis/${encodeURIComponent(result.name)}`)}>{result.name}</button></span>
               )}
