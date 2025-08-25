@@ -6,7 +6,7 @@ A comprehensive web-based data processing platform with secure authentication an
 
 ## ⚠️ AI Disclaimer
 
-**This project includes code and documentation that has been developed with assistance from AI tools.** Users, developers, contributors, and anyone forking this repository should be aware that AI-generated content may be present throughout the codebase. While efforts have been made to review and validate AI-generated code, users should exercise appropriate caution and perform their own testing and validation before using this software in production environments.
+**This project includes code and documentation that has been developed with assistance from AI tools.** Users, developers, contributors, and anyone forking this repository should be aware that AI-generated content may be present throughout the codebase. While efforts have been made to review and validate AI-generated code, **we do not recommend using this application in production environments**. Users should exercise appropriate caution and **use this software at their own risk**.
 
 ## 🔐 Authentication System
 
