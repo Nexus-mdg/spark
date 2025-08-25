@@ -16,7 +16,7 @@ dataframes_bp = Blueprint('dataframes', __name__)
 
 def calculate_expiration(df_type, auto_delete_hours=None):
     """Calculate expiration datetime and TTL for a dataframe based on its type"""
-    if df_type == 'static':
+    if df_type == 'static' or df_type == 'alien':
         return None, None
     elif df_type == 'temporary':
         expires_at = datetime.now() + timedelta(hours=1)
@@ -204,8 +204,12 @@ def upload_dataframe():
             name = os.path.splitext(file.filename)[0]
 
         # Validate type
-        if df_type not in ['static', 'ephemeral', 'temporary']:
-            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+        if df_type not in ['static', 'ephemeral', 'temporary', 'alien']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, temporary, or alien'}), 400
+
+        # Reject file uploads for alien type
+        if df_type == 'alien':
+            return jsonify({'success': False, 'error': 'File uploads are not allowed for alien type. Use alien creation endpoint instead.'}), 400
 
         # Validate auto_delete_hours for ephemeral type
         try:
@@ -360,8 +364,12 @@ def convert_dataframe_type(name):
         auto_delete_hours = data.get('auto_delete_hours', 10)
         
         # Validate type
-        if new_type not in ['static', 'ephemeral', 'temporary']:
-            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+        if new_type not in ['static', 'ephemeral', 'temporary', 'alien']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, temporary, or alien'}), 400
+        
+        # Prevent conversion TO alien type (alien dataframes must be created via alien endpoint)
+        if new_type == 'alien':
+            return jsonify({'success': False, 'error': 'Cannot convert to alien type. Use alien creation endpoint instead.'}), 400
         
         # Validate auto_delete_hours for ephemeral type
         try:
@@ -601,5 +609,315 @@ def profile_dataframe(name):
             'row_count': int(len(df)),
             'col_count': int(len(df.columns)),
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dataframes_bp.route('/api/dataframes/alien/create', methods=['POST'])
+def create_alien_dataframe():
+    """Create a new alien DataFrame with ODK Central configuration"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'JSON payload required'}), 400
+        
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+        odk_config = data.get('odk_config', {})
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'DataFrame name is required'}), 400
+        
+        # Validate ODK Central configuration
+        required_odk_fields = ['server_url', 'project_id', 'form_id', 'username', 'password']
+        for field in required_odk_fields:
+            if field not in odk_config or not odk_config[field]:
+                return jsonify({'success': False, 'error': f'ODK Central {field} is required'}), 400
+        
+        # Check if name already exists
+        if redis_client.exists(f"df:{name}"):
+            return jsonify({'success': False, 'error': f'DataFrame with name "{name}" already exists'}), 409
+        
+        # Create initial empty DataFrame with ODK Central metadata
+        import pandas as pd
+        df = pd.DataFrame({'__note__': ['Alien DataFrame - Data will be populated from ODK Central']})
+        csv_string = df.to_csv(index=False)
+        
+        # Create metadata with ODK Central configuration
+        metadata = {
+            'name': name,
+            'rows': 0,  # Will be updated on sync
+            'cols': 0,  # Will be updated on sync  
+            'columns': [],  # Will be updated on sync
+            'description': description,
+            'timestamp': datetime.now().isoformat(),
+            'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+            'format': 'csv',
+            'source': 'alien:odk_central',
+            'type': 'alien',
+            'expires_at': None,  # Alien dataframes don't expire
+            'auto_delete_hours': None,
+            # ODK Central specific metadata
+            'odk_config': {
+                'server_url': odk_config['server_url'],
+                'project_id': odk_config['project_id'],
+                'form_id': odk_config['form_id'],
+                'username': odk_config['username']
+                # password is not stored in metadata for security
+            },
+            'sync_status': 'pending',
+            'last_sync': None,
+            'sync_frequency': data.get('sync_frequency', 60),  # Default 60 minutes
+            'sync_error': None
+        }
+        
+        # Store the DataFrame and metadata without TTL (persistent like static)
+        set_dataframe_with_ttl(f"df:{name}", f"meta:{name}", csv_string, metadata, ttl_seconds=None)
+        
+        # Store the actual credentials separately in a secure way
+        # For now, we'll store username and password in separate Redis keys
+        redis_client.set(f"alien_username:{name}", odk_config['username'])
+        redis_client.set(f"alien_password:{name}", odk_config['password'])
+        
+        return jsonify({
+            'success': True,
+            'message': f'Alien DataFrame "{name}" created successfully',
+            'metadata': metadata
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dataframes_bp.route('/api/dataframes/alien/<name>/sync', methods=['POST'])
+def sync_alien_dataframe(name):
+    """Manually trigger sync for an alien DataFrame"""
+    try:
+        meta_key = f"meta:{name}"
+        
+        # Check if DataFrame exists
+        if not redis_client.exists(meta_key):
+            return jsonify({'success': False, 'error': 'Alien DataFrame not found'}), 404
+        
+        # Load metadata
+        meta_json = redis_client.get(meta_key)
+        metadata = json.loads(meta_json)
+        
+        # Verify it's an alien dataframe
+        if metadata.get('type') != 'alien':
+            return jsonify({'success': False, 'error': 'Not an alien DataFrame'}), 400
+        
+        # Update sync status to 'syncing'
+        metadata['sync_status'] = 'syncing'
+        metadata['sync_error'] = None
+        redis_client.set(meta_key, json.dumps(metadata))
+        
+        # In a real implementation, this would trigger an async background job
+        # For now, we'll simulate a sync operation using pyodk
+        try:
+            # Get stored credentials
+            username = redis_client.get(f"alien_username:{name}")
+            password = redis_client.get(f"alien_password:{name}")
+            
+            if not username or not password:
+                raise Exception("ODK Central credentials not found")
+            
+            # Handle both string and bytes return types from Redis
+            if isinstance(username, bytes):
+                username = username.decode('utf-8')
+            if isinstance(password, bytes):
+                password = password.decode('utf-8')
+            
+            import pandas as pd
+            
+            # Try to connect to actual ODK Central first
+            odk_connection_successful = False
+            try:
+                from pyodk import Client
+                from pyodk._utils.session import Session
+                import tempfile
+                import os
+                import threading
+                import time
+                
+                print(f"Attempting ODK Central connection to {metadata['odk_config']['server_url']}")
+                
+                # Create temporary config file for pyodk
+                config_content = f'''[central]
+base_url = "{metadata['odk_config']['server_url']}"
+username = "{username}"
+password = "{password}"
+'''
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+                    f.write(config_content)
+                    config_path = f.name
+                
+                try:
+                    # Create a custom session with timeout settings
+                    custom_session = Session(
+                        base_url=metadata['odk_config']['server_url'],
+                        api_version='v1',
+                        username=username,
+                        password=password,
+                        cache_path=config_path
+                    )
+                    
+                    # Set timeout on the session (30 seconds for connection and read)
+                    # This will be used for all HTTP requests made by pyodk
+                    custom_session.timeout = 30
+                    
+                    # Create pyodk client with timeout-configured session
+                    client = Client(
+                        config_path=config_path,
+                        project_id=int(metadata['odk_config']['project_id']),
+                        session=custom_session
+                    )
+                    
+                    form_id = metadata['odk_config']['form_id']
+                    print(f"Fetching submissions data using pyodk for form: {form_id} (30s timeout)")
+                    
+                    # Implement an additional timeout wrapper using threading
+                    # This ensures we don't hang even if the session timeout doesn't work
+                    table_data = None
+                    exception_occurred = None
+                    
+                    def fetch_data():
+                        nonlocal table_data, exception_occurred
+                        try:
+                            print(f"Fetching submission table data for form: {form_id}")
+                            # Get table data using pyodk's get_table method (returns OData JSON format)
+                            table_data = client.submissions.get_table(form_id=form_id)
+                        except Exception as e:
+                            exception_occurred = e
+                    
+                    # Start the fetch operation in a separate thread
+                    fetch_thread = threading.Thread(target=fetch_data)
+                    fetch_thread.daemon = True
+                    fetch_thread.start()
+                    
+                    # Wait for the thread to complete with a 30-second timeout
+                    fetch_thread.join(timeout=30)
+                    
+                    if fetch_thread.is_alive():
+                        # Thread is still running, meaning it timed out
+                        print("ODK Central request timed out after 30 seconds")
+                        raise Exception("ODK Central request timed out after 30 seconds")
+                    elif exception_occurred:
+                        # Thread completed but with an exception
+                        raise exception_occurred
+                    elif table_data is None:
+                        # Thread completed but no data was set
+                        raise Exception("No data returned from ODK Central")
+                    
+                    print(f"get_table returned: {type(table_data)}")
+                    
+                    if table_data and isinstance(table_data, dict):
+                        # OData response should have a 'value' key with the actual data
+                        if 'value' in table_data and table_data['value']:
+                            submissions_data = table_data['value']
+                            print(f"Found {len(submissions_data)} submissions in table data")
+                            
+                            # Convert OData response to pandas DataFrame
+                            df = pd.DataFrame(submissions_data)
+                            
+                            if not df.empty:
+                                print(f"Successfully created DataFrame with {len(df)} rows and {len(df.columns)} columns")
+                                print(f"Column names: {list(df.columns)}")
+                                odk_connection_successful = True
+                            else:
+                                print("DataFrame is empty")
+                                df = pd.DataFrame({'__note__': ['No submission data found in ODK Central response']})
+                                odk_connection_successful = True
+                        else:
+                            print("No submissions found in ODK Central table data")
+                            df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
+                            odk_connection_successful = True
+                    else:
+                        print(f"Unexpected table data format: {type(table_data)}")
+                        print(f"Table data content: {table_data}")
+                        raise Exception("Invalid table data format from ODK Central")
+                        
+                finally:
+                    # Clean up temporary config file
+                    if os.path.exists(config_path):
+                        os.unlink(config_path)
+                        
+            except Exception as odk_error:
+                print(f"ODK Central connection/processing failed: {odk_error}")
+                import traceback
+                print(f"Full traceback: {traceback.format_exc()}")
+                odk_connection_successful = False
+            
+            # If ODK Central connection failed, create error DataFrame instead of fallback data
+            if not odk_connection_successful:
+                print("ODK Central sync failed - creating error DataFrame")
+                # Create a simple DataFrame with sync failure message
+                df = pd.DataFrame({
+                    'sync_status': ['ODK Central sync failed - please check your credentials and connection']
+                })
+            
+            csv_string = df.to_csv(index=False)
+            
+            # Update metadata based on whether ODK Central connection was successful
+            if odk_connection_successful:
+                metadata.update({
+                    'rows': len(df),
+                    'cols': len(df.columns),
+                    'columns': df.columns.tolist(),
+                    'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+                    'sync_status': 'success',
+                    'last_sync': datetime.now().isoformat(),
+                    'sync_error': None
+                })
+                
+                # Store updated DataFrame and metadata
+                redis_client.set(f"df:{name}", csv_string)
+                redis_client.set(meta_key, json.dumps(metadata))
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Alien DataFrame "{name}" synced successfully',
+                    'metadata': metadata,
+                    'synced_rows': len(df)
+                })
+            else:
+                # ODK Central connection failed - set error status
+                metadata.update({
+                    'rows': len(df),
+                    'cols': len(df.columns),
+                    'columns': df.columns.tolist(),
+                    'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+                    'sync_status': 'error',
+                    'last_sync': datetime.now().isoformat(),
+                    'sync_error': 'ODK Central connection failed - please check your credentials and server settings'
+                })
+                
+                # Store error DataFrame and metadata
+                redis_client.set(f"df:{name}", csv_string)
+                redis_client.set(meta_key, json.dumps(metadata))
+                
+                return jsonify({
+                    'success': False,
+                    'error': 'ODK Central sync failed - please check your credentials and connection',
+                    'metadata': metadata,
+                    'synced_rows': len(df)
+                }), 400
+            
+        except Exception as sync_error:
+            # Update metadata with error status
+            metadata.update({
+                'sync_status': 'error',
+                'sync_error': str(sync_error),
+                'last_sync': datetime.now().isoformat()
+            })
+            redis_client.set(meta_key, json.dumps(metadata))
+            
+            return jsonify({
+                'success': False,
+                'error': f'Sync failed: {str(sync_error)}',
+                'metadata': metadata
+            }), 500
+        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

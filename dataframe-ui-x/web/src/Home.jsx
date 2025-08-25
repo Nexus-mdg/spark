@@ -16,7 +16,8 @@ import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
 import TypeConversionModal from './components/TypeConversionModal.jsx'
-import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon } from './components/DataFrameTypeIcons.jsx'
+import CreateAlienDialog from './components/CreateAlienDialog.jsx'
+import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon, AlienIcon } from './components/DataFrameTypeIcons.jsx'
 import {
   getStats,
   listDataframes,
@@ -27,7 +28,9 @@ import {
   buildDownloadCsvUrl,
   buildDownloadJsonUrl,
   renameDataframe,
-  convertDataframeType
+  convertDataframeType,
+  createAlienDataframe,
+  syncAlienDataframe
 } from './api.js'
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, ArcElement, LineElement, PointElement, Tooltip, Legend)
@@ -235,6 +238,10 @@ export default function Home() {
   const [typeConversionDataframe, setTypeConversionDataframe] = useState(null)
   const [convertingType, setConvertingType] = useState(false)
 
+  // Alien dialog state
+  const [alienDialogOpen, setAlienDialogOpen] = useState(false)
+  const [syncingAlien, setSyncingAlien] = useState({}) // Track syncing state per dataframe
+
   const toast = useToast()
   const navigate = useNavigate()
 
@@ -248,6 +255,7 @@ export default function Home() {
       case 'static': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
       case 'ephemeral': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
       case 'temporary': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      case 'alien': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
       default: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
     }
   }
@@ -480,6 +488,30 @@ export default function Home() {
       toast.show(err.message || 'Upload failed')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const onCreateAlien = async (alienData) => {
+    try {
+      await createAlienDataframe(alienData)
+      toast.show('Alien DataFrame created successfully')
+      await refreshStats()
+      await refreshList()
+    } catch (err) {
+      throw err // Re-throw to let dialog handle the error
+    }
+  }
+
+  const onSyncAlien = async (name) => {
+    setSyncingAlien(prev => ({ ...prev, [name]: true }))
+    try {
+      await syncAlienDataframe(name)
+      toast.show(`Alien DataFrame "${name}" synced successfully`)
+      await refreshList() // Refresh to show updated sync status
+    } catch (err) {
+      toast.show(err.message || 'Sync failed')
+    } finally {
+      setSyncingAlien(prev => ({ ...prev, [name]: false }))
     }
   }
 
@@ -768,6 +800,22 @@ export default function Home() {
                     <span className="font-medium">Temporary</span> - Auto-deletes after 1 hour
                   </span>
                 </label>
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <AlienIcon />
+                    <div>
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Alien</span>
+                      <span className="text-xs text-blue-600 dark:text-blue-300 block">Auto-syncs from ODK Central</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAlienDialogOpen(true)}
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Create Alien
+                  </button>
+                </div>
               </div>
               
               {/* Auto-delete hours input for ephemeral type */}
@@ -969,6 +1017,22 @@ export default function Home() {
                         >
                           {r.description || '-'}
                         </span>
+                        {r.type === 'alien' && (
+                          <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                            {r.sync_status === 'success' && r.last_sync && (
+                              <span title={`Last synced: ${new Date(r.last_sync).toLocaleString()}`}>
+                                ✓ Synced {new Date(r.last_sync).toLocaleDateString()}
+                              </span>
+                            )}
+                            {r.sync_status === 'pending' && <span>⏳ Pending sync</span>}
+                            {r.sync_status === 'syncing' && <span>🔄 Syncing...</span>}
+                            {r.sync_status === 'error' && (
+                              <span className="text-red-600 dark:text-red-400" title={r.sync_error}>
+                                ❌ Sync error
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">{r.rows} x {r.cols}</td>
@@ -983,6 +1047,25 @@ export default function Home() {
                         <button onClick={() => openViewer(r.name)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Preview">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
                         </button>
+                        {r.type === 'alien' && (
+                          <button 
+                            onClick={() => onSyncAlien(r.name)} 
+                            disabled={syncingAlien[r.name]}
+                            className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 disabled:opacity-50" 
+                            title={`Sync alien DataFrame from ODK Central`}
+                          >
+                            {syncingAlien[r.name] ? (
+                              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4V2A10 10 0 002 12h2a8 8 0 018-8z"/>
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 4V2l3 3-3 3V6c-3.31 0-6 2.69-6 6 0 1.01.25 1.97.7 2.8L5.24 16.26C4.46 15.03 4 13.57 4 12c0-4.42 3.58-8 8-8z"/>
+                                <path d="M19.76 7.74C20.54 8.97 21 10.43 21 12c0 4.42-3.58 8-8 8v2l-3-3 3-3v2c3.31 0 6-2.69 6-6 0-1.01-.25-1.97-.7-2.8l1.46-1.46z"/>
+                              </svg>
+                            )}
+                          </button>
+                        )}
                         <a href={buildDownloadCsvUrl(r.name)} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" title="Download CSV">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4.007 4.007a1.25 1.25 0 01-1.772 0L6.92 12.707a1 1 0 011.414-1.414L10.5 13.46V4a1 1 0 011-1z"/><path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-2a1 1 0 112 0v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2a1 1 0 112 0v2z"/></svg>
                         </a>
@@ -1039,6 +1122,13 @@ export default function Home() {
                   Temporary
                 </span>
                 <span>Auto-deletes after 1 hour</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <AlienIcon />
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  Alien
+                </span>
+                <span>Auto-syncs from ODK Central, never expires</span>
               </div>
             </div>
           </div>
@@ -1105,6 +1195,13 @@ export default function Home() {
         converting={convertingType}
         onConvert={handleTypeConversion}
         onCancel={cancelTypeConversion}
+      />
+
+      {/* Create Alien DataFrame Dialog */}
+      <CreateAlienDialog
+        isOpen={alienDialogOpen}
+        onClose={() => setAlienDialogOpen(false)}
+        onSubmit={onCreateAlien}
       />
 
       <div className={`fixed bottom-4 right-4 ${toast.visible ? '' : 'hidden'}`}>
