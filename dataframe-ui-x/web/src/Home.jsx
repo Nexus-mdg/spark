@@ -16,7 +16,7 @@ import Header from './Header.jsx'
 import Pagination from './components/Pagination.jsx'
 import Footer from './components/Footer.jsx'
 import TypeConversionModal from './components/TypeConversionModal.jsx'
-import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon } from './components/DataFrameTypeIcons.jsx'
+import { getDataFrameTypeIcon, StaticIcon, EphemeralIcon, TemporaryIcon, AlienIcon } from './components/DataFrameTypeIcons.jsx'
 import {
   getStats,
   listDataframes,

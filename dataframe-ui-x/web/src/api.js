@@ -317,3 +317,30 @@ export const pipelineImportYaml = async ({ yaml, overwrite = false }) => {
   }
   return res.json()
 }
+
+// Alien DataFrame API functions
+export const createAlienDataframe = async ({ name, description, odk_config, sync_frequency = 60 }) => {
+  const payload = { name, description, odk_config, sync_frequency };
+  const res = await fetch(`${BASE()}/api/dataframes/alien/create`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Alien DataFrame creation failed: ${res.status} ${text}`);
+  }
+  return res.json();
+};
+
+export const syncAlienDataframe = async (name) => {
+  const res = await fetch(`${BASE()}/api/dataframes/alien/${encodeURIComponent(name)}/sync`, {
+    method: 'POST',
+    headers: getHeaders({ 'Content-Type': 'application/json' })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Alien DataFrame sync failed: ${res.status} ${text}`);
+  }
+  return res.json();
+};

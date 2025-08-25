@@ -76,6 +76,37 @@ export function TemporaryIcon({ className = "w-4 h-4", ...props }) {
   )
 }
 
+// Alien DataFrame Icon - Satellite icon in blue (#3B82F6)
+export function AlienIcon({ className = "w-4 h-4", ...props }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      className={className}
+      fill="#3B82F6"
+      stroke="#2563eb"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-label="Alien DataFrame"
+      title="Alien DataFrame - Auto-syncs from ODK Central"
+      {...props}
+    >
+      {/* Satellite/antenna icon */}
+      <circle cx="12" cy="12" r="3"/>
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M12 1v6"/>
+      <path d="M12 17v6"/>
+      <path d="m1 12 6 0"/>
+      <path d="m17 12 6 0"/>
+      <path d="m4.2 4.2 4.2 4.2"/>
+      <path d="m15.6 15.6 4.2 4.2"/>
+      <path d="m4.2 19.8 4.2-4.2"/>
+      <path d="m15.6 8.4 4.2-4.2"/>
+    </svg>
+  )
+}
+
 // Helper function to get the appropriate icon component based on type
 export function getDataFrameTypeIcon(type, props = {}) {
   switch (type) {
@@ -85,6 +116,8 @@ export function getDataFrameTypeIcon(type, props = {}) {
       return <EphemeralIcon {...props} />
     case 'temporary':
       return <TemporaryIcon {...props} />
+    case 'alien':
+      return <AlienIcon {...props} />
     default:
       return <StaticIcon {...props} />
   }

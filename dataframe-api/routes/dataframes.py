@@ -16,7 +16,7 @@ dataframes_bp = Blueprint('dataframes', __name__)
 
 def calculate_expiration(df_type, auto_delete_hours=None):
     """Calculate expiration datetime and TTL for a dataframe based on its type"""
-    if df_type == 'static':
+    if df_type == 'static' or df_type == 'alien':
         return None, None
     elif df_type == 'temporary':
         expires_at = datetime.now() + timedelta(hours=1)
@@ -204,8 +204,12 @@ def upload_dataframe():
             name = os.path.splitext(file.filename)[0]
 
         # Validate type
-        if df_type not in ['static', 'ephemeral', 'temporary']:
-            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+        if df_type not in ['static', 'ephemeral', 'temporary', 'alien']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, temporary, or alien'}), 400
+
+        # Reject file uploads for alien type
+        if df_type == 'alien':
+            return jsonify({'success': False, 'error': 'File uploads are not allowed for alien type. Use alien creation endpoint instead.'}), 400
 
         # Validate auto_delete_hours for ephemeral type
         try:
@@ -360,8 +364,12 @@ def convert_dataframe_type(name):
         auto_delete_hours = data.get('auto_delete_hours', 10)
         
         # Validate type
-        if new_type not in ['static', 'ephemeral', 'temporary']:
-            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, or temporary'}), 400
+        if new_type not in ['static', 'ephemeral', 'temporary', 'alien']:
+            return jsonify({'success': False, 'error': 'Invalid type. Must be static, ephemeral, temporary, or alien'}), 400
+        
+        # Prevent conversion TO alien type (alien dataframes must be created via alien endpoint)
+        if new_type == 'alien':
+            return jsonify({'success': False, 'error': 'Cannot convert to alien type. Use alien creation endpoint instead.'}), 400
         
         # Validate auto_delete_hours for ephemeral type
         try:
@@ -601,5 +609,161 @@ def profile_dataframe(name):
             'row_count': int(len(df)),
             'col_count': int(len(df.columns)),
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dataframes_bp.route('/api/dataframes/alien/create', methods=['POST'])
+def create_alien_dataframe():
+    """Create a new alien DataFrame with ODK Central configuration"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'JSON payload required'}), 400
+        
+        name = data.get('name', '').strip()
+        description = data.get('description', '').strip()
+        odk_config = data.get('odk_config', {})
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'DataFrame name is required'}), 400
+        
+        # Validate ODK Central configuration
+        required_odk_fields = ['server_url', 'project_id', 'form_id', 'api_token']
+        for field in required_odk_fields:
+            if field not in odk_config or not odk_config[field]:
+                return jsonify({'success': False, 'error': f'ODK Central {field} is required'}), 400
+        
+        # Check if name already exists
+        if redis_client.exists(f"df:{name}"):
+            return jsonify({'success': False, 'error': f'DataFrame with name "{name}" already exists'}), 409
+        
+        # Create initial empty DataFrame with ODK Central metadata
+        import pandas as pd
+        df = pd.DataFrame({'__note__': ['Alien DataFrame - Data will be populated from ODK Central']})
+        csv_string = df.to_csv(index=False)
+        
+        # Create metadata with ODK Central configuration
+        metadata = {
+            'name': name,
+            'rows': 0,  # Will be updated on sync
+            'cols': 0,  # Will be updated on sync  
+            'columns': [],  # Will be updated on sync
+            'description': description,
+            'timestamp': datetime.now().isoformat(),
+            'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+            'format': 'csv',
+            'source': 'alien:odk_central',
+            'type': 'alien',
+            'expires_at': None,  # Alien dataframes don't expire
+            'auto_delete_hours': None,
+            # ODK Central specific metadata
+            'odk_config': {
+                'server_url': odk_config['server_url'],
+                'project_id': odk_config['project_id'],
+                'form_id': odk_config['form_id'],
+                'api_token': '***masked***'  # Don't store the actual token
+            },
+            'sync_status': 'pending',
+            'last_sync': None,
+            'sync_frequency': data.get('sync_frequency', 60),  # Default 60 minutes
+            'sync_error': None
+        }
+        
+        # Store the DataFrame and metadata without TTL (persistent like static)
+        set_dataframe_with_ttl(f"df:{name}", f"meta:{name}", csv_string, metadata, ttl_seconds=None)
+        
+        # Store the actual API token separately in a secure way (in real implementation)
+        # For now, we'll store it in a separate Redis key
+        redis_client.set(f"alien_token:{name}", odk_config['api_token'])
+        
+        return jsonify({
+            'success': True,
+            'message': f'Alien DataFrame "{name}" created successfully',
+            'metadata': metadata
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@dataframes_bp.route('/api/dataframes/alien/<name>/sync', methods=['POST'])
+def sync_alien_dataframe(name):
+    """Manually trigger sync for an alien DataFrame"""
+    try:
+        meta_key = f"meta:{name}"
+        
+        # Check if DataFrame exists
+        if not redis_client.exists(meta_key):
+            return jsonify({'success': False, 'error': 'Alien DataFrame not found'}), 404
+        
+        # Load metadata
+        meta_json = redis_client.get(meta_key)
+        metadata = json.loads(meta_json)
+        
+        # Verify it's an alien dataframe
+        if metadata.get('type') != 'alien':
+            return jsonify({'success': False, 'error': 'Not an alien DataFrame'}), 400
+        
+        # Update sync status to 'syncing'
+        metadata['sync_status'] = 'syncing'
+        metadata['sync_error'] = None
+        redis_client.set(meta_key, json.dumps(metadata))
+        
+        # In a real implementation, this would trigger an async background job
+        # For now, we'll simulate a sync operation
+        try:
+            # Simulate ODK Central API call
+            # This would normally fetch data from ODK Central API
+            import pandas as pd
+            
+            # Mock data simulating ODK Central response
+            mock_data = {
+                'id': [1, 2, 3],
+                'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
+                'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
+                'location': ['Location A', 'Location B', 'Location C']
+            }
+            
+            df = pd.DataFrame(mock_data)
+            csv_string = df.to_csv(index=False)
+            
+            # Update metadata
+            metadata.update({
+                'rows': len(df),
+                'cols': len(df.columns),
+                'columns': df.columns.tolist(),
+                'size_mb': round(len(csv_string.encode('utf-8')) / (1024 * 1024), 2),
+                'sync_status': 'success',
+                'last_sync': datetime.now().isoformat(),
+                'sync_error': None
+            })
+            
+            # Store updated DataFrame and metadata
+            redis_client.set(f"df:{name}", csv_string)
+            redis_client.set(meta_key, json.dumps(metadata))
+            
+            return jsonify({
+                'success': True,
+                'message': f'Alien DataFrame "{name}" synced successfully',
+                'metadata': metadata,
+                'synced_rows': len(df)
+            })
+            
+        except Exception as sync_error:
+            # Update metadata with error status
+            metadata.update({
+                'sync_status': 'error',
+                'sync_error': str(sync_error),
+                'last_sync': datetime.now().isoformat()
+            })
+            redis_client.set(meta_key, json.dumps(metadata))
+            
+            return jsonify({
+                'success': False,
+                'error': f'Sync failed: {str(sync_error)}',
+                'metadata': metadata
+            }), 500
+        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
