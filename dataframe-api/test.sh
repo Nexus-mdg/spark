@@ -437,9 +437,9 @@ test_alien_type_conversion_rejection() {
   
   # Attempt to convert people dataframe to alien type
   http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
-    -X POST "${API_BASE}/api/dataframes/people/type" \
+    -X PATCH "${API_BASE}/api/dataframes/people/type" \
     -H 'Content-Type: application/json' \
-    -d '{"new_type": "alien"}' || true)
+    -d '{"type": "alien"}' || true)
   
   echo "Type conversion attempt returned HTTP ${http_code}"
   if [[ "$http_code" == "400" ]]; then
@@ -454,11 +454,11 @@ test_alien_metadata() {
   response=$(curl -sS "${API_BASE}/api/dataframes/household_survey" | python3 -m json.tool || true)
   echo "$response"
   
-  # Check that the API token is masked
-  if echo "$response" | grep -q "***masked***"; then
-    echo "✓ API token is properly masked in metadata"
+  # Check that the password is not exposed in metadata (security check)
+  if echo "$response" | grep -q "password"; then
+    echo "✗ Password is exposed in metadata (security risk)"
   else
-    echo "✗ API token masking verification failed"
+    echo "✓ Password is properly secured (not exposed in metadata)"
   fi
   
   # Check for alien-specific metadata fields
@@ -493,9 +493,9 @@ test_alien_conversion_from_alien() {
   echo "\n[TEST] ALIEN conversion from alien: convert alien dataframe to static type (should work)"
   
   # Convert household_survey from alien to static
-  convert_response=$(curl -sS -X POST "${API_BASE}/api/dataframes/household_survey/type" \
+  convert_response=$(curl -sS -X PATCH "${API_BASE}/api/dataframes/household_survey/type" \
     -H 'Content-Type: application/json' \
-    -d '{"new_type": "static"}' | python3 -m json.tool || true)
+    -d '{"type": "static"}' | python3 -m json.tool || true)
   
   echo "$convert_response"
   

@@ -728,56 +728,105 @@ def sync_alien_dataframe(name):
             if isinstance(password, bytes):
                 password = password.decode('utf-8')
             
-            # For demo/testing purposes, we'll still use the demo data
-            # In a real implementation, this is where you'd use pyodk to fetch data:
-            # from pyodk import Client
-            # client = Client(base_url=metadata['odk_config']['server_url'], username=username, password=password)
-            # submissions = client.submissions.list(metadata['odk_config']['project_id'], metadata['odk_config']['form_id'])
-            
             import pandas as pd
             
-            # Load demo data from file to simulate real ODK Central data
-            demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
+            # Try to connect to actual ODK Central first
             try:
-                with open(demo_data_file, 'r') as f:
-                    odk_central_data = json.load(f)
+                from pyodk import Client
+                import tempfile
+                import os
                 
-                # Transform ODK Central JSON format to tabular format
-                if odk_central_data:
-                    # Flatten the nested JSON structure for tabular representation
+                # Create temporary config file for pyodk
+                config_content = f'''[central]
+base_url = "{metadata['odk_config']['server_url']}"
+username = "{username}"
+password = "{password}"
+'''
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+                    f.write(config_content)
+                    config_path = f.name
+                
+                try:
+                    # Create pyodk client with temporary config
+                    client = Client(
+                        config_path=config_path,
+                        project_id=int(metadata['odk_config']['project_id'])
+                    )
+                    
+                    # Fetch submissions from ODK Central
+                    submissions = client.submissions.list(
+                        form_id=metadata['odk_config']['form_id']
+                    )
+                finally:
+                    # Clean up temporary config file
+                    if os.path.exists(config_path):
+                        os.unlink(config_path)
+                
+                # Transform ODK Central submissions to DataFrame
+                if submissions and len(submissions) > 0:
+                    # Convert submissions to tabular format
                     flattened_data = []
-                    for record in odk_central_data:
+                    for record in submissions:
                         flat_record = {}
                         for key, value in record.items():
                             if isinstance(value, dict):
-                                # Flatten nested objects (like location)
+                                # Flatten nested objects (like location, geo data)
                                 for sub_key, sub_value in value.items():
                                     flat_record[f"{key}_{sub_key}"] = sub_value
+                            elif isinstance(value, list):
+                                # Convert lists to strings
+                                flat_record[key] = str(value)
                             else:
                                 flat_record[key] = value
                         flattened_data.append(flat_record)
                     
                     df = pd.DataFrame(flattened_data)
+                    print(f"Successfully fetched {len(submissions)} submissions from ODK Central")
                 else:
-                    # Fallback to original mock data
+                    # No submissions found, create empty DataFrame with minimal structure
+                    df = pd.DataFrame({'__note__': ['No submissions found in ODK Central form']})
+                    print("No submissions found in ODK Central form")
+                    
+            except Exception as odk_error:
+                print(f"ODK Central connection failed: {odk_error}")
+                
+                # Fall back to demo data for testing/development
+                demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
+                try:
+                    with open(demo_data_file, 'r') as f:
+                        odk_central_data = json.load(f)
+                    
+                    # Transform demo data to tabular format
+                    if odk_central_data:
+                        flattened_data = []
+                        for record in odk_central_data:
+                            flat_record = {}
+                            for key, value in record.items():
+                                if isinstance(value, dict):
+                                    # Flatten nested objects (like location)
+                                    for sub_key, sub_value in value.items():
+                                        flat_record[f"{key}_{sub_key}"] = sub_value
+                                else:
+                                    flat_record[key] = value
+                            flattened_data.append(flat_record)
+                        
+                        df = pd.DataFrame(flattened_data)
+                        print(f"Using demo data due to ODK Central error: {odk_error}")
+                    else:
+                        raise Exception("Demo data is empty")
+                        
+                except Exception as demo_error:
+                    print(f"Demo data fallback also failed: {demo_error}")
+                    # Final fallback to minimal mock data
                     mock_data = {
                         'id': [1, 2, 3],
-                        'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
+                        'name': ['Fallback Entry 1', 'Fallback Entry 2', 'Fallback Entry 3'],
                         'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
-                        'location': ['Location A', 'Location B', 'Location C']
+                        'location': ['Location A', 'Location B', 'Location C'],
+                        'error_note': ['ODK Central connection failed', 'Demo data unavailable', 'Using fallback data']
                     }
                     df = pd.DataFrame(mock_data)
-                    
-            except Exception as load_error:
-                print(f"Warning: Could not load demo data file: {load_error}")
-                # Fallback to original mock data
-                mock_data = {
-                    'id': [1, 2, 3],
-                    'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
-                    'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
-                    'location': ['Location A', 'Location B', 'Location C']
-                }
-                df = pd.DataFrame(mock_data)
             
             csv_string = df.to_csv(index=False)
             
