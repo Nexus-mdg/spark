@@ -9,6 +9,7 @@ from utils.redis_client import redis_client
 from utils.helpers import df_to_records_json_safe, notify_ntfy
 from operations.pipeline_engine import _apply_op
 from operations.dataframe_ops import _load_df_from_cache, _save_df_to_cache, _unique_name
+from operations.code_export import generate_r_code, generate_python_code
 
 # YAML support for pipeline import/export
 try:
@@ -384,3 +385,101 @@ def pipelines_import_yaml():
         return jsonify({'success': True, 'pipeline': obj})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@pipelines_bp.route('/api/pipeline/export/r', methods=['POST'])
+def pipeline_export_r():
+    """Export chained pipeline as R code"""
+    try:
+        p = request.get_json(force=True) or {}
+        steps = p.get('steps', [])
+        start = p.get('start')
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': steps,
+            'start': start,
+            'description': 'Chained pipeline export'
+        }
+        
+        # Generate R code
+        r_code = generate_r_code(pipeline_data)
+        
+        return Response(r_code, mimetype='text/plain; charset=utf-8')
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@pipelines_bp.route('/api/pipeline/export/python', methods=['POST'])
+def pipeline_export_python():
+    """Export chained pipeline as Python code"""
+    try:
+        p = request.get_json(force=True) or {}
+        steps = p.get('steps', [])
+        start = p.get('start')
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': steps,
+            'start': start,
+            'description': 'Chained pipeline export'
+        }
+        
+        # Generate Python code
+        python_code = generate_python_code(pipeline_data)
+        
+        return Response(python_code, mimetype='text/plain; charset=utf-8')
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@pipelines_bp.route('/api/pipelines/<name>/export.r', methods=['GET'])
+def pipelines_export_r(name):
+    """Export saved pipeline as R code"""
+    try:
+        key = f'pipeline:{name}'
+        if not redis_client.exists(key):
+            return jsonify({'success': False, 'error': 'Pipeline not found'}), 404
+        obj = json.loads(redis_client.get(key))
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': obj.get('steps', []),
+            'start': obj.get('start'),
+            'description': obj.get('description', 'Saved pipeline export'),
+            'name': name
+        }
+        
+        # Generate R code
+        r_code = generate_r_code(pipeline_data)
+        
+        return Response(r_code, mimetype='text/plain; charset=utf-8', 
+                       headers={'Content-Disposition': f'attachment; filename="{name}.r"'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@pipelines_bp.route('/api/pipelines/<name>/export.py', methods=['GET'])
+def pipelines_export_python_saved(name):
+    """Export saved pipeline as Python code"""
+    try:
+        key = f'pipeline:{name}'
+        if not redis_client.exists(key):
+            return jsonify({'success': False, 'error': 'Pipeline not found'}), 404
+        obj = json.loads(redis_client.get(key))
+        
+        # Create pipeline data structure
+        pipeline_data = {
+            'steps': obj.get('steps', []),
+            'start': obj.get('start'),
+            'description': obj.get('description', 'Saved pipeline export'),
+            'name': name
+        }
+        
+        # Generate Python code
+        python_code = generate_python_code(pipeline_data)
+        
+        return Response(python_code, mimetype='text/plain; charset=utf-8',
+                       headers={'Content-Disposition': f'attachment; filename="{name}.py"'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

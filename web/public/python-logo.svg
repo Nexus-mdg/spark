@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="255" height="255" viewBox="0 0 255 255" preserveAspectRatio="xMinYMin meet">
+<defs>
+  <linearGradient id="python-gradient-1" x1="12.959%" y1="12.039%" x2="79.639%" y2="78.201%">
+    <stop offset="0%" style="stop-color:#387EB8;stop-opacity:1"/>
+    <stop offset="100%" style="stop-color:#366994;stop-opacity:1"/>
+  </linearGradient>
+  <linearGradient id="python-gradient-2" x1="19.128%" y1="20.579%" x2="90.742%" y2="88.429%">
+    <stop offset="0%" style="stop-color:#FFE052;stop-opacity:1"/>
+    <stop offset="100%" style="stop-color:#FFC331;stop-opacity:1"/>
+  </linearGradient>
+</defs>
+<g transform="translate(0,255) scale(0.1,-0.1)">
+  <path d="M1040 2370 c-118 -17 -226 -54 -320 -110 -162 -96 -285 -264 -337 -460 -21 -80 -23 -107 -23 -310 l0 -225 45 0 45 0 0 205 c0 163 4 219 18 275 31 128 97 238 189 314 123 103 266 141 435 116 169 -25 315 -116 398 -249 52 -83 75 -160 81 -271 l5 -95 45 0 45 0 0 110 c0 150 -19 230 -79 342 -87 163 -244 293 -427 353 -97 32 -135 34 -120 5z" fill="url(#python-gradient-1)"/>
+  <path d="M1215 2095 c-82 -18 -149 -68 -190 -142 -25 -45 -30 -64 -30 -123 0 -87 26 -142 88 -185 l42 -30 -40 -30 c-62 -47 -85 -98 -85 -190 0 -59 5 -78 30 -123 41 -74 108 -124 190 -142 52 -12 168 -12 220 0 82 18 149 68 190 142 25 45 30 64 30 123 0 92 -23 143 -85 190 l-40 30 42 30 c62 43 88 98 88 185 0 59 -5 78 -30 123 -41 74 -108 124 -190 142 -52 12 -168 12 -220 0z" fill="url(#python-gradient-2)"/>
+</g>
+</svg>
