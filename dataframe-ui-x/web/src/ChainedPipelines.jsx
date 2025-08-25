@@ -1015,6 +1015,11 @@ export default function ChainedPipelines() {
             </select>
             <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
           </div>
+          <div className="mb-3 flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-gray-900 dark:text-gray-100">Export current pipeline:</span>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={onExportR}>Export to R</button>
+            <button className="px-4 py-2 bg-orange-600 text-white rounded" onClick={onExportPython}>Export to Python</button>
+          </div>
           {pipelinesLoading && (<div className="text-sm text-gray-600 dark:text-gray-300">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
@@ -1082,8 +1087,6 @@ export default function ChainedPipelines() {
             
             <div className="flex items-center gap-3 flex-wrap">
               <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run chained pipeline</button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={onExportR}>Export to R</button>
-              <button className="px-4 py-2 bg-orange-600 text-white rounded" onClick={onExportPython}>Export to Python</button>
               {result?.name && (
                 <span className="text-sm text-gray-900 dark:text-gray-100">Created <button className="underline text-indigo-700" onClick={() => navigate(`/analysis/${encodeURIComponent(result.name)}`)}>{result.name}</button></span>
               )}
