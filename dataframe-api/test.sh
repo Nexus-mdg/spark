@@ -383,6 +383,136 @@ test_rename_columns_spark() {
     -d '{"name":"people","map":{"id":"person_id","name":"full_name"},"engine":"spark"}' | python3 -m json.tool || true
 }
 
+# Alien DataFrame tests
+
+test_alien_create() {
+  echo "\n[TEST] ALIEN create: create household_survey alien dataframe with ODK Central config"
+  curl -sS -X POST "${API_BASE}/api/dataframes/alien/create" \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "name": "household_survey",
+      "description": "Household survey data from ODK Central",
+      "odk_config": {
+        "server_url": "https://central.example.com",
+        "project_id": "5",
+        "form_id": "household_survey_v1",
+        "api_token": "demo_token_123456789"
+      },
+      "sync_frequency": 60
+    }' | python3 -m json.tool || true
+}
+
+test_alien_sync() {
+  echo "\n[TEST] ALIEN sync: manually trigger sync for household_survey alien dataframe"
+  curl -sS -X POST "${API_BASE}/api/dataframes/alien/household_survey/sync" \
+    -H 'Content-Type: application/json' | python3 -m json.tool || true
+}
+
+test_alien_upload_rejection() {
+  echo "\n[TEST] ALIEN upload rejection: attempt to upload file to alien type (should fail)"
+  # First create a temp file
+  echo "id,name,value" > /tmp/test_alien_upload.csv
+  echo "1,test,123" >> /tmp/test_alien_upload.csv
+  
+  http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -F "file=@/tmp/test_alien_upload.csv" \
+    -F "name=test_alien_upload" \
+    -F "type=alien" \
+    "${API_BASE}/api/dataframes/upload" || true)
+  
+  echo "Upload attempt returned HTTP ${http_code}"
+  if [[ "$http_code" == "400" ]]; then
+    echo "✓ Correctly rejected file upload for alien type"
+  else
+    echo "✗ Expected HTTP 400, got ${http_code}"
+  fi
+  
+  # Clean up temp file
+  rm -f /tmp/test_alien_upload.csv
+}
+
+test_alien_type_conversion_rejection() {
+  echo "\n[TEST] ALIEN type conversion rejection: attempt to convert existing dataframe to alien type (should fail)"
+  
+  # Attempt to convert people dataframe to alien type
+  http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -X POST "${API_BASE}/api/dataframes/people/type" \
+    -H 'Content-Type: application/json' \
+    -d '{"new_type": "alien"}' || true)
+  
+  echo "Type conversion attempt returned HTTP ${http_code}"
+  if [[ "$http_code" == "400" ]]; then
+    echo "✓ Correctly rejected conversion to alien type"
+  else
+    echo "✗ Expected HTTP 400, got ${http_code}"
+  fi
+}
+
+test_alien_metadata() {
+  echo "\n[TEST] ALIEN metadata: verify alien dataframe metadata structure and security"
+  response=$(curl -sS "${API_BASE}/api/dataframes/household_survey" | python3 -m json.tool || true)
+  echo "$response"
+  
+  # Check that the API token is masked
+  if echo "$response" | grep -q "***masked***"; then
+    echo "✓ API token is properly masked in metadata"
+  else
+    echo "✗ API token masking verification failed"
+  fi
+  
+  # Check for alien-specific metadata fields
+  if echo "$response" | grep -q "sync_status" && echo "$response" | grep -q "last_sync"; then
+    echo "✓ Alien-specific metadata fields present"
+  else
+    echo "✗ Missing alien-specific metadata fields"
+  fi
+}
+
+test_alien_list_and_stats() {
+  echo "\n[TEST] ALIEN list and stats: verify alien dataframes appear in listings with correct type"
+  
+  # Test dataframe list
+  echo "Checking dataframe list..."
+  list_response=$(curl -sS "${API_BASE}/api/dataframes" | python3 -m json.tool || true)
+  echo "$list_response" | head -20
+  
+  if echo "$list_response" | grep -q "household_survey" && echo "$list_response" | grep -q "alien"; then
+    echo "✓ Alien dataframe appears in list with correct type"
+  else
+    echo "✗ Alien dataframe not found in list or incorrect type"
+  fi
+  
+  # Test API stats
+  echo "Checking API stats..."
+  stats_response=$(curl -sS "${API_BASE}/api/stats" | python3 -m json.tool || true)
+  echo "$stats_response"
+}
+
+test_alien_conversion_from_alien() {
+  echo "\n[TEST] ALIEN conversion from alien: convert alien dataframe to static type (should work)"
+  
+  # Convert household_survey from alien to static
+  convert_response=$(curl -sS -X POST "${API_BASE}/api/dataframes/household_survey/type" \
+    -H 'Content-Type: application/json' \
+    -d '{"new_type": "static"}' | python3 -m json.tool || true)
+  
+  echo "$convert_response"
+  
+  if echo "$convert_response" | grep -q "success.*true"; then
+    echo "✓ Successfully converted from alien to static type"
+    
+    # Verify the conversion by checking metadata
+    verify_response=$(curl -sS "${API_BASE}/api/dataframes/household_survey" | python3 -m json.tool || true)
+    if echo "$verify_response" | grep -q '"type": "static"'; then
+      echo "✓ Type conversion verified in metadata"
+    else
+      echo "✗ Type conversion not reflected in metadata"
+    fi
+  else
+    echo "✗ Failed to convert from alien to static type"
+  fi
+}
+
 run_all() {
   # Basic operation tests
   test_select
@@ -433,6 +563,15 @@ run_all() {
   
   # Chained operations
   test_chained_operations
+  
+  # Alien DataFrame tests
+  test_alien_create
+  test_alien_sync
+  test_alien_upload_rejection
+  test_alien_type_conversion_rejection
+  test_alien_metadata
+  test_alien_list_and_stats
+  test_alien_conversion_from_alien
   
   # Additional dataframe operations
   test_dataframe_profile
@@ -503,6 +642,15 @@ main() {
     dataframe-download-csv) test_dataframe_download_csv ;;
     dataframe-download-json) test_dataframe_download_json ;;
     api-stats) test_api_stats ;;
+    
+    # Alien DataFrame tests
+    alien-create) test_alien_create ;;
+    alien-sync) test_alien_sync ;;
+    alien-upload-rejection) test_alien_upload_rejection ;;
+    alien-type-conversion-rejection) test_alien_type_conversion_rejection ;;
+    alien-metadata) test_alien_metadata ;;
+    alien-list-and-stats) test_alien_list_and_stats ;;
+    alien-conversion-from-alien) test_alien_conversion_from_alien ;;
     
     all) run_all ;;
     *) echo "Unknown command: $cmd" >&2; exit 2 ;;

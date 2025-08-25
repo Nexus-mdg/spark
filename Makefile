@@ -4,7 +4,7 @@ SHELL := bash
 API_BASE ?= http://localhost:4999
 DFUI_DIR := ./dataframe-api
 
-.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer select-spark select-exclude-spark filter-spark groupby-spark merge-spark pivot-spark compare-identical-spark compare-schema-spark mutate-spark datetime-spark rename-columns-spark pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
+.PHONY: help up down restart restart-x logs logs-x wait test select select-exclude groupby filter merge pivot compare-identical compare-schema mutate datetime rename rename-columns pivot-longer mutate-row datetime-derive filter-advanced filter-null merge-left merge-outer select-spark select-exclude-spark filter-spark groupby-spark merge-spark pivot-spark compare-identical-spark compare-schema-spark mutate-spark datetime-spark rename-columns-spark pipeline-preview pipeline-run pipeline-save pipeline-load pipeline-run-saved pipeline-list pipeline-export-yaml pipeline-import-yaml chained-pipelines chained-operations dataframe-profile dataframe-download-csv dataframe-download-json api-stats alien-create alien-sync alien-upload-rejection alien-type-conversion-rejection alien-metadata alien-list-and-stats alien-conversion-from-alien test-alien all prepare build build-ui build-ui-x generate-account init-admin flush-redis flush-users list-users
 
 help:
 	@echo "Targets:"
@@ -73,6 +73,16 @@ help:
 	@echo "  dataframe-download-csv - run DataFrame CSV download test"
 	@echo "  dataframe-download-json - run DataFrame JSON download test"
 	@echo "  api-stats             - run API stats test"
+	@echo ""
+	@echo "Alien DataFrame Tests:"
+	@echo "  alien-create          - run Alien DataFrame creation test"
+	@echo "  alien-sync            - run Alien DataFrame sync test"
+	@echo "  alien-upload-rejection - run Alien DataFrame upload rejection test"
+	@echo "  alien-type-conversion-rejection - run Alien DataFrame type conversion rejection test"
+	@echo "  alien-metadata        - run Alien DataFrame metadata test"
+	@echo "  alien-list-and-stats  - run Alien DataFrame listing and stats test"
+	@echo "  alien-conversion-from-alien - run Alien DataFrame conversion test"
+	@echo "  test-alien            - run all Alien DataFrame tests"
 	@echo ""
 	@echo "Database Management:"
 	@echo "  generate-account      - create new user account interactively"
@@ -260,6 +270,38 @@ dataframe-download-json: prepare
 
 api-stats: prepare
 	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh api-stats
+
+# Alien DataFrame tests
+
+alien-create: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-create
+
+alien-sync: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-sync
+
+alien-upload-rejection: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-upload-rejection
+
+alien-type-conversion-rejection: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-type-conversion-rejection
+
+alien-metadata: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-metadata
+
+alien-list-and-stats: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-list-and-stats
+
+alien-conversion-from-alien: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-conversion-from-alien
+
+test-alien: prepare
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-create
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-sync
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-upload-rejection
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-type-conversion-rejection
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-metadata
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-list-and-stats
+	API_BASE=$(API_BASE) $(DFUI_DIR)/test.sh alien-conversion-from-alien
 
 down:
 	docker compose -f ./docker-compose.yml down

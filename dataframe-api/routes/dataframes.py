@@ -716,16 +716,51 @@ def sync_alien_dataframe(name):
             # Simulate ODK Central API call
             # This would normally fetch data from ODK Central API
             import pandas as pd
+            import json
             
-            # Mock data simulating ODK Central response
-            mock_data = {
-                'id': [1, 2, 3],
-                'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
-                'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
-                'location': ['Location A', 'Location B', 'Location C']
-            }
+            # Load demo data from file to simulate real ODK Central data
+            demo_data_file = f"{os.path.dirname(__file__)}/../data/sample/odk_central_demo.json"
+            try:
+                with open(demo_data_file, 'r') as f:
+                    odk_central_data = json.load(f)
+                
+                # Transform ODK Central JSON format to tabular format
+                if odk_central_data:
+                    # Flatten the nested JSON structure for tabular representation
+                    flattened_data = []
+                    for record in odk_central_data:
+                        flat_record = {}
+                        for key, value in record.items():
+                            if isinstance(value, dict):
+                                # Flatten nested objects (like location)
+                                for sub_key, sub_value in value.items():
+                                    flat_record[f"{key}_{sub_key}"] = sub_value
+                            else:
+                                flat_record[key] = value
+                        flattened_data.append(flat_record)
+                    
+                    df = pd.DataFrame(flattened_data)
+                else:
+                    # Fallback to original mock data
+                    mock_data = {
+                        'id': [1, 2, 3],
+                        'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
+                        'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
+                        'location': ['Location A', 'Location B', 'Location C']
+                    }
+                    df = pd.DataFrame(mock_data)
+                    
+            except Exception as load_error:
+                print(f"Warning: Could not load demo data file: {load_error}")
+                # Fallback to original mock data
+                mock_data = {
+                    'id': [1, 2, 3],
+                    'name': ['Simulated Entry 1', 'Simulated Entry 2', 'Simulated Entry 3'],
+                    'created_at': ['2024-01-01T10:00:00Z', '2024-01-01T11:00:00Z', '2024-01-01T12:00:00Z'],
+                    'location': ['Location A', 'Location B', 'Location C']
+                }
+                df = pd.DataFrame(mock_data)
             
-            df = pd.DataFrame(mock_data)
             csv_string = df.to_csv(index=False)
             
             # Update metadata
