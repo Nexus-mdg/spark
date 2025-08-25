@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3776ab"/>
+      <stop offset="100%" style="stop-color:#ffd43b"/>
+    </linearGradient>
+  </defs>
+  <circle cx="12" cy="12" r="10" fill="url(#pyGradient)"/>
+  <path d="M8 7 Q8 6 9 6 L12 6 Q13 6 13 7 L13 12 L11 12 L11 14 L16 14 Q17 14 17 15 L17 16 Q17 17 16 17 L13 17 Q12 17 12 16 L12 15 L14 15 L14 13 L9 13 Q8 13 8 12 Z" fill="white"/>
+  <circle cx="10" cy="8" r="1" fill="#3776ab"/>
+  <circle cx="14" cy="15" r="1" fill="#ffd43b"/>
+</svg>

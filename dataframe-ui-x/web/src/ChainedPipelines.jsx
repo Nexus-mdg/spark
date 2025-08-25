@@ -1087,10 +1087,10 @@ export default function ChainedPipelines() {
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
                         <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700" onClick={() => onExportPipelineR(p.name)} title="Export R">
-                          <img src="https://www.r-project.org/logo/Rlogo.svg" alt="R" width="16" height="16" />
+                          <img src="./r.svg" alt="R" width="16" height="16" />
                         </button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-gray-600 dark:bg-gray-600 text-white hover:bg-gray-700 dark:hover:bg-gray-700" onClick={() => onExportPipelinePython(p.name)} title="Export Python">
-                          <img src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" alt="Python" width="16" height="16" />
+                          <img src="./python.svg" alt="Python" width="16" height="16" />
                         </button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                       </td>
@@ -1137,10 +1137,10 @@ export default function ChainedPipelines() {
             <div className="flex items-center gap-3 flex-wrap">
               <button className="px-4 py-2 bg-emerald-600 text-white rounded" onClick={onRun}>Run chained pipeline</button>
               <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700" onClick={onExportR} title="Export R">
-                <img src="https://www.r-project.org/logo/Rlogo.svg" alt="R" width="16" height="16" />
+                <img src="./r.svg" alt="R" width="16" height="16" />
               </button>
               <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-gray-600 dark:bg-gray-600 text-white hover:bg-gray-700 dark:hover:bg-gray-700" onClick={onExportPython} title="Export Python">
-                <img src="https://s3.dualstack.us-east-2.amazonaws.com/pythondotorg-assets/media/files/python-logo-only.svg" alt="Python" width="16" height="16" />
+                <img src="./python.svg" alt="Python" width="16" height="16" />
               </button>
               {result?.name && (
                 <span className="text-sm text-gray-900 dark:text-gray-100">Created <button className="underline text-indigo-700" onClick={() => navigate(`/analysis/${encodeURIComponent(result.name)}`)}>{result.name}</button></span>
