@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/Nexus-mdg/spark-test-visualizer/actions/workflows/test.yml/badge.svg)](https://github.com/Nexus-mdg/spark-test-visualizer.git/actions/workflows/test.yml)
 
-A comprehensive web-based data processing platform with a secure authentication system. Upload, cache, browse, and preview tabular test data (CSV/Excel/JSON) with advanced pipeline operations for complex data transformations.
+A comprehensive web-based data processing platform with secure authentication and ODK Central integration. Upload, cache, browse, and preview tabular data (CSV/Excel/JSON) with advanced pipeline operations for complex data transformations. Features real-time synchronization with ODK Central forms through alien dataframes.
 
 ## 🔐 Authentication System
 
@@ -36,6 +36,32 @@ docker compose up -d
 - View metadata and columns
 - Delete individual datasets or clear the entire cache
 - Toast notifications and modal confirmations
+
+#### 📋 DataFrame Types
+The platform supports four distinct dataframe types with different lifecycle behaviors:
+
+- **Static**: Persistent dataframes that never expire, ideal for reference data
+- **Ephemeral**: Temporary dataframes with configurable auto-deletion (default: 10 hours)
+- **Temporary**: Short-lived dataframes that auto-delete after 1 hour
+- **Alien**: External dataframes that sync with ODK Central forms (persistent)
+
+### 🔗 ODK Central Integration
+Advanced integration with ODK Central for external data synchronization:
+
+- **Alien DataFrames**: Create dataframes that automatically sync with ODK Central form submissions
+- **Automated Sync**: Configurable sync frequency (default: 60 minutes) for real-time data updates
+- **Secure Credentials**: Encrypted storage of ODK Central authentication credentials
+- **Form Integration**: Direct connection to specific ODK Central projects and forms
+- **Sync Status Monitoring**: Track sync status, last sync time, and error handling
+- **Manual Sync Triggers**: Force immediate synchronization when needed
+
+#### ODK Central Configuration
+Alien dataframes require the following ODK Central configuration:
+- **Server URL**: Your ODK Central server endpoint
+- **Project ID**: Numeric ID of the ODK Central project
+- **Form ID**: Form identifier within the project
+- **Username/Password**: ODK Central user credentials with form access
+- **Sync Frequency**: Optional sync interval in minutes (default: 60)
 
 ### 🔄 Advanced Pipeline Operations
 - **Operations**: Individual data transformations (filter, merge, pivot, etc.)
@@ -76,12 +102,30 @@ Access the feature through the "Chained Pipes" button in the navigation bar.
 - **SSL Support**: Certificate generation for secure connections
 
 ### 🧪 Visual Testing (Playwright)
-- **End-to-end Testing**: Comprehensive browser-based testing with Python
-- **Dataframes List Testing**: Automated validation of table functionality, pagination, and filtering
-- **Cross-browser Support**: Tests run on Chromium, Firefox, and WebKit
-- **Responsive Testing**: Validates layout across mobile, tablet, and desktop sizes
-- **Screenshot Capture**: Automated screenshots on test failures for debugging
-- **Docker Integration**: Containerized test environment for consistent results
+Comprehensive end-to-end testing infrastructure with extensive coverage:
+
+#### Test Coverage
+- **Dataframes List Testing**: Complete validation of table functionality, pagination, filtering, and sorting
+- **Upload Workflow**: Automated testing of file upload processes and data display
+- **Responsive Design**: Tests across mobile, tablet, and desktop screen sizes
+- **User Interface**: Interactive elements, forms, buttons, and navigation testing
+- **Accessibility**: Basic accessibility compliance checks and keyboard navigation
+- **Cross-browser Support**: Tests on Chromium, Firefox, and WebKit browsers
+- **Error Handling**: Validation of error messages and user feedback mechanisms
+
+#### Key Test Scenarios
+- **Empty State Testing**: Application behavior with no dataframes present
+- **Data Loading**: Upload and display validation for different file formats
+- **Pagination Controls**: Navigation through multiple pages of dataframes
+- **Search/Filter**: Text-based filtering and search functionality
+- **Visual Consistency**: Layout stability and loading state management
+- **Performance**: Screenshot capture on test failures for debugging
+
+#### Test Infrastructure
+- **Docker Integration**: Containerized test environment for consistent results across systems
+- **Automated Screenshots**: Failure analysis with automatic screenshot capture
+- **Test Data Management**: Sample CSV files and test datasets for repeatable testing
+- **CI/CD Ready**: Integration with continuous integration pipelines
 
 See [PLAYWRIGHT_IMPLEMENTATION.md](PLAYWRIGHT_IMPLEMENTATION.md) for detailed testing documentation.
 
@@ -131,6 +175,44 @@ Access the application:
 - **API Only**: http://localhost:4999 (direct API access)
 - **Dev UI**: http://localhost:5173 (Vite dev server)
 
+### ODK Central Integration Examples
+
+#### Creating an Alien DataFrame
+```bash
+# Create an alien dataframe that syncs with ODK Central
+curl -X POST "http://localhost:4999/api/dataframes/alien/create" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "household_survey",
+    "description": "Household survey data from ODK Central",
+    "odk_config": {
+      "server_url": "https://central.example.com",
+      "project_id": "5",
+      "form_id": "household_survey_v1",
+      "username": "demo_user",
+      "password": "demo_password"
+    },
+    "sync_frequency": 60
+  }'
+```
+
+#### Manual Sync Trigger
+```bash
+# Manually trigger sync for an alien dataframe
+curl -X POST "http://localhost:4999/api/dataframes/alien/household_survey/sync"
+```
+
+#### Testing Alien DataFrame Features
+```bash
+# Run all alien dataframe tests
+make test-alien
+
+# Run specific alien tests
+make alien-create
+make alien-sync
+make alien-metadata
+```
+
 ## Docker / Compose (Recommended)
 
 The complete system with authentication, APIs, and database:
@@ -153,6 +235,7 @@ Services started:
 - **Authentication UI**: Secure frontend with login (port 5001)
 - **NGINX**: Reverse proxy and SSL termination (ports 8880/8443)
 - **ntfy**: Notifications service accessible at https://localhost:8443
+- **Playwright Tests**: Visual testing service (testing profile)
 
 Example docker-compose.yml structure:
 ```yaml
@@ -188,25 +271,49 @@ services:
 
 ## Makefile targets (run from repo root)
 Common helpers are provided via the root Makefile:
+
+### Core Services
 - make up       # start redis, spark, spark-worker, dataframe-api, dataframe-ui-x
 - make build    # build dataframe-api and dataframe-ui-x images
 - make build-ui # build dataframe-api image only
 - make build-ui-x # build dataframe-ui-x image only
 - make wait     # wait for API readiness
-- make test     # run curl tests defined in dataframe-api/test.sh
+- make test     # run all curl tests defined in dataframe-api/test.sh
 - make logs     # tail dataframe-api logs
 - make logs-x   # tail dataframe-ui-x logs
 - make restart  # restart dataframe-api
 - make restart-x # restart dataframe-ui-x
 - make down     # stop all services
-- Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
 
-### Visual Testing Targets
+### Operation Tests
+- Individual tests: make select | groupby | filter | merge | pivot | compare-identical | compare-schema
+- Advanced operations: make rename-columns | pivot-longer | mutate-row | datetime-derive | filter-advanced
+- Spark engine tests: make select-spark | filter-spark | groupby-spark | merge-spark | pivot-spark
+- Pipeline tests: make pipeline-preview | pipeline-run | pipeline-save | chained-pipelines
+
+### Alien DataFrame Tests (ODK Central Integration)
+- make alien-create          # test alien dataframe creation with ODK Central config
+- make alien-sync            # test manual sync trigger for alien dataframes  
+- make alien-upload-rejection # test upload rejection for alien type
+- make alien-type-conversion-rejection # test type conversion rejection to alien
+- make alien-metadata        # test alien dataframe metadata retrieval
+- make alien-list-and-stats  # test alien dataframe listing and statistics
+- make alien-conversion-from-alien # test conversion from alien type
+- make test-alien            # run all alien dataframe tests
+
+### Visual Testing Targets (Playwright)
 - make test-visual-build     # build Playwright test container
 - make test-visual           # run visual tests (headless)
 - make test-visual-dev       # run visual tests in development mode (with browser)
 - make test-visual-screenshots # run tests and capture screenshots on failure
 - make test-visual-clean     # clean up visual test artifacts
+
+### Database Management  
+- make generate-account      # create new user account interactively
+- make init-admin            # initialize admin account
+- make flush-redis           # clear Redis cache
+- make flush-users           # remove all users from PostgreSQL
+- make list-users            # list all users in PostgreSQL
 
 ## Jenkins pipeline
 A Kotlin-based Jenkins pipeline script is provided at `jenkins.kt`.
@@ -236,6 +343,14 @@ At minimum, ensure the pipeline stages cover:
 - **Port**: Configurable via `PORT` env var (default 4999)
 - **API Protection**: Enable/disable browser blocking via environment variables
 
+### ODK Central Integration
+For alien dataframes that sync with ODK Central:
+- **Server Configuration**: Each alien dataframe stores its own ODK Central server configuration
+- **Secure Credentials**: Username and password are stored separately in Redis for security
+- **Sync Settings**: Configurable sync frequency per dataframe (default: 60 minutes)
+- **Connection Validation**: Automatic validation of ODK Central credentials and form access
+- **Error Handling**: Comprehensive error reporting for sync failures and connection issues
+
 ### Production Settings
 ```bash
 # Authentication database
@@ -248,6 +363,14 @@ export REDIS_URL="redis://localhost:6379"
 
 # Enable API protection
 export ENABLE_BROWSER_BLOCKING="true"
+
+# ODK Central integration (configured per dataframe)
+# No global configuration required - each alien dataframe stores its own:
+# - server_url: ODK Central server endpoint
+# - project_id: Project ID in ODK Central
+# - form_id: Form ID within the project
+# - username/password: Credentials (stored securely)
+# - sync_frequency: Sync interval in minutes
 ```
 
 ## License
