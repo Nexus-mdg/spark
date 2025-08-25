@@ -805,6 +805,54 @@ export default function ChainedPipelines() {
     }
   }
 
+  const onExportPipelineR = async (pipelineName) => {
+    try {
+      const res = await pipelineGet(pipelineName)
+      if (!res.success) throw new Error(res.error || 'Failed to load pipeline')
+      
+      const rCode = await pipelineExportR({ steps: res.pipeline.steps, start: res.pipeline.start })
+      
+      // Create download link
+      const blob = new Blob([rCode], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${pipelineName}.R`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.show(`R code exported for ${pipelineName}`)
+    } catch (e) {
+      toast.show(e.message || 'R export failed')
+    }
+  }
+
+  const onExportPipelinePython = async (pipelineName) => {
+    try {
+      const res = await pipelineGet(pipelineName)
+      if (!res.success) throw new Error(res.error || 'Failed to load pipeline')
+      
+      const pythonCode = await pipelineExportPython({ steps: res.pipeline.steps, start: res.pipeline.start })
+      
+      // Create download link
+      const blob = new Blob([pythonCode], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${pipelineName}.py`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.show(`Python code exported for ${pipelineName}`)
+    } catch (e) {
+      toast.show(e.message || 'Python export failed')
+    }
+  }
+
   const onSavePipeline = async () => {
     if (!plName.trim()) return toast.show('Provide a pipeline name')
     if (steps.length === 0) return toast.show('Nothing to save')
@@ -1015,11 +1063,6 @@ export default function ChainedPipelines() {
             </select>
             <button className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={refreshPipelines}>{pipelinesLoading ? '…' : 'Refresh'}</button>
           </div>
-          <div className="mb-3 flex items-center gap-3 flex-wrap">
-            <span className="text-sm text-gray-900 dark:text-gray-100">Export current pipeline:</span>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={onExportR}>Export to R</button>
-            <button className="px-4 py-2 bg-orange-600 text-white rounded" onClick={onExportPython}>Export to Python</button>
-          </div>
           {pipelinesLoading && (<div className="text-sm text-gray-600 dark:text-gray-300">Loading pipelines…</div>)}
           {!pipelinesLoading && pipelines.length === 0 && (<div className="text-sm text-gray-600 dark:text-gray-300">No saved pipelines</div>)}
           {pipelines.length > 0 && (
@@ -1043,6 +1086,8 @@ export default function ChainedPipelines() {
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onLoadPipeline(p.name)}>Load</button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onRunByName(p.name)}>Run</button>
                         <a className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-600" href={buildPipelineExportUrl(p.name)}>Export YML</a>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700" onClick={() => onExportPipelineR(p.name)}>Export R</button>
+                        <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-orange-600 dark:bg-orange-600 text-white hover:bg-orange-700 dark:hover:bg-orange-700" onClick={() => onExportPipelinePython(p.name)}>Export Python</button>
                         <button className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => onDeletePipeline(p.name)}>Delete</button>
                       </td>
                     </tr>
